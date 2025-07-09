@@ -56,7 +56,18 @@ export default function SignInForm() {
                     control={<Checkbox sx={{ color: '#fff' }} />}
                     label="Remember me"
                 />
-                <Link href="#" underline="hover" sx={{ color: '#60A5FA' }}>
+                <Link
+                component={RouterLink}
+                to="/ForgotPassword"
+                href="#" underline="hover" sx={{
+                        color: '#f2f3f5',
+                        textDecoration: 'none',
+                        borderBottom: '1px solid transparent',
+                        transition: 'border-bottom 0.3s ease',
+                        '&:hover': {
+                            borderBottom: '1px solid transparent',
+                        },
+                    }}>
                     Forgot password?
                 </Link>
             </Box>
@@ -80,9 +91,22 @@ export default function SignInForm() {
 
             <Typography textAlign="center" mt={2}>
                 Don’t have an account?{' '}
-                <Link component={RouterLink} to="/signup" sx={{ color: '#60A5FA' }}>
+                <Link
+                    component={RouterLink}
+                    to="/signup"
+                    sx={{
+                        color: '#f2f3f5',
+                        textDecoration: 'none',
+                        borderBottom: '1px solid transparent',
+                        transition: 'border-bottom 0.3s ease',
+                        '&:hover': {
+                            borderBottom: '1px solid transparent',
+                        },
+                    }}
+                >
                     Sign up
                 </Link>
+
             </Typography>
         </Paper>
     );
