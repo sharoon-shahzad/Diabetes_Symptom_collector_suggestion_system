@@ -1,23 +1,6 @@
-// 1️. At the top :
-// import axios 
-
-// 2️. Inside the component, define form states
-
-// 3️. Inside handleSubmit function:
-//  Prepare data to send to your backend
-//  Send POST request to your signup endpoint  
-//  Handle success
-//  Handle error
-
-
-// 4. On the Sign Up button:
-// Add onClick={handleSubmit} to trigger the API logic when clicked
-
-
 import React, { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import {
-    Box,
     Paper,
     Typography,
     TextField,
@@ -30,20 +13,39 @@ import {
 } from '@mui/material';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-
-//import axios
+// import axios from 'axios'; // Uncomment when integrating API
 
 export default function SignUpForm() {
+    const [fullName, setFullName] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [dob, setDob] = useState(null);
     const [gender, setGender] = useState('');
+    const [errors, setErrors] = useState({});
 
+    const handleSubmit = async () => {
+        const formErrors = {};
 
-//create input states 
+        if (!fullName.trim()) formErrors.fullName = 'Full name is required';
+        if (!email.trim()) formErrors.email = 'Email is required';
+        if (!password.trim()) formErrors.password = 'Password is required';
+        if (!dob) formErrors.dob = 'Date of birth is required';
+        if (!gender) formErrors.gender = 'Please select gender';
 
-// handle input changes
+        setErrors(formErrors);
+        if (Object.keys(formErrors).length > 0) return;
 
+        const data = { fullName, email, password, dob, gender };
 
-//connection of api here
+        // ✅ Send data to backend here
+        // try {
+        //     const response = await axios.post('/api/signup', data);
+        //     // Handle success
+        // } catch (error) {
+        //     // Handle error
+        // }
+    };
+
     return (
         <Paper
             elevation={4}
@@ -63,6 +65,10 @@ export default function SignUpForm() {
                 label="Full Name"
                 fullWidth
                 margin="normal"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                error={!!errors.fullName}
+                helperText={errors.fullName}
                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                 InputProps={{ style: { color: '#fff' } }}
                 InputLabelProps={{ style: { color: '#aaa' } }}
@@ -72,6 +78,10 @@ export default function SignUpForm() {
                 label="Email"
                 fullWidth
                 margin="normal"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                error={!!errors.email}
+                helperText={errors.email}
                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                 InputProps={{ style: { color: '#fff' } }}
                 InputLabelProps={{ style: { color: '#aaa' } }}
@@ -82,6 +92,10 @@ export default function SignUpForm() {
                 type="password"
                 fullWidth
                 margin="normal"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                error={!!errors.password}
+                helperText={errors.password}
                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                 InputProps={{ style: { color: '#fff' } }}
                 InputLabelProps={{ style: { color: '#aaa' } }}
@@ -96,6 +110,8 @@ export default function SignUpForm() {
                         textField: {
                             fullWidth: true,
                             margin: 'normal',
+                            error: !!errors.dob,
+                            helperText: errors.dob,
                             sx: { '& .MuiOutlinedInput-root': { borderRadius: 2 } },
                             InputProps: { style: { color: '#fff' } },
                             InputLabelProps: { style: { color: '#aaa' } },
@@ -103,26 +119,47 @@ export default function SignUpForm() {
                     }}
                 />
             </LocalizationProvider>
-
             <FormControl
                 fullWidth
                 margin="normal"
+                error={!!errors.gender}
                 sx={{
-                    '& .MuiOutlinedInput-root': { borderRadius: 2 },
+                    '& .MuiOutlinedInput-root': {
+                        borderRadius: 2,
+                        color: '#fff',
+                    },
+                    '& .MuiInputLabel-root': {
+                        color: '#aaa',
+                    },
+                    '& .Mui-error .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#f44336', 
+                    },
                 }}
             >
-                <InputLabel sx={{ color: '#aaa' }}>Gender</InputLabel>
+                <InputLabel>Gender</InputLabel>
                 <Select
                     value={gender}
                     onChange={(e) => setGender(e.target.value)}
                     label="Gender"
-                    sx={{ color: '#fff' }}
+                    sx={{
+                        color: '#fff',
+                        '.MuiOutlinedInput-notchedOutline': {
+                            borderColor: !!errors.gender ? '#f44336' : '#aaa', 
+                        },
+                    }}
                 >
                     <MenuItem value="Male">Male</MenuItem>
                     <MenuItem value="Female">Female</MenuItem>
                     <MenuItem value="Prefer not to say">Prefer not to say</MenuItem>
                 </Select>
+
+                {errors.gender && (
+                    <Typography variant="caption" color="error" sx={{mt:1,ml:1}}>
+                        {errors.gender}
+                    </Typography>
+                )}
             </FormControl>
+
 
             <Button
                 variant="contained"
@@ -137,7 +174,7 @@ export default function SignUpForm() {
                         backgroundColor: '#f0f0f0',
                     },
                 }}
-                //trigger endpoint logic here
+                onClick={handleSubmit}
             >
                 Sign Up
             </Button>
@@ -159,7 +196,6 @@ export default function SignUpForm() {
                 >
                     Sign in
                 </Link>
-
             </Typography>
         </Paper>
     );

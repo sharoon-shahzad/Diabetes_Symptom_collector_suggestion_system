@@ -1,6 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
-
 import {
     Box,
     Paper,
@@ -11,8 +10,32 @@ import {
     Checkbox,
     Link,
 } from '@mui/material';
+// import axios from 'axios'; // Uncomment when integrating API
 
 export default function SignInForm() {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [errors, setErrors] = useState({});
+
+    const handleSubmit = async () => {
+        const formErrors = {};
+        if (!email.trim()) formErrors.email = 'Email is required';
+        if (!password.trim()) formErrors.password = 'Password is required';
+
+        setErrors(formErrors);
+        if (Object.keys(formErrors).length > 0) return;
+
+        const data = { email, password };
+
+        // ✅ Send data to backend here
+        // try {
+        //     const response = await axios.post('/api/login', data);
+        //     // Handle success
+        // } catch (error) {
+        //     // Handle error
+        // }
+    };
+
     return (
         <Paper
             elevation={4}
@@ -32,10 +55,11 @@ export default function SignInForm() {
                 label="Email"
                 fullWidth
                 margin="normal"
-                InputProps={{
-                    style: { color: '#fff' },
-                    sx: { borderRadius: 2 },
-                }}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                error={!!errors.email}
+                helperText={errors.email}
+                InputProps={{ style: { color: '#fff' }, sx: { borderRadius: 2 } }}
                 InputLabelProps={{ style: { color: '#aaa' } }}
             />
 
@@ -44,10 +68,11 @@ export default function SignInForm() {
                 type="password"
                 fullWidth
                 margin="normal"
-                InputProps={{
-                    style: { color: '#fff' },
-                    sx: { borderRadius: 2 },
-                }}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                error={!!errors.password}
+                helperText={errors.password}
+                InputProps={{ style: { color: '#fff' }, sx: { borderRadius: 2 } }}
                 InputLabelProps={{ style: { color: '#aaa' } }}
             />
 
@@ -57,9 +82,10 @@ export default function SignInForm() {
                     label="Remember me"
                 />
                 <Link
-                component={RouterLink}
-                to="/ForgotPassword"
-                href="#" underline="hover" sx={{
+                    component={RouterLink}
+                    to="/ForgotPassword"
+                    underline="hover"
+                    sx={{
                         color: '#f2f3f5',
                         textDecoration: 'none',
                         borderBottom: '1px solid transparent',
@@ -67,7 +93,8 @@ export default function SignInForm() {
                         '&:hover': {
                             borderBottom: '1px solid transparent',
                         },
-                    }}>
+                    }}
+                >
                     Forgot password?
                 </Link>
             </Box>
@@ -75,6 +102,7 @@ export default function SignInForm() {
             <Button
                 variant="contained"
                 fullWidth
+                onClick={handleSubmit}
                 sx={{
                     mt: 2,
                     backgroundColor: '#ffffff',
@@ -106,7 +134,6 @@ export default function SignInForm() {
                 >
                     Sign up
                 </Link>
-
             </Typography>
         </Paper>
     );
