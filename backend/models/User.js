@@ -1,8 +1,7 @@
 import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema({
-
-    name: {
+    fullName: {
         type: String,
         required: true,
     },
@@ -15,14 +14,6 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    phone_number: {
-        type: String,
-        required: true,
-    },
-    whatsapp_number: {
-        type: String,
-        required: true,
-    },
     date_of_birth: {
         type: Date,
         required: true,
@@ -30,8 +21,17 @@ const userSchema = new mongoose.Schema({
     gender: {
         type: String,
         required: true,
+    },
+    isActivated: {
+        type: Boolean,
+        default: false,
+    },
+    activationToken: {
+        type: String,
+    },
+    activationTokenExpires: {
+        type: Date,
     }
-    
-} , {timestamps:true}); 
+}, {timestamps:true}); 
 
 export const User = mongoose.model('User', userSchema);

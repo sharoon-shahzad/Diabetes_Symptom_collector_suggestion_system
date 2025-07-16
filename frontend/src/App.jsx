@@ -3,15 +3,17 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import SignInSide from './pages/SignInSide';
 import SignUpSide from './pages/SignUpSide';
-import ForgotPassword from './pages/ForgotPassword';
+import ActivateAccount from './pages/ActivateAccount';
+import Dashboard from './pages/Dashboard';
 
 const App = () => {
   return (
     <Router>
       <Routes>
         <Route path="/signin" element={<SignInSide />} />
-        <Route path="/forgotpassword" element={<ForgotPassword/>}/>
         <Route path="/signup" element={<SignUpSide />} />
+        <Route path="/activate/:token" element={<ActivateAccount />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/" element={<SignInSide />} />
       </Routes>
     </Router>

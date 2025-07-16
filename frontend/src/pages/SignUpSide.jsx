@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CssBaseline, Stack, ThemeProvider, createTheme } from '@mui/material';
 import SignUpForm from '../components/SignUp/SignUpForm';
 import DiabetesQuotes from '../components/Common/DiabetesQuotes';
@@ -16,6 +16,9 @@ const theme = createTheme({
 });
 
 export default function SignUpSide() {
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline enableColorScheme />
@@ -53,9 +56,11 @@ export default function SignUpSide() {
             maxWidth: 1200,
           }}
         >
-          <SignUpForm />
+          <SignUpForm setSuccess={setSuccess} setError={setError} />
           <DiabetesQuotes />
         </Stack>
+        {success && <Typography color="success.main">{success}</Typography>}
+        {error && <Typography color="error.main">{error}</Typography>}
       </Stack>
     </ThemeProvider>
   );

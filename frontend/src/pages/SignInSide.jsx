@@ -1,7 +1,8 @@
-import React from 'react';
-import { CssBaseline, Stack, ThemeProvider, createTheme } from '@mui/material';
+import React, { useState } from 'react';
+import { CssBaseline, Stack, ThemeProvider, createTheme, Typography } from '@mui/material';
 import SignInForm from '../components/SignIn/SignInForm';
 import DiabetesQuotes from '../components/Common/DiabetesQuotes';
+import { useNavigate } from 'react-router-dom';
 
 const theme = createTheme({
   palette: {
@@ -17,6 +18,9 @@ const theme = createTheme({
 });
 
 export default function SignInSide() {
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline enableColorScheme />
@@ -45,18 +49,20 @@ export default function SignInSide() {
         <Stack
           direction={{ xs: 'column-reverse', md: 'row' }}
           sx={{
-            justifyContent: 'space-between', 
+            justifyContent: 'space-between',
             alignItems: 'center',
             gap: { xs: 4, md: 12 },
             p: 4,
             mx: 'auto',
             width: '100%',
-            maxWidth: 1200, 
+            maxWidth: 1200,
           }}
         >
-          <SignInForm />
+          <SignInForm setSuccess={setSuccess} setError={setError} navigate={navigate} />
           <DiabetesQuotes />
         </Stack>
+        {success && <Typography color="success.main">{success}</Typography>}
+        {error && <Typography color="error.main">{error}</Typography>}
       </Stack>
     </ThemeProvider>
   );
