@@ -11,7 +11,7 @@ const roleSchema = new mongoose.Schema({
     },
     role_type: {
         type: String,
-        enum: ['admin', 'doctor', 'patient'],
+        // enum: ['admin', 'doctor', 'patient','user'],
         default: 'user',
     },
     description: {
@@ -20,4 +20,4 @@ const roleSchema = new mongoose.Schema({
     },
 } ,{timestamps:true});
 
-export const Role = mongoose.model('Role', roleSchema);
+export const Roles = mongoose.model('Roles', roleSchema);
