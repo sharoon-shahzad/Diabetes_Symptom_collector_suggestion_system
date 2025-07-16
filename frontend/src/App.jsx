@@ -5,6 +5,8 @@ import SignInSide from './pages/SignInSide';
 import SignUpSide from './pages/SignUpSide';
 import ActivateAccount from './pages/ActivateAccount';
 import Dashboard from './pages/Dashboard';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 const App = () => {
   return (
@@ -14,6 +16,8 @@ const App = () => {
         <Route path="/signup" element={<SignUpSide />} />
         <Route path="/activate/:token" element={<ActivateAccount />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/forgotpassword" element={<ForgotPassword />} />
+        <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/" element={<SignInSide />} />
       </Routes>
     </Router>

@@ -100,7 +100,7 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                     />
                     <Link
                         component={RouterLink}
-                        to="#"
+                        to="/forgotpassword"
                         underline="hover"
                         sx={{
                             color: '#f2f3f5',
