@@ -19,16 +19,20 @@ export async function logout() {
   await axios.get(`${API_URL}/api/auth/logout`, { withCredentials: true });
   localStorage.removeItem('accessToken');
 }
-
 export async function getCurrentUser() {
   const token = localStorage.getItem('accessToken');
-  const res = await axios.get(`${API_URL}/api/auth/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-    withCredentials: true,
-  });
-  return res.data.data.user;
+  try {
+    console.log('Fetching current user with token:', token);
+    const res = await axios.get(`${API_URL}/api/user/user/profile`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    console.log('Current user fetched successfully:', res.data.data.user);
+    return res.data.data.user;
+  } catch (err) {
+    console.error('Error fetching current user:', err);
+    throw err;
+  }
 }
-
 // Axios interceptor for automatic token refresh
 axios.interceptors.response.use(
   response => response,

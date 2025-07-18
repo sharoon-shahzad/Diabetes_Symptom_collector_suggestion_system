@@ -44,7 +44,7 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                 password,
             }, { withCredentials: true });
             setSuccess(res.data.message || 'Login successful.');
-            localStorage.setItem('accessToken', res.data.accessToken);
+            localStorage.setItem('accessToken', res.data.data.accessToken);
             setTimeout(() => navigate('/dashboard'), 1000);
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed.');
