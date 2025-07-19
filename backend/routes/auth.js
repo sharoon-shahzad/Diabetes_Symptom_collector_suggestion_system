@@ -93,8 +93,9 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ message: 'Invalid email format.' });
         }
         // Password strength
-        if (password.length < 8) {
-            return res.status(400).json({ message: 'Password must be at least 8 characters.' });
+        const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
+        if (!passwordRegex.test(password)) {
+            return res.status(400).json({ message: 'Password must be at least 8 characters and include at least 1 letter, 1 number, and 1 symbol.' });
         }
         // Gender check
         const validGenders = ['Male', 'Female', 'Prefer not to say'];
@@ -177,9 +178,6 @@ router.post('/login', async (req, res) => {
         if (!user) {
             return res.status(400).json({ message: 'Invalid email or password.' });
         }
-        if (!user.isActivated) {
-            return res.status(403).json({ message: 'Account not activated. Please check your email.' });
-        }
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(400).json({ message: 'Invalid email or password.' });
@@ -261,6 +259,87 @@ router.post('/reset-password/:token', async (req, res) => {
         user.resetPasswordExpires = undefined;
         await user.save();
         return res.status(200).json({ message: 'Your password has been reset. You can now log in.' });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: 'Server error.' });
+    }
+});
+
+// Resend activation link route
+router.post('/resend-activation', async (req, res) => {
+    try {
+        const { email } = req.body;
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!email || !emailRegex.test(email)) {
+            return res.status(400).json({ message: 'Please enter a valid email address.' });
+        }
+        const user = await User.findOne({ email });
+        if (!user) {
+            // Always respond with a generic message for security
+            return res.status(200).json({ message: 'If your account is inactive, a new activation link has been sent.' });
+        }
+        if (user.isActivated) {
+            return res.status(200).json({ message: 'Your account is already activated.' });
+        }
+        // Invalidate previous activation tokens
+        user.activationToken = undefined;
+        user.activationTokenExpires = undefined;
+        // Generate new activation token
+        const activationToken = crypto.randomBytes(32).toString('hex');
+        const activationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+        user.activationToken = activationToken;
+        user.activationTokenExpires = activationTokenExpires;
+        await user.save();
+        // Send activation email
+        await sendActivationEmail(email, activationToken);
+        return res.status(200).json({ message: 'If your account is inactive, a new activation link has been sent.' });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: 'Server error.' });
+    }
+});
+
+// Logout route
+router.get('/logout', (req, res) => {
+    res.clearCookie('refreshToken');
+    return res.status(200).json({ message: 'Logged out successfully.' });
+});
+
+// Change password route (for authenticated users)
+router.post('/change-password', async (req, res) => {
+    try {
+        const authHeader = req.headers['authorization'];
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+        const token = authHeader.replace('Bearer ', '');
+        let userId;
+        try {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            userId = decoded.userId;
+        } catch {
+            return res.status(401).json({ message: 'Invalid or expired token' });
+        }
+        const { currentPassword, newPassword } = req.body;
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ message: 'All fields are required.' });
+        }
+        const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
+        if (!passwordRegex.test(newPassword)) {
+            return res.status(400).json({ message: 'Password must be at least 8 characters and include at least 1 letter, 1 number, and 1 symbol.' });
+        }
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Current password is incorrect.' });
+        }
+        user.password = await bcrypt.hash(newPassword, 10);
+        await user.save();
+        return res.status(200).json({ message: 'Password changed successfully.' });
     } catch (err) {
         console.error(err);
         return res.status(500).json({ message: 'Server error.' });
