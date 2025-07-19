@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Box, Typography, Button } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { logout, getCurrentUser } from '../utils/auth';
+import Header from '../components/Common/Header';
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -26,18 +27,14 @@ export default function Dashboard() {
   };
 
   return (
-    <Box minHeight="100vh" display="flex" flexDirection="column" alignItems="center" justifyContent="center" bgcolor="#0B1120">
-      <Typography variant="h3" color="primary" align="center">
+    <Box minHeight="100vh" display="flex" flexDirection="column" alignItems="center" justifyContent="center" bgcolor="#0B1120" position="relative">
+      {/* Global Header */}
+      {user && <Header user={user} onLogout={handleLogout} />}
+
+      {/* Main Dashboard Content */}
+      <Typography variant="h3" color="white" align="center">
         Dashboard
       </Typography>
-      {user && (
-        <Typography variant="h6" color="white" align="center" mt={2}>
-          Welcome, {user.fullName} ({user.email})
-        </Typography>
-      )}
-      <Button variant="contained" color="secondary" onClick={handleLogout} sx={{ mt: 4 }}>
-        Logout
-      </Button>
     </Box>
   );
 } 

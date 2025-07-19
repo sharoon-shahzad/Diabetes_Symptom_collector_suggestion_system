@@ -13,9 +13,13 @@ import {
     InputLabel,
     FormControl,
     Alert,
+    IconButton,
+    InputAdornment,
 } from '@mui/material';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
 export default function SignUpForm() {
     const [fullName, setFullName] = useState('');
@@ -26,6 +30,7 @@ export default function SignUpForm() {
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
     const validate = () => {
         if (!fullName || !email || !password || !dob || !gender) {
@@ -37,8 +42,9 @@ export default function SignUpForm() {
             setError('Invalid email format.');
             return false;
         }
-        if (password.length < 8) {
-            setError('Password must be at least 8 characters.');
+        const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
+        if (!passwordRegex.test(password)) {
+            setError('Password must be at least 8 characters and include at least 1 letter, 1 number, and 1 symbol.');
             return false;
         }
         if (!['Male', 'Female', 'Prefer not to say'].includes(gender)) {
@@ -80,6 +86,10 @@ export default function SignUpForm() {
         }
     };
 
+    // Calculate max date for 11 years ago
+    const today = new Date();
+    const maxDate = new Date(today.getFullYear() - 11, today.getMonth(), today.getDate());
+
     return (
         <Paper
             elevation={4}
@@ -119,13 +129,27 @@ export default function SignUpForm() {
                 />
                 <TextField
                     label="Password"
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     fullWidth
                     margin="normal"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                    InputProps={{ style: { color: '#fff' } }}
+                    InputProps={{
+                        style: { color: '#fff' },
+                        endAdornment: (
+                            <InputAdornment position="end">
+                                <IconButton
+                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                    onClick={() => setShowPassword((show) => !show)}
+                                    edge="end"
+                                    sx={{ color: '#fff' }}
+                                >
+                                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                                </IconButton>
+                            </InputAdornment>
+                        ),
+                    }}
                     InputLabelProps={{ style: { color: '#aaa' } }}
                 />
                 <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -133,6 +157,7 @@ export default function SignUpForm() {
                         label="Date of Birth"
                         value={dob}
                         onChange={setDob}
+                        maxDate={maxDate}
                         slotProps={{
                             textField: {
                                 fullWidth: true,

@@ -31,13 +31,13 @@ export const verifyAccessTokenMiddleware = async (req, res, next) => {
         }
 
         // Check if user is activated
-        if (!user.isActivated) {
-            return res.status(403).json({
-                success: false,
-                message: "Account not activated",
-                code: "ACCOUNT_NOT_ACTIVATED"
-            });
-        }
+        // if (!user.isActivated) {
+        //     return res.status(403).json({
+        //         success: false,
+        //         message: "Account not activated",
+        //         code: "ACCOUNT_NOT_ACTIVATED"
+        //     });
+        // }
 
         // Attach user to request object
         req.user = user;

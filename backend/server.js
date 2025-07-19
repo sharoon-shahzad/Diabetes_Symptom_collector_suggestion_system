@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { connectDB } from './config/db.js';
-import authRoutes from './routes/authRoutes.js';
+import authRoutes from './routes/auth.js';
 import userRoutes from './routes/userRoutes.js';
 
 // Load environment variables

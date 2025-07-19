@@ -23,7 +23,7 @@ export async function getCurrentUser() {
   const token = localStorage.getItem('accessToken');
   try {
     console.log('Fetching current user with token:', token);
-    const res = await axios.get(`${API_URL}/api/user/user/profile`, {
+    const res = await axios.get(`${API_URL}/api/user/profile`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     console.log('Current user fetched successfully:', res.data.data.user);

@@ -43,11 +43,19 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                 email,
                 password,
             }, { withCredentials: true });
-            setSuccess(res.data.message || 'Login successful.');
-            localStorage.setItem('accessToken', res.data.data.accessToken);
-            setTimeout(() => navigate('/dashboard'), 1000);
+
+            if (res.data.accessToken) {
+                setSuccess(res.data.message || 'Login successful.');
+                setError('');
+                localStorage.setItem('accessToken', res.data.accessToken);
+                setTimeout(() => navigate('/dashboard'), 1000);
+            } else {
+                setError(res.data.message || 'Login failed.');
+                setSuccess('');
+            }
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed.');
+            setSuccess('');
         } finally {
             setLoading(false);
         }

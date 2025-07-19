@@ -1,0 +1,308 @@
+import React, { useState } from 'react';
+import { Box, Typography, Avatar, Menu, MenuItem, Divider, Modal, TextField, Alert, IconButton, Button } from '@mui/material';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import { differenceInYears, parseISO } from 'date-fns';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
+
+export default function Header({ user, onLogout, onUserUpdate }) {
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [email, setEmail] = useState(user?.email || '');
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState('');
+  const [resendError, setResendError] = useState('');
+  const [changePwOpen, setChangePwOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [pwLoading, setPwLoading] = useState(false);
+  const [pwSuccess, setPwSuccess] = useState('');
+  const [pwError, setPwError] = useState('');
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
+
+  // Calculate age
+  let age = '';
+  if (user?.date_of_birth) {
+    const dob = typeof user.date_of_birth === 'string' ? parseISO(user.date_of_birth) : user.date_of_birth;
+    age = differenceInYears(new Date(), dob);
+  }
+
+  const handleAvatarClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+  const handleResendClick = () => {
+    setResendSuccess('');
+    setResendError('');
+    setModalOpen(true);
+    setAnchorEl(null);
+  };
+  const handleModalClose = () => {
+    setModalOpen(false);
+  };
+  const handleResendSubmit = async (e) => {
+    e.preventDefault();
+    setResendSuccess('');
+    setResendError('');
+    setResendLoading(true);
+    try {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!email || !emailRegex.test(email)) {
+        setResendError('Please enter a valid email address.');
+        setResendLoading(false);
+        return;
+      }
+      const res = await fetch('http://localhost:5000/api/auth/resend-activation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setResendSuccess(data.message || 'If your account is inactive, a new activation link has been sent.');
+        if (onUserUpdate) onUserUpdate();
+      } else {
+        setResendError(data.message || 'Failed to send activation link.');
+      }
+    } catch (err) {
+      setResendError('Failed to send activation link.');
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
+  const handleChangePwOpen = () => {
+    setChangePwOpen(true);
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPwSuccess('');
+    setPwError('');
+    setAnchorEl(null);
+  };
+  const handleChangePwClose = () => {
+    setChangePwOpen(false);
+  };
+  const handleChangePwSubmit = async (e) => {
+    e.preventDefault();
+    setPwSuccess('');
+    setPwError('');
+    setPwLoading(true);
+    // Frontend validation
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPwError('All fields are required.');
+      setPwLoading(false);
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPwError('New passwords do not match.');
+      setPwLoading(false);
+      return;
+    }
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
+    if (!passwordRegex.test(newPassword)) {
+      setPwError('Password must be at least 8 characters and include at least 1 letter, 1 number, and 1 symbol.');
+      setPwLoading(false);
+      return;
+    }
+    try {
+      // Call backend (reuse reset-password logic, but you may want a dedicated endpoint in production)
+      const token = localStorage.getItem('accessToken');
+      const res = await fetch('http://localhost:5000/api/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ currentPassword, newPassword })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPwSuccess(data.message || 'Password changed successfully.');
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        setPwError(data.message || 'Failed to change password.');
+      }
+    } catch (err) {
+      setPwError('Failed to change password.');
+    } finally {
+      setPwLoading(false);
+    }
+  };
+
+  return (
+    <Box position="absolute" top={24} right={32} zIndex={1000}>
+      <IconButton onClick={handleAvatarClick} size="large">
+        <Avatar sx={{ bgcolor: '#1976d2', width: 44, height: 44 }}>
+          <AccountCircleIcon fontSize="large" />
+        </Avatar>
+      </IconButton>
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <Box px={2} py={1}>
+          <Typography variant="subtitle1" fontWeight="bold">{user?.fullName}</Typography>
+          <Typography variant="body2" color="textSecondary">{user?.email}</Typography>
+          <Typography variant="body2" mt={1}>
+            Age: <b>{age}</b>
+          </Typography>
+          <Typography variant="body2" mt={1}>
+            Account status: <b style={{ color: user?.isActivated ? 'green' : 'orange' }}>{user?.isActivated ? 'Active' : 'Inactive'}</b>
+          </Typography>
+        </Box>
+        <Divider />
+        <MenuItem onClick={handleChangePwOpen} sx={{ color: '#1976d2', fontWeight: 'bold' }}>
+          Change Password
+        </MenuItem>
+        {!user?.isActivated && (
+          <MenuItem onClick={handleResendClick} sx={{ color: '#1976d2', fontWeight: 'bold' }}>
+            Resend Activation Link
+          </MenuItem>
+        )}
+        <MenuItem onClick={() => { handleMenuClose(); onLogout(); }} sx={{ color: 'red', fontWeight: 'bold' }}>
+          Logout
+        </MenuItem>
+      </Menu>
+      {/* Resend Activation Modal */}
+      <Modal open={modalOpen} onClose={handleModalClose}>
+        <Box
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 360,
+            bgcolor: '#1e2a3a',
+            color: 'white',
+            borderRadius: 3,
+            boxShadow: 24,
+            p: 4,
+          }}
+        >
+          <Typography variant="h6" fontWeight="bold" mb={2}>
+            Resend Activation Link
+          </Typography>
+          <form onSubmit={handleResendSubmit}>
+            <TextField
+              label="Email"
+              fullWidth
+              margin="normal"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              InputProps={{ style: { color: '#fff' } }}
+              InputLabelProps={{ style: { color: '#aaa' } }}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
+            />
+            {resendSuccess && <Alert severity="success" sx={{ mb: 2 }}>{resendSuccess}</Alert>}
+            {resendError && <Alert severity="error" sx={{ mb: 2 }}>{resendError}</Alert>}
+            <Button
+              variant="contained"
+              fullWidth
+              sx={{ mt: 2, backgroundColor: '#1976d2', color: '#fff', fontWeight: 'bold', borderRadius: 2 }}
+              type="submit"
+              disabled={resendLoading}
+            >
+              {resendLoading ? 'Sending...' : 'Send Activation Link'}
+            </Button>
+          </form>
+        </Box>
+      </Modal>
+      {/* Change Password Modal */}
+      <Modal open={changePwOpen} onClose={handleChangePwClose}>
+        <Box
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 360,
+            bgcolor: '#1e2a3a',
+            color: 'white',
+            borderRadius: 3,
+            boxShadow: 24,
+            p: 4,
+          }}
+        >
+          <Typography variant="h6" fontWeight="bold" mb={2}>
+            Change Password
+          </Typography>
+          <form onSubmit={handleChangePwSubmit}>
+            <TextField
+              label="Current Password"
+              type={showCurrentPw ? 'text' : 'password'}
+              fullWidth
+              margin="normal"
+              value={currentPassword}
+              onChange={e => setCurrentPassword(e.target.value)}
+              InputProps={{
+                endAdornment: (
+                  <IconButton onClick={() => setShowCurrentPw((show) => !show)} edge="end" sx={{ color: '#fff' }}>
+                    {showCurrentPw ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                ),
+                style: { color: '#fff' }
+              }}
+              InputLabelProps={{ style: { color: '#aaa' } }}
+            />
+            <TextField
+              label="New Password"
+              type={showNewPw ? 'text' : 'password'}
+              fullWidth
+              margin="normal"
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              InputProps={{
+                endAdornment: (
+                  <IconButton onClick={() => setShowNewPw((show) => !show)} edge="end" sx={{ color: '#fff' }}>
+                    {showNewPw ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                ),
+                style: { color: '#fff' }
+              }}
+              InputLabelProps={{ style: { color: '#aaa' } }}
+            />
+            <TextField
+              label="Confirm New Password"
+              type={showConfirmPw ? 'text' : 'password'}
+              fullWidth
+              margin="normal"
+              value={confirmPassword}
+              onChange={e => setConfirmPassword(e.target.value)}
+              InputProps={{
+                endAdornment: (
+                  <IconButton onClick={() => setShowConfirmPw((show) => !show)} edge="end" sx={{ color: '#fff' }}>
+                    {showConfirmPw ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                ),
+                style: { color: '#fff' }
+              }}
+              InputLabelProps={{ style: { color: '#aaa' } }}
+            />
+            {pwSuccess && <Alert severity="success" sx={{ mb: 2 }}>{pwSuccess}</Alert>}
+            {pwError && <Alert severity="error" sx={{ mb: 2 }}>{pwError}</Alert>}
+            <Button
+              variant="contained"
+              fullWidth
+              sx={{ mt: 2, backgroundColor: '#1976d2', color: '#fff', fontWeight: 'bold', borderRadius: 2 }}
+              type="submit"
+              disabled={pwLoading}
+            >
+              {pwLoading ? 'Changing...' : 'Change Password'}
+            </Button>
+          </form>
+        </Box>
+      </Modal>
+    </Box>
+  );
+} 
