@@ -7,6 +7,7 @@ import { connectDB } from './config/db.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/userRoutes.js';
 import questionRoutes from './routes/questionRoutes.js';
+import diseaseRoutes from './routes/diseaseRoutes.js'; // Import disease routes
 
 // Load environment variables
 dotenv.config();
@@ -24,9 +25,10 @@ app.use(cors({
 
 connectDB();
 
-app.use('/api/auth', authRoutes);
-app.use('/api/user', userRoutes);
-app.use('/api', questionRoutes);
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/onboarding', questionRoutes);
+app.use('/api/v1/diseases', diseaseRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema({
-    full_name: {
+    fullName: {
         type: String,
         required: true,
     },
@@ -26,11 +26,24 @@ const userSchema = new mongoose.Schema({
     gender: {
         type: String,
     },
+    isActivated: {
+        type: Boolean,
+        default: false,
+    },
     activationToken: {
+        type: String,
+    },
+    activationTokenExpires: {
+        type: Date,
+    },
+    refreshToken: {
         type: String,
     },
     resetPasswordToken: {
         type: String,
+    },
+    resetPasswordExpires: {
+        type: Date,
     },
     deleted_at: {
         type: Date,

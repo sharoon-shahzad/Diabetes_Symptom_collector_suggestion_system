@@ -1,2 +1,3 @@
-export { default as QuestionnaireForm } from './QuestionnaireForm';
-export { default as SymptomChecklist } from './SymptomChecklist'; 
+import DiseaseSymptomExplorer from './DiseaseSymptomExplorer';
+
+export default DiseaseSymptomExplorer; 
