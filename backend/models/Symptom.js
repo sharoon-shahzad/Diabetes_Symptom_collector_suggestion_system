@@ -1,16 +1,17 @@
 import mongoose from "mongoose";
 
-const symptomSchema = new mongoose.Schema(
-  {
-    name: { type: String, required: true, unique: true },
+const symptomSchema = new mongoose.Schema({
+    name: { type: String, required: true },
     description: { type: String },
-    disease: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Disease",
-      required: true,
+    disease_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Disease",
+        required: true,
     },
-  },
-  { timestamps: true }
-);
+    deleted_at: {
+        type: Date,
+        default: null,
+    },
+}, { timestamps: true });
 
 export const Symptom = mongoose.model("Symptom", symptomSchema);

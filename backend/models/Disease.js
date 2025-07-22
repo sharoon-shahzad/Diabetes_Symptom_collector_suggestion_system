@@ -10,5 +10,13 @@ const diseaseSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-} , {timestamps: true})
+    symptoms_description: {
+        type: String,
+    },
+    deleted_at: {
+        type: Date,
+        default: null,
+    },
+}, { timestamps: true });
+
 export const Disease = mongoose.model("Disease", diseaseSchema);

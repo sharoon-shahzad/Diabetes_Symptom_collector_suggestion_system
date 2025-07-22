@@ -1,20 +1,21 @@
 import mongoose from "mongoose";
 
-const userSymptomLogSchema = new mongoose.Schema({
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
+const usersSymptomsLogsSchema = new mongoose.Schema({
+    user_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
     },
-    symptom: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Symptom',
-      required: true
+    symptom_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Symptom',
+        required: true
     },
-    severity: { type: String, enum: ['mild', 'moderate', 'severe'] },
-    log_date: { type: Date, default: Date.now },
-    notes: { type: String }
-  }, { timestamps: true });
-  
-  export const UserSymptomLog = mongoose.model('UserSymptomLog', userSymptomLogSchema);
+    log_date: { type: Date, required: true },
+    intensity: { type: String },
+    notes: { type: String },
+    deleted_at: { type: Date, default: null },
+}, { timestamps: true });
+
+export const UsersSymptomsLogs = mongoose.model('Users_Symptoms_Logs', usersSymptomsLogsSchema);
   

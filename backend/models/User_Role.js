@@ -2,17 +2,21 @@
 
 import mongoose from 'mongoose';
 
-const userRoleSchema = new mongoose.Schema({
-    user: {
+const usersRolesSchema = new mongoose.Schema({
+    user_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true,
     },
-    role: {
+    role_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Role',
         required: true,
-    }
-},{timestamps:true});   
+    },
+    deleted_at: {
+        type: Date,
+        default: null,
+    },
+}, { timestamps: true });
 
-export const UserRole = mongoose.model('UserRole', userRoleSchema);
+export const UsersRoles = mongoose.model('Users_Roles', usersRolesSchema);

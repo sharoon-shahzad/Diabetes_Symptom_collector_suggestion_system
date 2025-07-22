@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
     Box,
     Paper,
@@ -31,6 +31,7 @@ export default function SignUpForm() {
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const navigate = useNavigate();
 
     const validate = () => {
         if (!fullName || !email || !password || !dob || !gender) {
@@ -79,6 +80,8 @@ export default function SignUpForm() {
             setPassword('');
             setDob(null);
             setGender('');
+            // Redirect to login after 3 seconds
+            setTimeout(() => navigate('/signin'), 3000);
         } catch (err) {
             setError(err.response?.data?.message || 'Registration failed.');
         } finally {

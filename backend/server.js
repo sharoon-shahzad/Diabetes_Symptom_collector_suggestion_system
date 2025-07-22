@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import { connectDB } from './config/db.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/userRoutes.js';
+import questionRoutes from './routes/questionRoutes.js';
 
 // Load environment variables
 dotenv.config();
@@ -21,12 +22,11 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-
 connectDB();
-
 
 app.use('/api/auth', authRoutes);
 app.use('/api/user', userRoutes);
+app.use('/api', questionRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

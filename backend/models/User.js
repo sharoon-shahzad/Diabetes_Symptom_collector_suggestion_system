@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema({
-    fullName: {
+    full_name: {
         type: String,
         required: true,
     },
@@ -14,30 +14,28 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    phone_number: {
+        type: String,
+    },
+    whatsapp_number: {
+        type: String,
+    },
     date_of_birth: {
         type: Date,
-        required: true,
     },
     gender: {
         type: String,
-        required: true,
-    },
-    isActivated: {
-        type: Boolean,
-        default: false,
     },
     activationToken: {
         type: String,
     },
-    activationTokenExpires: {
-        type: Date,
-    },
     resetPasswordToken: {
         type: String,
     },
-    resetPasswordExpires: {
+    deleted_at: {
         type: Date,
-    }
-}, {timestamps:true}); 
+        default: null,
+    },
+}, { timestamps: true });
 
 export const User = mongoose.model('User', userSchema);

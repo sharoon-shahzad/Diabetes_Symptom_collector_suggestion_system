@@ -4,20 +4,14 @@
 import mongoose from 'mongoose';
 
 const roleSchema = new mongoose.Schema({
-    name: {
-        type: String,
-        required: true,
-        unique: true,
-    },
-    role_type: {
-        type: String,
-        enum: ['admin', 'doctor', 'patient'],
-        default: 'user',
-    },
-    description: {
+    role_name: {
         type: String,
         required: true,
     },
-} ,{timestamps:true});
+    deleted_at: {
+        type: Date,
+        default: null,
+    },
+}, { timestamps: true });
 
 export const Role = mongoose.model('Role', roleSchema);
