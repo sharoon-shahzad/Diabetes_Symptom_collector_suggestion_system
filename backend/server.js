@@ -4,12 +4,12 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { connectDB } from './config/db.js';
-import authRoutes from './routes/auth.js';
+import authRoutes from './routes/authRoute.js';
 import userRoutes from './routes/userRoutes.js';
 import questionRoutes from './routes/questionRoutes.js';
-import diseaseRoutes from './routes/diseaseRoutes.js'; // Import disease routes
+import diseaseRoutes from './routes/diseaseRoutes.js';
+import symptomRoutes from './routes/symptomRoutes.js';
 
-// Load environment variables
 dotenv.config();
 
 const app = express();
@@ -29,6 +29,17 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/onboarding', questionRoutes);
 app.use('/api/v1/diseases', diseaseRoutes);
+app.use('/api/v1/symptoms', symptomRoutes);
+
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ message: 'Internal server error', error: err.message });
+});
+
+// Catch-all for unsupported GET requests
+app.get('*', (req, res) => {
+  res.status(404).json({ message: 'Not found' });
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
