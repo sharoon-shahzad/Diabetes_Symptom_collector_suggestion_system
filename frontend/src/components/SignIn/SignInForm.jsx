@@ -39,16 +39,21 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
         setSuccess('');
         setError('');
         try {
-            const res = await axios.post('http://localhost:5000/api/auth/login', {
+                const res = await axios.post('http://localhost:5000/api/v1/auth/login', {
                 email,
                 password,
             }, { withCredentials: true });
 
-            if (res.data.accessToken) {
-                setSuccess(res.data.message || 'Login successful.');
-                setError('');
-                localStorage.setItem('accessToken', res.data.accessToken);
-                setTimeout(() => navigate('/dashboard'), 1000);
+            console.log('Login response:', res.data);
+
+            if (res.data.data && res.data.data.user && res.data.data.accessToken) {
+                localStorage.setItem('accessToken', res.data.data.accessToken);
+                const roles = res.data.data.user.roles || [];
+                if (roles.includes('admin')) {
+                    navigate('/admin-dashboard');
+                } else {
+                    navigate('/dashboard');
+                }
             } else {
                 setError(res.data.message || 'Login failed.');
                 setSuccess('');

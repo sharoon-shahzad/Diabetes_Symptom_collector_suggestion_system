@@ -4,7 +4,7 @@ const API_URL = 'http://localhost:5000';
 
 export async function refreshToken() {
   try {
-    const res = await axios.post(`${API_URL}/api/auth/refresh-token`, {}, { withCredentials: true });
+    const res = await axios.post(`${API_URL}/api/v1/auth/refresh-token`, {}, { withCredentials: true });
     if (res.data?.data?.accessToken) {
       localStorage.setItem('accessToken', res.data.data.accessToken);
       return res.data.data.accessToken;
@@ -16,16 +16,12 @@ export async function refreshToken() {
 }
 
 export async function logout() {
-  await axios.get(`${API_URL}/api/auth/logout`, { withCredentials: true });
+  await axios.get(`${API_URL}/api/v1/auth/logout`, { withCredentials: true });
   localStorage.removeItem('accessToken');
 }
 export async function getCurrentUser() {
-  const token = localStorage.getItem('accessToken');
   try {
-    console.log('Fetching current user with token:', token);
-    const res = await axios.get(`${API_URL}/api/user/profile`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const res = await axios.get('http://localhost:5000/api/v1/auth/profile');
     console.log('Current user fetched successfully:', res.data.data.user);
     return res.data.data.user;
   } catch (err) {

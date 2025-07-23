@@ -32,7 +32,7 @@ export default function ResetPasswordForm({ token, setSuccess, setError, navigat
     if (!validate()) return;
     setLoading(true);
     try {
-      const res = await axios.post(`http://localhost:5000/api/auth/reset-password/${token}`, { password });
+      const res = await axios.post(`/api/v1/auth/reset-password/${token}`, { password });
       setSuccess(res.data.message || 'Your password has been reset. You can now log in.');
       setTimeout(() => navigate('/signin'), 2000);
     } catch (err) {
@@ -101,4 +101,4 @@ export default function ResetPasswordForm({ token, setSuccess, setError, navigat
       </form>
     </Paper>
   );
-} 
+}

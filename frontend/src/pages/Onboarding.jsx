@@ -15,6 +15,7 @@ const theme = createTheme({
   },
 });
 
+
 const Onboarding = () => {
   return (
     <ThemeProvider theme={theme}>

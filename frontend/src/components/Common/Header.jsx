@@ -4,6 +4,7 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { differenceInYears, parseISO } from 'date-fns';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import axios from 'axios';
 
 export default function Header({ user, onLogout, onUserUpdate }) {
   const [anchorEl, setAnchorEl] = useState(null);
@@ -57,20 +58,19 @@ export default function Header({ user, onLogout, onUserUpdate }) {
         setResendLoading(false);
         return;
       }
-      const res = await fetch('http://localhost:5000/api/auth/resend-activation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+      const token = localStorage.getItem('accessToken');
+      const res = await axios.post('http://localhost:5000/api/v1/auth/resend-activation', { email }, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
-      const data = await res.json();
-      if (res.ok) {
+      const data = res.data;
+      if (res.status === 200) {
         setResendSuccess(data.message || 'If your account is inactive, a new activation link has been sent.');
         if (onUserUpdate) onUserUpdate();
       } else {
         setResendError(data.message || 'Failed to send activation link.');
       }
     } catch (err) {
-      setResendError('Failed to send activation link.');
+      setResendError(err.response?.data?.message || 'Failed to send activation link.');
     } finally {
       setResendLoading(false);
     }
@@ -111,18 +111,12 @@ export default function Header({ user, onLogout, onUserUpdate }) {
       return;
     }
     try {
-      // Call backend (reuse reset-password logic, but you may want a dedicated endpoint in production)
       const token = localStorage.getItem('accessToken');
-      const res = await fetch('http://localhost:5000/api/auth/change-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ currentPassword, newPassword })
+      const res = await axios.post('http://localhost:5000/api/v1/auth/change-password', { currentPassword, newPassword }, {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
-      const data = await res.json();
-      if (res.ok) {
+      const data = res.data;
+      if (res.status === 200) {
         setPwSuccess(data.message || 'Password changed successfully.');
         setCurrentPassword('');
         setNewPassword('');
@@ -131,7 +125,7 @@ export default function Header({ user, onLogout, onUserUpdate }) {
         setPwError(data.message || 'Failed to change password.');
       }
     } catch (err) {
-      setPwError('Failed to change password.');
+      setPwError(err.response?.data?.message || 'Failed to change password.');
     } finally {
       setPwLoading(false);
     }
@@ -305,4 +299,4 @@ export default function Header({ user, onLogout, onUserUpdate }) {
       </Modal>
     </Box>
   );
-} 
+}       

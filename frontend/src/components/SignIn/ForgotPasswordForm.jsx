@@ -28,7 +28,7 @@ export default function ForgotPasswordForm({ setSuccess, setError }) {
     if (!validate()) return;
     setLoading(true);
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/forgot-password', { email });
+      const res = await axios.post('/api/v1/auth/forgot-password', { email });
       setSuccess(res.data.message || 'If this email is registered, a password reset link has been sent.');
       setEmail('');
     } catch (err) {
@@ -88,4 +88,4 @@ export default function ForgotPasswordForm({ setSuccess, setError }) {
       </form>
     </Paper>
   );
-} 
+}

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, Typography, CircularProgress, Alert, Grid, Collapse, CardActionArea, Box } from '@mui/material';
+import { Card, CardContent, Typography, CircularProgress, Alert, Grid, Collapse, Box, Button } from '@mui/material';
 import axios from 'axios';
 import QuestionList from './QuestionList';
 
-const CARD_WIDTH = 340;
+const CARD_WIDTH = 320;
 const CARD_MIN_HEIGHT = 180;
 
 const SymptomCard = ({ diseaseId }) => {
@@ -11,6 +11,7 @@ const SymptomCard = ({ diseaseId }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expanded, setExpanded] = useState(null);
+  const [hovered, setHovered] = useState(null);
 
   useEffect(() => {
     const fetchSymptoms = async () => {
@@ -38,10 +39,10 @@ const SymptomCard = ({ diseaseId }) => {
   if (!symptoms.length) return <Typography color="text.secondary" align="center" sx={{ mt: 4 }}>No symptoms found for this disease.</Typography>;
 
   return (
-    <Grid container spacing={3}>
+    <Grid container spacing={2} alignItems="flex-start">
       {symptoms.map((symptom) => (
-        <Grid item xs={12} sm={6} key={symptom._id}>
-          <Box sx={{ width: '100%', maxWidth: CARD_WIDTH, mx: 'auto' }}>
+        <Grid item xs={12} sm={6} md={4} key={symptom._id} display="flex" justifyContent="center">
+          <Box sx={{ width: CARD_WIDTH, mx: 'auto', display: 'flex', alignItems: 'stretch' }}>
             <Card
               elevation={expanded === symptom._id ? 8 : 2}
               sx={{
@@ -52,24 +53,54 @@ const SymptomCard = ({ diseaseId }) => {
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'flex-start',
+                position: 'relative',
+                overflow: 'visible',
               }}
+              onMouseEnter={() => setHovered(symptom._id)}
+              onMouseLeave={() => setHovered(null)}
             >
-              <CardActionArea
-                onClick={() => handleExpand(symptom._id)}
-                sx={{ width: '100%' }}
-              >
-                <CardContent>
-                  <Typography variant="h6" fontWeight={600} color="primary.dark" gutterBottom>
-                    {symptom.name}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" mb={1}>
-                    {symptom.description}
-                  </Typography>
-                </CardContent>
-              </CardActionArea>
+              <CardContent sx={{ pb: 1 }}>
+                <Typography variant="h6" fontWeight={600} color="primary.dark" gutterBottom>
+                  {symptom.name}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" mb={1}>
+                  {symptom.description}
+                </Typography>
+                {expanded !== symptom._id && (
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    size="small"
+                    sx={{
+                      mt: 1,
+                      borderRadius: 2,
+                      fontWeight: 600,
+                      textTransform: 'none',
+                      minWidth: 120,
+                      px: 2,
+                      alignSelf: 'flex-start',
+                      opacity: hovered === symptom._id ? 1 : 0.2,
+                      transition: 'opacity 0.2s',
+                    }}
+                    onClick={() => handleExpand(symptom._id)}
+                  >
+                    Fill Your Info
+                  </Button>
+                )}
+              </CardContent>
               <Collapse in={expanded === symptom._id} timeout="auto" unmountOnExit>
                 <Box px={2} pb={2}>
                   <QuestionList symptomId={symptom._id} />
+                  <Button
+                    variant="outlined"
+                    color="secondary"
+                    size="small"
+                    sx={{ mt: 2, borderRadius: 2, fontWeight: 500, textTransform: 'none' }}
+                    fullWidth
+                    onClick={() => handleExpand(symptom._id)}
+                  >
+                    Close
+                  </Button>
                 </Box>
               </Collapse>
             </Card>

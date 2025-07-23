@@ -67,7 +67,7 @@ export default function SignUpForm() {
         setSuccess('');
         setError('');
         try {
-            const res = await axios.post('http://localhost:5000/api/auth/register', {
+            const res = await axios.post('/api/v1/auth/register', {
                 fullName,
                 email,
                 password,
