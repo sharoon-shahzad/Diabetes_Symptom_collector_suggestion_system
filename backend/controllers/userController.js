@@ -30,14 +30,22 @@ export const getCurrentUser = async (req, res) => {
             message: 'Error fetching user data'
         });
     }
-}; 
+};
 
 export const getAllUsers = async (req, res) => {
     try {
         const users = await User.find();
+        // Fetch roles for each user
+        const usersWithRoles = await Promise.all(users.map(async (user) => {
+            const userRoles = await UsersRoles.find({ user_id: user._id }).populate('role_id');
+            const roles = userRoles.map(ur => ur.role_id.role_name);
+            // Exclude sensitive fields
+            const { password, refreshToken, activationToken, resetPasswordToken, ...safeUser } = user.toObject();
+            return { ...safeUser, roles };
+        }));
         return res.status(200).json({
             success: true,
-            data: users
+            data: usersWithRoles
         });
     } catch (error) {
         console.error('Get all users error:', error);
@@ -127,7 +135,7 @@ export const deleteUser = async (req, res) => {
         user.deleted_at = new Date();
         await user.save();
 
-        
+
         console.log(`User with id ${id} soft deleted by admin at ${user.deleted_at}`);
         return res.status(200).json({
             success: true,

@@ -2,6 +2,9 @@ import mongoose from 'mongoose';
 import { Disease } from './models/Disease.js';
 import { Symptom } from './models/Symptom.js';
 import { Question } from './models/Question.js';
+import { Role } from './models/Role.js';
+import { UsersRoles } from './models/User_Role.js';
+import { User } from './models/User.js';
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/Diavise';
 
@@ -158,6 +161,54 @@ const symptomsData = [
 async function seed() {
   await mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
   console.log('Connected to MongoDB');
+
+  // Ensure admin role exists
+  let adminRole = await Role.findOneAndUpdate(
+    { role_name: 'admin' },
+    { role_name: 'admin' },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+  console.log('Admin role upserted:', adminRole.role_name);
+
+  // Assign admin role to the specified user
+  const adminUserId = '687f6de1cb1f9bb7047216e9';
+  const adminUserEmail = 'zeeshanasghar1502@gmail.com';
+  const adminUser = await User.findOne({ _id: adminUserId, email: adminUserEmail });
+  if (adminUser) {
+    const alreadyAssigned = await UsersRoles.findOne({ user_id: adminUser._id, role_id: adminRole._id });
+    if (!alreadyAssigned) {
+      await UsersRoles.create({ user_id: adminUser._id, role_id: adminRole._id });
+      console.log('Admin role assigned to user:', adminUser.email);
+    } else {
+      console.log('Admin role already assigned to user:', adminUser.email);
+    }
+  } else {
+    console.log('Admin user not found, cannot assign admin role.');
+  }
+
+  // Ensure user role exists
+  let userRole = await Role.findOneAndUpdate(
+    { role_name: 'user' },
+    { role_name: 'user' },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+  console.log('User role upserted:', userRole.role_name);
+
+  // Assign user role to the specified user
+  const normalUserId = '6880d502873514b36914e931';
+  const normalUserEmail = '221360@students.au.edu.pk';
+  const normalUser = await User.findOne({ _id: normalUserId, email: normalUserEmail });
+  if (normalUser) {
+    const alreadyAssigned = await UsersRoles.findOne({ user_id: normalUser._id, role_id: userRole._id });
+    if (!alreadyAssigned) {
+      await UsersRoles.create({ user_id: normalUser._id, role_id: userRole._id });
+      console.log('User role assigned to user:', normalUser.email);
+    } else {
+      console.log('User role already assigned to user:', normalUser.email);
+    }
+  } else {
+    console.log('Normal user not found, cannot assign user role.');
+  }
 
   // Upsert Diabetes Disease
   let disease = await Disease.findOneAndUpdate(

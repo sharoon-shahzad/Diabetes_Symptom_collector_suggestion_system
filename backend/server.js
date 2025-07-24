@@ -27,7 +27,7 @@ connectDB();
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
-app.use('/api/v1/onboarding', questionRoutes);
+app.use('/api/v1/questions', questionRoutes);
 app.use('/api/v1/diseases', diseaseRoutes);
 app.use('/api/v1/symptoms', symptomRoutes);
 
