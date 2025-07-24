@@ -9,6 +9,8 @@ import Onboarding from './pages/Onboarding';
 import AdminDashboard from './pages/AdminDashboard';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const App = () => {
   return (
@@ -24,6 +26,7 @@ const App = () => {
         <Route path="/reset-password/:token" element={<ResetPassword />} />
         <Route path="/" element={<SignInSide />} />
       </Routes>
+      <ToastContainer position="top-right" autoClose={3000} />
     </Router>
   );
 };

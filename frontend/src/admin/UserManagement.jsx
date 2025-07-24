@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Box, Typography, Button, Paper, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Switch, FormControlLabel, MenuItem, CircularProgress, Tooltip, Chip
+  Box, Typography, Button, Paper, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Switch, FormControlLabel, MenuItem, CircularProgress, Tooltip, Chip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow
 } from '@mui/material';
-import { DataGrid } from '@mui/x-data-grid';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
@@ -171,7 +170,6 @@ export default function UserManagement() {
         await axiosInstance.put(`/users/updateUser/${editData._id}`, data);
         toast.success('User updated successfully');
       } else {
-        // You may need to implement add user endpoint in backend
         toast.info('Add user not implemented');
       }
       setFormOpen(false);
@@ -193,31 +191,6 @@ export default function UserManagement() {
     }
   };
 
-  const columns = [
-    { field: 'fullName', headerName: 'Full Name', flex: 1 },
-    { field: 'email', headerName: 'Email', flex: 1 },
-    { field: 'gender', headerName: 'Gender', flex: 0.7 },
-    { field: 'date_of_birth', headerName: 'DOB', flex: 0.8, valueGetter: (params) => params.row.date_of_birth ? params.row.date_of_birth.slice(0, 10) : '' },
-    { field: 'isActivated', headerName: 'Active', flex: 0.6, type: 'boolean', renderCell: (params) => params.value ? <Chip label="Active" color="success" size="small" /> : <Chip label="Inactive" color="warning" size="small" /> },
-    { field: 'roles', headerName: 'Roles', flex: 1, renderCell: (params) => (Array.isArray(params.row.roles) ? params.row.roles.map(role => <Chip key={role} label={role} size="small" sx={{ mr: 0.5 }} />) : null) },
-    {
-      field: 'actions',
-      headerName: 'Actions',
-      flex: 1,
-      sortable: false,
-      renderCell: (params) => (
-        <Box>
-          <Tooltip title="Edit">
-            <IconButton color="primary" onClick={() => handleEdit(params.row)}><EditIcon /></IconButton>
-          </Tooltip>
-          <Tooltip title="Delete">
-            <IconButton color="error" onClick={() => handleDelete(params.row._id)}><DeleteIcon /></IconButton>
-          </Tooltip>
-        </Box>
-      )
-    }
-  ];
-
   return (
     <Box p={3}>
       <Paper elevation={3} sx={{ p: 3, mb: 2 }}>
@@ -229,15 +202,51 @@ export default function UserManagement() {
             <CircularProgress />
           </Box>
         ) : (
-          <DataGrid
-            rows={users}
-            columns={columns}
-            getRowId={row => row._id}
-            autoHeight
-            pageSize={8}
-            rowsPerPageOptions={[8, 16, 32]}
-            disableSelectionOnClick
-          />
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Full Name</TableCell>
+                  <TableCell>Email</TableCell>
+                  <TableCell>Gender</TableCell>
+                  <TableCell>Date of Birth</TableCell>
+                  <TableCell>Active</TableCell>
+                  <TableCell>Roles</TableCell>
+                  <TableCell align="right">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {users.map((user) => (
+                  <TableRow key={user._id}>
+                    <TableCell>{user.fullName}</TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>{user.gender}</TableCell>
+                    <TableCell>{user.date_of_birth ? user.date_of_birth.slice(0, 10) : ''}</TableCell>
+                    <TableCell>
+                      {user.isActivated ? (
+                        <Chip label="Active" color="success" size="small" />
+                      ) : (
+                        <Chip label="Inactive" color="warning" size="small" />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {Array.isArray(user.roles) && user.roles.map(role => (
+                        <Chip key={role} label={role} size="small" sx={{ mr: 0.5 }} />
+                      ))}
+                    </TableCell>
+                    <TableCell align="right">
+                      <Tooltip title="Edit">
+                        <IconButton color="primary" onClick={() => handleEdit(user)}><EditIcon /></IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete">
+                        <IconButton color="error" onClick={() => handleDelete(user._id)}><DeleteIcon /></IconButton>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
         <Box display="flex" justifyContent="flex-end" mt={2}>
           <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleAdd} disabled>
