@@ -1,7 +1,7 @@
-const { Disease } = require('../models/Disease.js');
+import { Disease } from '../models/Disease.js';
 
 // Get all diseases
-const getAllDiseases = async (req, res) => {
+export const getAllDiseases = async (req, res) => {
   try {
     const diseases = await Disease.find({ deleted_at: null });
     res.status(200).json({ success: true, data: diseases });
@@ -10,4 +10,17 @@ const getAllDiseases = async (req, res) => {
   }
 };
 
-module.exports = { getAllDiseases }; 
+// Add a new disease (stub)
+export const addDisease = async (req, res) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+// Update a disease (stub)
+export const updateDisease = async (req, res) => {
+  res.status(501).json({ message: 'Not implemented' });
+};
+
+// Delete a disease (stub)
+export const deleteDisease = async (req, res) => {
+  res.status(501).json({ message: 'Not implemented' });
+}; 

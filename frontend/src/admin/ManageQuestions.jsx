@@ -12,14 +12,16 @@ export default function ManageQuestions() {
   const [loading, setLoading] = useState(true);
   const [selectedDisease, setSelectedDisease] = useState('');
   const [symptoms, setSymptoms] = useState([]);
-  const [selectedSymptom, setSelectedSymptom] = useState('');
   const [symptomLoading, setSymptomLoading] = useState(false);
+  const [selectedSymptom, setSelectedSymptom] = useState('');
   const [questions, setQuestions] = useState([]);
   const [questionLoading, setQuestionLoading] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editData, setEditData] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
+  const [error, setError] = useState(null);
+  const [symptomError, setSymptomError] = useState(null);
 
   useEffect(() => {
     const loadDiseases = async () => {
@@ -34,13 +36,21 @@ export default function ManageQuestions() {
   useEffect(() => {
     if (selectedDisease) {
       setSymptomLoading(true);
-      fetchSymptomsByDisease(selectedDisease).then(data => {
-        setSymptoms(data);
-        setSymptomLoading(false);
-      });
+      setSymptomError(null);
+      fetchSymptomsByDisease(selectedDisease)
+        .then(data => {
+          setSymptoms(data);
+          setSymptomLoading(false);
+        })
+        .catch(err => {
+          setSymptomError('Failed to fetch symptoms.');
+          setSymptoms([]);
+          setSymptomLoading(false);
+        });
     } else {
       setSymptoms([]);
       setSelectedSymptom('');
+      setSymptomError(null);
     }
   }, [selectedDisease]);
 
@@ -94,7 +104,7 @@ export default function ManageQuestions() {
 
   return (
     <Box p={3}>
-      <Paper elevation={3} sx={{ p: 3, mb: 2 }}>
+      <Paper elevation={3} sx={{ p: 4, mb: 2, borderRadius: 4, boxShadow: '0 4px 24px 0 rgba(25, 118, 210, 0.08)', background: 'linear-gradient(135deg, #f4f8fb 60%, #e3f0ff 100%)' }}>
         <Typography variant="h5" fontWeight="bold" gutterBottom>
           Manage Questions
         </Typography>
@@ -143,9 +153,9 @@ export default function ManageQuestions() {
                 <CircularProgress />
               </Box>
             ) : (
-              <List>
+              <List sx={{ background: 'transparent' }}>
                 {questions.map(question => (
-                  <ListItem key={question._id} divider>
+                  <ListItem key={question._id} divider sx={{ background: 'rgba(255,255,255,0.7)', borderRadius: 2, mb: 2, boxShadow: '0 2px 8px 0 rgba(25, 118, 210, 0.04)' }}>
                     <ListItemText
                       primary={question.question_text}
                       secondary={

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, Typography, CircularProgress, Alert, Grid, Collapse, Box, Button } from '@mui/material';
 import axios from 'axios';
 import QuestionList from './QuestionList';
+import { getCurrentUser } from '../../utils/auth';
 
 const CARD_WIDTH = 320;
 const CARD_MIN_HEIGHT = 180;
@@ -12,11 +13,12 @@ const SymptomCard = ({ diseaseId }) => {
   const [error, setError] = useState(null);
   const [expanded, setExpanded] = useState(null);
   const [hovered, setHovered] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     const fetchSymptoms = async () => {
       try {
-        const response = await axios.get(`/api/v1/onboarding/symptoms/${diseaseId}`);
+        const response = await axios.get(`/api/v1/questions/symptoms/${diseaseId}`);
         let data = response.data;
         if (Array.isArray(data)) setSymptoms(data);
         else if (Array.isArray(data.data)) setSymptoms(data.data);
@@ -29,6 +31,21 @@ const SymptomCard = ({ diseaseId }) => {
     };
     fetchSymptoms();
   }, [diseaseId]);
+
+  useEffect(() => {
+    // Check login state
+    const checkLogin = async () => {
+      try {
+        const token = localStorage.getItem('accessToken');
+        if (!token) return setIsLoggedIn(false);
+        await getCurrentUser();
+        setIsLoggedIn(true);
+      } catch {
+        setIsLoggedIn(false);
+      }
+    };
+    checkLogin();
+  }, []);
 
   const handleExpand = (symptomId) => {
     setExpanded(expanded === symptomId ? null : symptomId);
@@ -90,7 +107,7 @@ const SymptomCard = ({ diseaseId }) => {
               </CardContent>
               <Collapse in={expanded === symptom._id} timeout="auto" unmountOnExit>
                 <Box px={2} pb={2}>
-                  <QuestionList symptomId={symptom._id} />
+                  <QuestionList symptomId={symptom._id} isLoggedIn={isLoggedIn} />
                   <Button
                     variant="outlined"
                     color="secondary"

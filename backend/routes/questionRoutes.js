@@ -1,11 +1,13 @@
 import express from 'express';
+import { verifyAccessTokenMiddleware } from '../middlewares/authMiddleware.js';
 import { 
   getQuestionsByDisease, 
   getSymptomsByDisease,
   getQuestionsBySymptom,
   addQuestion,
   updateQuestion,
-  deleteQuestion
+  deleteQuestion,
+  saveUserAnswer
 } from '../controllers/questionController.js';
 
 const router = express.Router();
@@ -22,5 +24,7 @@ router.post('/questions/symptom/:symptomId', addQuestion);
 router.put('/questions/:id', updateQuestion);
 // Delete a question
 router.delete('/questions/:id', deleteQuestion);
+// Save user's answer for onboarding
+router.post('/answer', verifyAccessTokenMiddleware, saveUserAnswer);
 
 export default router; 

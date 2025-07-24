@@ -17,6 +17,7 @@ export default function ManageSymptoms() {
   const [editData, setEditData] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const loadDiseases = async () => {
@@ -31,12 +32,20 @@ export default function ManageSymptoms() {
   useEffect(() => {
     if (selectedDisease) {
       setSymptomLoading(true);
-      fetchSymptomsByDisease(selectedDisease).then(data => {
-        setSymptoms(data);
-        setSymptomLoading(false);
-      });
+      setError(null);
+      fetchSymptomsByDisease(selectedDisease)
+        .then(data => {
+          setSymptoms(data);
+          setSymptomLoading(false);
+        })
+        .catch(err => {
+          setError('Failed to fetch symptoms.');
+          setSymptoms([]);
+          setSymptomLoading(false);
+        });
     } else {
       setSymptoms([]);
+      setError(null);
     }
   }, [selectedDisease]);
 
@@ -78,7 +87,7 @@ export default function ManageSymptoms() {
 
   return (
     <Box p={3}>
-      <Paper elevation={3} sx={{ p: 3, mb: 2 }}>
+      <Paper elevation={3} sx={{ p: 4, mb: 2, borderRadius: 4, boxShadow: '0 4px 24px 0 rgba(25, 118, 210, 0.08)', background: 'linear-gradient(135deg, #f4f8fb 60%, #e3f0ff 100%)' }}>
         <Typography variant="h5" fontWeight="bold" gutterBottom>
           Manage Symptoms
         </Typography>
@@ -107,10 +116,14 @@ export default function ManageSymptoms() {
               <Box display="flex" justifyContent="center" alignItems="center" minHeight={80}>
                 <CircularProgress />
               </Box>
+            ) : error ? (
+              <Box display="flex" justifyContent="center" alignItems="center" minHeight={80}>
+                <Typography color="error">{error}</Typography>
+              </Box>
             ) : (
-              <List>
+              <List sx={{ background: 'transparent' }}>
                 {symptoms.map(symptom => (
-                  <ListItem key={symptom._id} divider>
+                  <ListItem key={symptom._id} divider sx={{ background: 'rgba(255,255,255,0.7)', borderRadius: 2, mb: 2, boxShadow: '0 2px 8px 0 rgba(25, 118, 210, 0.04)' }}>
                     <ListItemText
                       primary={symptom.name}
                       secondary={symptom.description}

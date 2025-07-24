@@ -65,7 +65,7 @@ export default function ManageDiseases() {
 
   return (
     <Box p={3}>
-      <Paper elevation={3} sx={{ p: 3, mb: 2 }}>
+      <Paper elevation={3} sx={{ p: 4, mb: 2, borderRadius: 4, boxShadow: '0 4px 24px 0 rgba(25, 118, 210, 0.08)', background: 'linear-gradient(135deg, #f4f8fb 60%, #e3f0ff 100%)' }}>
         <Typography variant="h5" fontWeight="bold" gutterBottom>
           Manage Diseases
         </Typography>
@@ -74,9 +74,9 @@ export default function ManageDiseases() {
             <CircularProgress />
           </Box>
         ) : (
-          <List>
+          <List sx={{ background: 'transparent' }}>
             {diseases.map((disease) => (
-              <ListItem key={disease._id} divider>
+              <ListItem key={disease._id} divider sx={{ background: 'rgba(255,255,255,0.7)', borderRadius: 2, mb: 2, boxShadow: '0 2px 8px 0 rgba(25, 118, 210, 0.04)' }}>
                 <ListItemText
                   primary={disease.name}
                   secondary={disease.description}

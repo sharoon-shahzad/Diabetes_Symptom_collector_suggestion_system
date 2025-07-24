@@ -1,6 +1,7 @@
 import { User } from '../models/User.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import { Role } from '../models/Role.js';
 import { 
     generateAccessToken, 
     generateRefreshToken, 
@@ -165,6 +166,16 @@ export const login = async (req, res) => {
             });
         }
         
+        // Fetch user roles
+        let roles = [];
+        try {
+            const { UsersRoles } = await import('../models/User_Role.js');
+            const userRoles = await UsersRoles.find({ user_id: user._id }).populate('role_id');
+            roles = userRoles.map(ur => ur.role_id.role_name);
+        } catch (roleErr) {
+            console.error('Error fetching user roles during login:', roleErr);
+        }
+        
         // Generate access and refresh tokens
         const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id, user.email);
         
@@ -185,7 +196,8 @@ export const login = async (req, res) => {
                     fullName: user.fullName,
                     email: user.email,
                     gender: user.gender,
-                    date_of_birth: user.date_of_birth
+                    date_of_birth: user.date_of_birth,
+                    roles: roles
                 },
                 accessToken,
                 refreshToken
@@ -375,5 +387,68 @@ export const resetPassword = async (req, res) => {
     } catch (err) {
         console.error(err);
         return res.status(500).json({ message: 'Server error.' });
+    }
+}; 
+
+// Change password controller
+export const changePassword = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { currentPassword, newPassword } = req.body;
+
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ message: 'Current and new password are required.' });
+        }
+        if (newPassword.length < 8) {
+            return res.status(400).json({ message: 'New password must be at least 8 characters.' });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Current password is incorrect.' });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        user.password = hashedPassword;
+        await user.save();
+
+        return res.status(200).json({ message: 'Password changed successfully.' });
+    } catch (error) {
+        console.error('Change password error:', error);
+        return res.status(500).json({ message: 'Error changing password.' });
+    }
+}; 
+
+// Resend activation link controller
+export const resendActivationLink = async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).json({ message: 'Email is required.' });
+        }
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found.' });
+        }
+        if (user.isActivated) {
+            return res.status(400).json({ message: 'Account is already activated.' });
+        }
+        // Generate new activation token
+        const activationToken = crypto.randomBytes(32).toString('hex');
+        const activationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+        user.activationToken = activationToken;
+        user.activationTokenExpires = activationTokenExpires;
+        await user.save();
+        // Send activation email
+        await sendActivationEmail(email, activationToken);
+        return res.status(200).json({ message: 'Activation link resent. Please check your email.' });
+    } catch (error) {
+        console.error('Resend activation link error:', error);
+        return res.status(500).json({ message: 'Error resending activation link.' });
     }
 }; 

@@ -193,7 +193,7 @@ export default function UserManagement() {
 
   return (
     <Box p={3}>
-      <Paper elevation={3} sx={{ p: 3, mb: 2 }}>
+      <Paper elevation={3} sx={{ p: 4, mb: 2, borderRadius: 4, boxShadow: '0 4px 24px 0 rgba(25, 118, 210, 0.08)', background: 'linear-gradient(135deg, #f4f8fb 60%, #e3f0ff 100%)' }}>
         <Typography variant="h5" fontWeight="bold" gutterBottom>
           User Management
         </Typography>
@@ -202,7 +202,7 @@ export default function UserManagement() {
             <CircularProgress />
           </Box>
         ) : (
-          <TableContainer component={Paper}>
+          <TableContainer component={Paper} sx={{ background: 'linear-gradient(135deg, #f4f8fb 60%, #e3f0ff 100%)', borderRadius: 3, boxShadow: '0 2px 8px 0 rgba(25, 118, 210, 0.04)' }}>
             <Table>
               <TableHead>
                 <TableRow>

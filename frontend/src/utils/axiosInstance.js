@@ -3,8 +3,7 @@ import axios from 'axios';
 const API_URL = 'http://localhost:5000';
 
 const axiosInstance = axios.create({
-  baseURL: `${API_URL}/api/v1`,
-  withCredentials: true, // for refresh token cookies
+  baseURL: `${API_URL}/api/v1`
 });
 
 // Request interceptor: Attach access token
