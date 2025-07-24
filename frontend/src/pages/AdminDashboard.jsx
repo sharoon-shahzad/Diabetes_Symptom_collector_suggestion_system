@@ -6,6 +6,8 @@ import QuizIcon from '@mui/icons-material/Quiz';
 import ManageDiseases from '../admin/ManageDiseases';
 import ManageSymptoms from '../admin/ManageSymptoms';
 import ManageQuestions from '../admin/ManageQuestions';
+import UserManagement from '../admin/UserManagement';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import Header from '../components/Common/Header';
 import { getCurrentUser, logout } from '../utils/auth';
 import { useNavigate } from 'react-router-dom';
@@ -16,6 +18,7 @@ const sections = [
   { label: 'Manage Diseases', icon: <HealingIcon />, component: <ManageDiseases /> },
   { label: 'Manage Symptoms', icon: <BugReportIcon />, component: <ManageSymptoms /> },
   { label: 'Manage Questions', icon: <QuizIcon />, component: <ManageQuestions /> },
+  { label: 'User Management', icon: <AccountCircleIcon />, component: <UserManagement /> },
 ];
 
 export default function AdminDashboard() {
