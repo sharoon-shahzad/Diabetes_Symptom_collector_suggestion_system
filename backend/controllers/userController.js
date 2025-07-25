@@ -1,5 +1,10 @@
 import { User } from '../models/User.js';
 import { UsersRoles } from '../models/User_Role.js';
+import { UsersAnswers } from '../models/Users_Answers.js';
+import { Question } from '../models/Question.js';
+import { Symptom } from '../models/Symptom.js';
+import { Disease } from '../models/Disease.js';
+import { Answer } from '../models/Answer.js';
 
 
 // Get current user controller
@@ -147,6 +152,81 @@ export const deleteUser = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Error deleting user"
+        });
+    }
+};
+
+// GET /users/my-disease-data
+export const getMyDiseaseData = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        // Fetch all user's answers (not deleted)
+        const userAnswers = await UsersAnswers.find({ user_id: userId, deleted_at: null })
+            .populate({
+                path: 'question_id',
+                populate: {
+                    path: 'symptom_id',
+                    populate: {
+                        path: 'disease_id',
+                        model: 'Disease',
+                    },
+                    model: 'Symptom',
+                },
+                model: 'Question',
+            })
+            .populate('answer_id');
+
+        if (!userAnswers.length) {
+            return res.status(200).json({
+                success: true,
+                data: {}
+            });
+        }
+
+        // Assume all answers are for the same disease (if not, pick the first)
+        const firstSymptom = userAnswers[0]?.question_id?.symptom_id;
+        const disease = firstSymptom?.disease_id;
+        const diseaseName = disease?.name || 'Unknown Disease';
+        const lastUpdated = userAnswers.reduce((latest, ua) => {
+            const date = ua.createdAt || ua.updatedAt;
+            return (!latest || (date && date > latest)) ? date : latest;
+        }, null);
+
+        // Group answers by symptom
+        const symptomMap = {};
+        userAnswers.forEach(ua => {
+            const symptom = ua.question_id?.symptom_id;
+            if (!symptom) return;
+            const symptomName = symptom.name || 'Unknown Symptom';
+            if (!symptomMap[symptomName]) {
+                symptomMap[symptomName] = [];
+            }
+            symptomMap[symptomName].push({
+                question: ua.question_id?.question_text || 'Unknown Question',
+                answer: ua.answer_id?.answer_text || 'N/A',
+                date: ua.createdAt,
+            });
+        });
+
+        // Format for frontend
+        const symptoms = Object.entries(symptomMap).map(([name, questions]) => ({
+            name,
+            questions,
+        }));
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                disease: diseaseName,
+                lastUpdated,
+                symptoms,
+            }
+        });
+    } catch (error) {
+        console.error('Error in getMyDiseaseData:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch disease data.'
         });
     }
 };
