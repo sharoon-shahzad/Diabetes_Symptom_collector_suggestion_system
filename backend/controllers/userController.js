@@ -5,6 +5,7 @@ import { Question } from '../models/Question.js';
 import { Symptom } from '../models/Symptom.js';
 import { Disease } from '../models/Disease.js';
 import { Answer } from '../models/Answer.js';
+import { QuestionsAnswers } from '../models/Questions_Answers.js';
 
 
 // Get current user controller
@@ -214,12 +215,24 @@ export const getMyDiseaseData = async (req, res) => {
             questions,
         }));
 
+        // Find all questions for this disease
+        let totalQuestions = 0;
+        if (disease && disease._id) {
+          const allSymptoms = await Symptom.find({ disease_id: disease._id, deleted_at: null });
+          const symptomIds = allSymptoms.map(s => s._id);
+          totalQuestions = await Question.countDocuments({ symptom_id: { $in: symptomIds }, deleted_at: null });
+        }
+        // Count answered questions (unique question_ids in userAnswers)
+        const answeredQuestions = new Set(userAnswers.map(ua => String(ua.question_id?._id))).size;
+
         return res.status(200).json({
             success: true,
             data: {
                 disease: diseaseName,
                 lastUpdated,
                 symptoms,
+                totalQuestions,
+                answeredQuestions,
             }
         });
     } catch (error) {
@@ -229,4 +242,245 @@ export const getMyDiseaseData = async (req, res) => {
             message: 'Failed to fetch disease data.'
         });
     }
+};
+
+// Get user's disease data for editing
+export const getUserDiseaseDataForEditing = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const user = await User.findById(userId);
+    
+    if (!user.onboardingCompleted) {
+      return res.status(400).json({
+        success: false,
+        message: 'You must complete your details first before editing.'
+      });
+    }
+
+    // Check if editing window is still open
+    const now = new Date();
+    if (user.diseaseDataEditingExpiresAt && now > user.diseaseDataEditingExpiresAt) {
+      // Auto-submit if editing window has expired
+      if (user.diseaseDataStatus === 'draft') {
+        user.diseaseDataStatus = 'submitted';
+        await user.save();
+      }
+      return res.status(400).json({
+        success: false,
+        message: 'Editing window has expired. Your disease data has been submitted and can no longer be edited.'
+      });
+    }
+
+    // Get user's answers with full details
+    const userAnswers = await UsersAnswers.find({ user_id: userId, deleted_at: null })
+      .populate({
+        path: 'question_id',
+        populate: {
+          path: 'symptom_id',
+          populate: {
+            path: 'disease_id',
+            model: 'Disease'
+          },
+          model: 'Symptom'
+        },
+        model: 'Question'
+      })
+      .populate('answer_id');
+
+    // Group by disease, then by symptom
+    const diseaseMap = {};
+    userAnswers.forEach(ua => {
+      const disease = ua.question_id?.symptom_id?.disease_id;
+      const symptom = ua.question_id?.symptom_id;
+      
+      if (!disease || !symptom) return;
+      
+      if (!diseaseMap[disease._id]) {
+        diseaseMap[disease._id] = {
+          _id: disease._id,
+          name: disease.name,
+          description: disease.description,
+          symptoms: {}
+        };
+      }
+      
+      if (!diseaseMap[disease._id].symptoms[symptom._id]) {
+        diseaseMap[disease._id].symptoms[symptom._id] = {
+          _id: symptom._id,
+          name: symptom.name,
+          description: symptom.description,
+          questions: []
+        };
+      }
+      
+      diseaseMap[disease._id].symptoms[symptom._id].questions.push({
+        _id: ua.question_id._id,
+        question_text: ua.question_id.question_text,
+        question_type: ua.question_id.question_type,
+        options: ua.question_id.options || [],
+        current_answer: ua.answer_id.answer_text,
+        answer_id: ua.answer_id._id,
+        user_answer_id: ua._id
+      });
+    });
+
+    const diseases = Object.values(diseaseMap);
+    
+    return res.status(200).json({
+      success: true,
+      data: {
+        diseases,
+        editingWindow: {
+          expiresAt: user.diseaseDataEditingExpiresAt,
+          status: user.diseaseDataStatus,
+          canEdit: user.diseaseDataStatus === 'draft' && (!user.diseaseDataEditingExpiresAt || now <= user.diseaseDataEditingExpiresAt)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching user disease data for editing:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error fetching disease data for editing'
+    });
+  }
+};
+
+// Update user's disease data answer
+export const updateUserDiseaseDataAnswer = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { questionId, answerText } = req.body;
+    
+    if (!questionId || !answerText) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing questionId or answerText'
+      });
+    }
+
+    const user = await User.findById(userId);
+    
+    if (!user.onboardingCompleted) {
+      return res.status(400).json({
+        success: false,
+        message: 'You must complete your details first before editing.'
+      });
+    }
+
+    // Check if editing window is still open
+    const now = new Date();
+    if (user.diseaseDataEditingExpiresAt && now > user.diseaseDataEditingExpiresAt) {
+      // Auto-submit if editing window has expired
+      if (user.diseaseDataStatus === 'draft') {
+        user.diseaseDataStatus = 'submitted';
+        await user.save();
+      }
+      return res.status(400).json({
+        success: false,
+        message: 'Editing window has expired. Your disease data has been submitted and can no longer be edited.'
+      });
+    }
+
+    if (user.diseaseDataStatus !== 'draft') {
+      return res.status(400).json({
+        success: false,
+        message: 'Disease data has already been submitted and cannot be edited.'
+      });
+    }
+
+    // Find or create the answer
+    let answer = await Answer.findOne({ answer_text: answerText, deleted_at: null });
+    if (!answer) {
+      answer = await Answer.create({ answer_text: answerText });
+    }
+
+    // Ensure Questions_Answers entry exists
+    let qa = await QuestionsAnswers.findOne({ question_id: questionId, answer_id: answer._id, deleted_at: null });
+    if (!qa) {
+      qa = await QuestionsAnswers.create({ question_id: questionId, answer_id: answer._id });
+    }
+
+    // Update the user's answer
+    const updatedUserAnswer = await UsersAnswers.findOneAndUpdate(
+      { user_id: userId, question_id: questionId, deleted_at: null },
+      { answer_id: answer._id },
+      { new: true }
+    );
+
+    if (!updatedUserAnswer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Answer not found for this question'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Answer updated successfully',
+      data: {
+        answerId: answer._id,
+        answerText: answer.answer_text
+      }
+    });
+  } catch (error) {
+    console.error('Error updating user disease data answer:', error);
+    console.error('Error details:', {
+      userId: req.user._id,
+      questionId: req.body.questionId,
+      answerText: req.body.answerText,
+      errorMessage: error.message,
+      errorStack: error.stack
+    });
+    return res.status(500).json({
+      success: false,
+      message: 'Error updating answer'
+    });
+  }
+};
+
+// Submit disease data (mark as submitted)
+export const submitDiseaseData = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const user = await User.findById(userId);
+    
+    if (!user.onboardingCompleted) {
+      return res.status(400).json({
+        success: false,
+        message: 'You must complete your details first before submitting.'
+      });
+    }
+
+    if (user.diseaseDataStatus === 'submitted') {
+      return res.status(400).json({
+        success: false,
+        message: 'Disease data has already been submitted.'
+      });
+    }
+
+    // Check if editing window is still open
+    const now = new Date();
+    if (user.diseaseDataEditingExpiresAt && now > user.diseaseDataEditingExpiresAt) {
+      return res.status(400).json({
+        success: false,
+        message: 'Editing window has expired. Your disease data has been automatically submitted.'
+      });
+    }
+
+    // Mark as submitted
+    user.diseaseDataStatus = 'submitted';
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Disease data submitted successfully'
+    });
+  } catch (error) {
+    console.error('Error submitting disease data:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error submitting disease data'
+    });
+  }
 };

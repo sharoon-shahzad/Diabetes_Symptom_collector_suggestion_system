@@ -95,9 +95,9 @@ export default function ManageSymptoms() {
           <InputLabel>Select Disease</InputLabel>
           <Select
             label="Select Disease"
-            value={selectedDisease}
+            value={diseases.map(d=>d._id).includes(selectedDisease) ? selectedDisease : (diseases[0]?._id || '')}
             onChange={e => setSelectedDisease(e.target.value)}
-            disabled={loading}
+            disabled={loading || diseases.length === 0}
           >
             {loading ? (
               <MenuItem value=""><CircularProgress size={20} /></MenuItem>

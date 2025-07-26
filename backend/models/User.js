@@ -49,6 +49,25 @@ const userSchema = new mongoose.Schema({
         type: Date,
         default: null,
     },
+    onboardingCompleted: {
+        type: Boolean,
+        default: false,
+    },
+    onboardingCompletedAt: {
+        type: Date,
+    },
+    // New fields for disease data editing window
+    diseaseDataSubmittedAt: {
+        type: Date,
+    },
+    diseaseDataEditingExpiresAt: {
+        type: Date,
+    },
+    diseaseDataStatus: {
+        type: String,
+        enum: ['draft', 'submitted'],
+        default: 'draft',
+    },
 }, { timestamps: true });
 
 export const User = mongoose.model('User', userSchema);

@@ -80,4 +80,28 @@ export async function updateQuestion(id, question) {
 export async function deleteQuestion(id) {
   const res = await axios.delete(`${API_URL}/questions/questions/${id}`);
   return res.data;
+}
+
+export async function fetchMyDiseaseData() {
+  const res = await axios.get(`${API_URL}/users/my-disease-data`);
+  return res.data.data;
+}
+
+// Disease data editing functions
+export async function fetchDiseaseDataForEditing() {
+  const res = await axios.get(`${API_URL}/users/disease-data-for-editing`);
+  return res.data.data;
+}
+
+export async function updateDiseaseDataAnswer(questionId, answerText) {
+  const res = await axios.put(`${API_URL}/users/update-disease-data-answer`, {
+    questionId,
+    answerText
+  });
+  return res.data;
+}
+
+export async function submitDiseaseData() {
+  const res = await axios.post(`${API_URL}/users/submit-disease-data`);
+  return res.data;
 } 

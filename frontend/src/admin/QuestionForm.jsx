@@ -63,9 +63,10 @@ export default function QuestionForm({ open, onClose, onSubmit, initialData }) {
         <FormControl fullWidth margin="normal">
           <InputLabel>Question Type</InputLabel>
           <Select
-            value={questionType}
+            value={QUESTION_TYPES.map(t=>t.value).includes(questionType) ? questionType : QUESTION_TYPES[0].value}
             label="Question Type"
             onChange={e => setQuestionType(e.target.value)}
+            disabled={QUESTION_TYPES.length === 0}
           >
             {QUESTION_TYPES.map(type => (
               <MenuItem key={type.value} value={type.value}>{type.label}</MenuItem>

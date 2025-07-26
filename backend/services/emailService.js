@@ -67,4 +67,68 @@ export async function sendResetPasswordEmail(email, token) {
         subject: 'Reset your Diabetes Symptom Collector password',
         html
     });
+}
+
+export async function sendOnboardingCompletionEmail(email, userName, diseaseName, symptomMap) {
+    const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT, 10),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS,
+        },
+    });
+    // Build details table
+    let detailsHtml = '';
+    if (symptomMap && Object.keys(symptomMap).length > 0) {
+      detailsHtml = `<div style="margin: 32px 0 24px 0;">
+        <h3 style="color: #1976d2; text-align: center; margin-bottom: 18px;">Your Submitted Details</h3>`;
+      for (const [symptom, questions] of Object.entries(symptomMap)) {
+        detailsHtml += `<div style="margin-bottom: 18px;">
+          <div style="font-weight: bold; color: #1565c0; font-size: 17px; margin-bottom: 6px;">${symptom}</div>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tbody>`;
+        for (const q of questions) {
+          detailsHtml += `<tr>
+            <td style="padding: 6px 0; color: #333; font-size: 15px; vertical-align: top; width: 60%;">${q.question}</td>
+            <td style="padding: 6px 0; color: #1976d2; font-weight: bold; font-size: 15px; text-align: right;">${q.answer}</td>
+          </tr>`;
+        }
+        detailsHtml += `</tbody></table></div>`;
+      }
+      detailsHtml += `</div>`;
+    }
+    const html = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; background: #f4f8fb; padding: 40px 0;">
+      <div style="max-width: 520px; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(25, 118, 210, 0.10); padding: 40px 32px;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <img src='https://img.icons8.com/color/96/000000/checked--v2.png' alt='Completed' style='width: 64px; height: 64px;'/>
+        </div>
+        <h2 style="color: #1976d2; text-align: center; margin-bottom: 16px;">Congratulations, ${userName}!</h2>
+        <p style="color: #333; font-size: 18px; text-align: center; margin-bottom: 24px;">You have successfully completed <b>100% of your details</b> for <b>${diseaseName}</b> in the Diabetes Symptom Collector system.</p>
+        <div style="background: #fff3cd; border-radius: 8px; padding: 18px 24px; margin-bottom: 18px; border: 1px solid #ffe082;">
+          <p style="color: #b26a00; font-size: 16px; text-align: center; margin: 0; font-weight: 600;">
+            <span style="display: inline-block; vertical-align: middle; margin-right: 8px;">⏰</span>
+            <b>You can edit your details within 7 days from now. After that, your data will be submitted and can no longer be changed.</b>
+          </p>
+        </div>
+        <div style="background: #e3f0ff; border-radius: 8px; padding: 18px 24px; margin-bottom: 24px;">
+          <p style="color: #1976d2; font-size: 16px; text-align: center; margin: 0;">You can now view and edit your responses anytime in your dashboard.</p>
+        </div>
+        ${detailsHtml}
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${process.env.FRONTEND_URL}/dashboard" style="display: inline-block; padding: 14px 36px; background: #1976d2; color: #fff; border-radius: 6px; font-size: 17px; text-decoration: none; font-weight: bold; letter-spacing: 1px; box-shadow: 0 2px 8px rgba(25, 118, 210, 0.10);">Go to Dashboard</a>
+        </div>
+        <hr style="margin: 32px 0; border: none; border-top: 1px solid #eee;">
+        <p style="color: #aaa; font-size: 13px; text-align: center;">&copy; ${new Date().getFullYear()} Diabetes Symptom Collector. All rights reserved.</p>
+      </div>
+    </div>
+    `;
+    await transporter.sendMail({
+        from: process.env.SMTP_USER,
+        to: email,
+        subject: '🎉 Details 100% Completed - Diabetes Symptom Collector',
+        html
+    });
 } 

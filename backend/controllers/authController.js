@@ -151,13 +151,6 @@ export const login = async (req, res) => {
             });
         }
         
-        if (!user.isActivated) {
-            return res.status(403).json({ 
-                success: false,
-                message: 'Account not activated. Please check your email.' 
-            });
-        }
-        
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(400).json({ 

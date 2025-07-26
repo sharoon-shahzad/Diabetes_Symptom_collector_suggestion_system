@@ -112,9 +112,9 @@ export default function ManageQuestions() {
           <InputLabel>Select Disease</InputLabel>
           <Select
             label="Select Disease"
-            value={selectedDisease}
+            value={diseases.map(d=>d._id).includes(selectedDisease) ? selectedDisease : (diseases[0]?._id || '')}
             onChange={e => setSelectedDisease(e.target.value)}
-            disabled={loading}
+            disabled={loading || diseases.length === 0}
           >
             {loading ? (
               <MenuItem value=""><CircularProgress size={20} /></MenuItem>
@@ -131,9 +131,9 @@ export default function ManageQuestions() {
           <InputLabel>Select Symptom</InputLabel>
           <Select
             label="Select Symptom"
-            value={selectedSymptom}
+            value={symptoms.map(s=>s._id).includes(selectedSymptom) ? selectedSymptom : (symptoms[0]?._id || '')}
             onChange={e => setSelectedSymptom(e.target.value)}
-            disabled={symptomLoading || !selectedDisease}
+            disabled={symptomLoading || !selectedDisease || symptoms.length === 0}
           >
             {symptomLoading ? (
               <MenuItem value=""><CircularProgress size={20} /></MenuItem>

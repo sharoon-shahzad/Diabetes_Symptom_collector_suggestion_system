@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Drawer, List, ListItem, ListItemIcon, ListItemText, AppBar, Toolbar, Typography, CssBaseline, Paper, Divider, Avatar, Tooltip, GlobalStyles } from '@mui/material';
+import { Box, Drawer, List, ListItem, ListItemIcon, ListItemText, Typography, CssBaseline, Paper, Divider, Avatar, Tooltip, GlobalStyles } from '@mui/material';
 import HealingIcon from '@mui/icons-material/Healing';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import QuizIcon from '@mui/icons-material/Quiz';
@@ -8,7 +8,6 @@ import ManageSymptoms from '../admin/ManageSymptoms';
 import ManageQuestions from '../admin/ManageQuestions';
 import UserManagement from '../admin/UserManagement';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import Header from '../components/Common/Header';
 import { getCurrentUser, logout } from '../utils/auth';
 import { useNavigate } from 'react-router-dom';
 
@@ -71,30 +70,7 @@ export default function AdminDashboard() {
         '*': { fontFamily },
       }} />
       <CssBaseline />
-      {/* Custom AppBar */}
-      <AppBar
-        position="fixed"
-        elevation={0}
-        sx={{
-          zIndex: 1300,
-          bgcolor: 'rgba(25, 118, 210, 0.95)',
-          boxShadow: '0 4px 24px 0 rgba(25, 118, 210, 0.08)',
-          backdropFilter: 'blur(8px)',
-          fontFamily,
-        }}
-      >
-        <Toolbar sx={{ minHeight: 72, px: 4, display: 'flex', justifyContent: 'space-between' }}>
-          <Box display="flex" alignItems="center" gap={2}>
-            <Avatar sx={{ bgcolor: '#fff', color: '#1976d2', width: 44, height: 44, fontWeight: 600, fontSize: 24, boxShadow: 2 }}>
-              <QuizIcon fontSize="medium" />
-            </Avatar>
-            <Typography variant="h5" fontWeight={700} color="#fff" letterSpacing={0.5} sx={{ fontFamily, fontSize: { xs: 22, md: 28 } }}>
-            Admin Dashboard
-          </Typography>
-          </Box>
-          {user && <Header user={user} onLogout={handleLogout} />}
-        </Toolbar>
-      </AppBar>
+      
       {/* Sidebar Drawer */}
       <Drawer
         variant="permanent"
@@ -103,92 +79,82 @@ export default function AdminDashboard() {
           flexShrink: 0,
           [`& .MuiDrawer-paper`]: {
             width: drawerWidth,
-            boxSizing: 'border-box',
-            bgcolor: '#1e2a3a',
-            color: '#fff',
-            borderTopRightRadius: 32,
-            borderBottomRightRadius: 32,
-            boxShadow: '4px 0 24px 0 rgba(30,42,58,0.12)',
-            border: 'none',
-            pt: 2,
+            bgcolor: '#fff',
+            borderRight: '1px solid #e0e0e0',
+            boxShadow: '4px 0 24px 0 rgba(0,0,0,0.08)',
             fontFamily,
           },
         }}
       >
-        <Toolbar />
-        <Box sx={{ px: 2, mt: 2 }}>
-          <Typography variant="subtitle2" color="#90caf9" fontWeight={600} mb={2} letterSpacing={0.2} sx={{ fontFamily, fontSize: 13 }}>
-            ADMIN MENU
-          </Typography>
-          <Divider sx={{ bgcolor: '#1976d2', mb: 2 }} />
-        <List>
+        <Box sx={{ p: 3, borderBottom: '1px solid #e0e0e0' }}>
+          <Box display="flex" alignItems="center" gap={2} mb={2}>
+            <Avatar sx={{ bgcolor: '#1976d2', width: 48, height: 48 }}>
+              <QuizIcon />
+            </Avatar>
+            <Box>
+              <Typography variant="h6" fontWeight={700} color="#1976d2">
+                Admin Panel
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {user?.fullName}
+              </Typography>
+            </Box>
+          </Box>
+        </Box>
+        <List sx={{ pt: 2 }}>
           {sections.map((section, idx) => (
-              <Tooltip key={section.label} title={section.label} placement="right" arrow>
-                <ListItem
-                  component="button"
-                  selected={selectedIndex === idx}
-                  onClick={() => setSelectedIndex(idx)}
-                  sx={{
-                    mb: 1.2,
-                    borderRadius: 2,
-                    bgcolor: selectedIndex === idx ? '#1976d2' : 'transparent',
-                    color: selectedIndex === idx ? '#fff' : '#b0bec5',
-                    boxShadow: selectedIndex === idx ? 2 : 0,
-                    transition: 'all 0.2s',
-                    fontFamily,
-                    fontWeight: selectedIndex === idx ? 600 : 500,
-                    fontSize: 15,
-                    letterSpacing: 0.1,
-                    minHeight: 48,
-                    '&:hover': {
-                      bgcolor: '#1565c0',
-                      color: '#fff',
-                      boxShadow: 3,
-                    },
-                  }}
-                >
-                  <ListItemIcon sx={{ color: 'inherit', minWidth: 36 }}>{section.icon}</ListItemIcon>
-                  <ListItemText primary={section.label} primaryTypographyProps={{ fontWeight: 500, fontSize: 15, fontFamily }} />
+            <ListItem
+              key={section.label}
+              selected={selectedIndex === idx}
+              onClick={() => setSelectedIndex(idx)}
+              sx={{
+                mx: 2,
+                mb: 1,
+                borderRadius: 2,
+                '&.Mui-selected': {
+                  bgcolor: '#e3f0ff',
+                  color: '#1976d2',
+                  '&:hover': {
+                    bgcolor: '#e3f0ff',
+                  },
+                },
+              }}
+            >
+              <ListItemIcon sx={{ color: selectedIndex === idx ? '#1976d2' : '#666' }}>
+                {section.icon}
+              </ListItemIcon>
+              <ListItemText 
+                primary={section.label} 
+                primaryTypographyProps={{ 
+                  fontWeight: selectedIndex === idx ? 600 : 400 
+                }}
+              />
             </ListItem>
-              </Tooltip>
           ))}
         </List>
-        </Box>
       </Drawer>
-      {/* Main Content Area */}
+
+      {/* Main Content */}
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          p: { xs: 1, md: 4 },
+          p: 3,
           ml: { md: `${drawerWidth}px` },
-          mt: 10,
-          minHeight: '100vh',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          background: 'transparent',
-          fontFamily,
+          pt: 10, // Add top padding for universal header
         }}
       >
         <Paper
-          elevation={4}
+          elevation={0}
           sx={{
-            width: '100%',
-            maxWidth: 900,
-            minHeight: 420,
-            borderRadius: 6,
             p: 4,
-            mt: 2,
-            boxShadow: '0 8px 32px 0 rgba(25, 118, 210, 0.10)',
-            background: 'linear-gradient(135deg, #fff 60%, #e3f0ff 100%)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'stretch',
-            fontFamily,
+            borderRadius: 3,
+            bgcolor: '#fff',
+            boxShadow: '0 4px 24px 0 rgba(0,0,0,0.08)',
+            minHeight: 'calc(100vh - 120px)',
           }}
         >
-        {sections[selectedIndex].component}
+          {sections[selectedIndex]?.component}
         </Paper>
       </Box>
     </Box>
