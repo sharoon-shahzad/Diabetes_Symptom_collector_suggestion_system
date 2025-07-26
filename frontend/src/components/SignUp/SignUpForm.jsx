@@ -179,10 +179,11 @@ export default function SignUpForm() {
                 >
                     <InputLabel sx={{ color: '#aaa' }}>Gender</InputLabel>
                     <Select
-                        value={gender}
+                        value={['Male','Female','Prefer not to say'].includes(gender) ? gender : ''}
                         onChange={e => setGender(e.target.value)}
                         label="Gender"
                         sx={{ color: '#fff' }}
+                        disabled={false}
                     >
                         <MenuItem value="Male">Male</MenuItem>
                         <MenuItem value="Female">Female</MenuItem>

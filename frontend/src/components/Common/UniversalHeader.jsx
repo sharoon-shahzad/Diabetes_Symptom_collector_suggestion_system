@@ -1,15 +1,36 @@
-import React, { useState } from 'react';
-import { Box, Typography, Avatar, Menu, MenuItem, Divider, Modal, TextField, Alert, IconButton, Button } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { 
+  Box, 
+  Typography, 
+  Avatar, 
+  Menu, 
+  MenuItem, 
+  Divider, 
+  Modal, 
+  TextField, 
+  Alert, 
+  IconButton, 
+  Button,
+  AppBar,
+  Toolbar,
+  Container
+} from '@mui/material';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import LoginIcon from '@mui/icons-material/Login';
 import { differenceInYears, parseISO } from 'date-fns';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import { getCurrentUser, logout } from '../../utils/auth';
+import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
 
-export default function Header({ user, onLogout, onUserUpdate }) {
+export default function UniversalHeader() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [anchorEl, setAnchorEl] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [email, setEmail] = useState(user?.email || '');
+  const [email, setEmail] = useState('');
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSuccess, setResendSuccess] = useState('');
   const [resendError, setResendError] = useState('');
@@ -23,6 +44,26 @@ export default function Header({ user, onLogout, onUserUpdate }) {
   const [showCurrentPw, setShowCurrentPw] = useState(false);
   const [showNewPw, setShowNewPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    checkAuthStatus();
+  }, []);
+
+  const checkAuthStatus = async () => {
+    try {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        const userData = await getCurrentUser();
+        setUser(userData);
+        setEmail(userData.email || '');
+      }
+    } catch (error) {
+      console.log('User not authenticated');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Calculate age
   let age = '';
@@ -34,18 +75,37 @@ export default function Header({ user, onLogout, onUserUpdate }) {
   const handleAvatarClick = (event) => {
     setAnchorEl(event.currentTarget);
   };
+
   const handleMenuClose = () => {
     setAnchorEl(null);
   };
+
+  const handleLoginClick = () => {
+    navigate('/signin');
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setUser(null);
+      setAnchorEl(null);
+      navigate('/signin');
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
   const handleResendClick = () => {
     setResendSuccess('');
     setResendError('');
     setModalOpen(true);
     setAnchorEl(null);
   };
+
   const handleModalClose = () => {
     setModalOpen(false);
   };
+
   const handleResendSubmit = async (e) => {
     e.preventDefault();
     setResendSuccess('');
@@ -65,7 +125,7 @@ export default function Header({ user, onLogout, onUserUpdate }) {
       const data = res.data;
       if (res.status === 200) {
         setResendSuccess(data.message || 'If your account is inactive, a new activation link has been sent.');
-        if (onUserUpdate) onUserUpdate();
+        await checkAuthStatus(); // Refresh user data
       } else {
         setResendError(data.message || 'Failed to send activation link.');
       }
@@ -85,9 +145,11 @@ export default function Header({ user, onLogout, onUserUpdate }) {
     setPwError('');
     setAnchorEl(null);
   };
+
   const handleChangePwClose = () => {
     setChangePwOpen(false);
   };
+
   const handleChangePwSubmit = async (e) => {
     e.preventDefault();
     setPwSuccess('');
@@ -131,43 +193,108 @@ export default function Header({ user, onLogout, onUserUpdate }) {
     }
   };
 
+  if (loading) {
+    return null; // Don't show header while checking auth status
+  }
+
   return (
-    <Box position="absolute" top={24} right={32} zIndex={1000}>
-      <IconButton onClick={handleAvatarClick} size="large">
-        <Avatar sx={{ bgcolor: '#1976d2', width: 44, height: 44 }}>
-          <AccountCircleIcon fontSize="large" />
-        </Avatar>
-      </IconButton>
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+    <>
+      <AppBar 
+        position="fixed" 
+        sx={{ 
+          background: 'transparent',
+          boxShadow: 'none',
+          zIndex: 1200
+        }}
       >
-        <Box px={2} py={1}>
-          <Typography variant="subtitle1" fontWeight="bold">{user?.fullName}</Typography>
-          <Typography variant="body2" color="textSecondary">{user?.email}</Typography>
-          <Typography variant="body2" mt={1}>
-            Age: <b>{age}</b>
-          </Typography>
-          <Typography variant="body2" mt={1}>
-            Account status: <b style={{ color: user?.isActivated ? 'green' : 'orange' }}>{user?.isActivated ? 'Active' : 'Inactive'}</b>
-          </Typography>
-        </Box>
-        <Divider />
-        <MenuItem onClick={handleChangePwOpen} sx={{ color: '#1976d2', fontWeight: 'bold' }}>
-          Change Password
-        </MenuItem>
-        {!user?.isActivated && (
-          <MenuItem onClick={handleResendClick} sx={{ color: '#1976d2', fontWeight: 'bold' }}>
-            Resend Activation Link
+        <Container maxWidth="xl">
+          <Toolbar sx={{ justifyContent: 'space-between', py: 1 }}>
+            {/* Logo/Brand */}
+            <Box display="flex" alignItems="center">
+              <IconButton
+                onClick={() => navigate('/')}
+                sx={{
+                  color: '#90caf9',
+                  '&:hover': {
+                    backgroundColor: 'rgba(144, 202, 249, 0.08)'
+                  }
+                }}
+              >
+                <MedicalServicesIcon sx={{ fontSize: 32 }} />
+              </IconButton>
+            </Box>
+
+            {/* User Menu */}
+            <Box display="flex" alignItems="center">
+              {user ? (
+                <>
+                  <Typography variant="body2" color="#b0bec5" mr={2}>
+                    Welcome, {user.fullName}
+                  </Typography>
+                  <IconButton onClick={handleAvatarClick} size="large">
+                    <Avatar sx={{ bgcolor: '#90caf9', width: 40, height: 40 }}>
+                      {user.fullName?.[0] || <AccountCircleIcon />}
+                    </Avatar>
+                  </IconButton>
+                </>
+              ) : (
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  startIcon={<LoginIcon />}
+                  onClick={handleLoginClick}
+                  sx={{
+                    color: '#90caf9',
+                    borderColor: '#90caf9',
+                    '&:hover': {
+                      borderColor: '#1976d2',
+                      backgroundColor: 'rgba(144, 202, 249, 0.08)'
+                    }
+                  }}
+                >
+                  Login
+                </Button>
+              )}
+            </Box>
+          </Toolbar>
+        </Container>
+      </AppBar>
+
+      {/* User Menu Dropdown */}
+      {user && (
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleMenuClose}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          sx={{ mt: 1 }}
+        >
+          <Box px={2} py={1}>
+            <Typography variant="subtitle1" fontWeight="bold">{user?.fullName}</Typography>
+            <Typography variant="body2" color="textSecondary">{user?.email}</Typography>
+            <Typography variant="body2" mt={1}>
+              Age: <b>{age}</b>
+            </Typography>
+            <Typography variant="body2" mt={1}>
+              Account status: <b style={{ color: user?.isActivated ? 'green' : 'orange' }}>{user?.isActivated ? 'Active' : 'Inactive'}</b>
+            </Typography>
+          </Box>
+          <Divider />
+          <MenuItem onClick={handleChangePwOpen} sx={{ color: '#1976d2', fontWeight: 'bold' }}>
+            Change Password
           </MenuItem>
-        )}
-        <MenuItem onClick={() => { handleMenuClose(); onLogout(); }} sx={{ color: 'red', fontWeight: 'bold' }}>
-          Logout
-        </MenuItem>
-      </Menu>
+          {!user?.isActivated && (
+            <MenuItem onClick={handleResendClick} sx={{ color: '#1976d2', fontWeight: 'bold' }}>
+              Resend Activation Link
+            </MenuItem>
+          )}
+          <MenuItem onClick={handleLogout} sx={{ color: 'red', fontWeight: 'bold' }}>
+            Logout
+          </MenuItem>
+        </Menu>
+      )}
+
       {/* Resend Activation Modal */}
       <Modal open={modalOpen} onClose={handleModalClose}>
         <Box
@@ -212,6 +339,7 @@ export default function Header({ user, onLogout, onUserUpdate }) {
           </form>
         </Box>
       </Modal>
+
       {/* Change Password Modal */}
       <Modal open={changePwOpen} onClose={handleChangePwClose}>
         <Box
@@ -297,6 +425,6 @@ export default function Header({ user, onLogout, onUserUpdate }) {
           </form>
         </Box>
       </Modal>
-    </Box>
+    </>
   );
-}       
+} 
