@@ -171,8 +171,8 @@ async function seed() {
   console.log('Admin role upserted:', adminRole.role_name);
 
   // Assign admin role to the specified user
-  const adminUserId = '687f6de1cb1f9bb7047216e9';
-  const adminUserEmail = 'zeeshanasghar1502@gmail.com';
+  const adminUserId = '6884fda2a1a99a1022b80bac';
+  const adminUserEmail = '221429@students.au.edu.pk';
   const adminUser = await User.findOne({ _id: adminUserId, email: adminUserEmail });
   if (adminUser) {
     const alreadyAssigned = await UsersRoles.findOne({ user_id: adminUser._id, role_id: adminRole._id });

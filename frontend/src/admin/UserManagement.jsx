@@ -193,48 +193,48 @@ export default function UserManagement() {
 
   return (
     <Box p={3}>
-      <Paper elevation={3} sx={{ p: 4, mb: 2, borderRadius: 4, boxShadow: '0 4px 24px 0 rgba(25, 118, 210, 0.08)', background: 'linear-gradient(135deg, #f4f8fb 60%, #e3f0ff 100%)' }}>
-        <Typography variant="h5" fontWeight="bold" gutterBottom>
+      <Paper elevation={3} sx={{ p: 4, mb: 2, borderRadius: 4, boxShadow: '0 4px 24px 0 rgba(25, 118, 210, 0.08)', background: '#101624', color: '#fff' }}>
+        <Typography variant="h5" fontWeight="bold" gutterBottom color="#fff">
           User Management
         </Typography>
         {loading ? (
           <Box display="flex" justifyContent="center" alignItems="center" minHeight={120}>
-            <CircularProgress />
+            <CircularProgress sx={{ color: '#fff' }} />
           </Box>
         ) : (
-          <TableContainer component={Paper} sx={{ background: 'linear-gradient(135deg, #f4f8fb 60%, #e3f0ff 100%)', borderRadius: 3, boxShadow: '0 2px 8px 0 rgba(25, 118, 210, 0.04)' }}>
-            <Table>
+          <TableContainer component={Paper} sx={{ background: '#101624', borderRadius: 3, boxShadow: '0 2px 8px 0 rgba(25, 118, 210, 0.04)', color: '#fff' }}>
+            <Table sx={{ background: '#101624', color: '#fff' }}>
               <TableHead>
                 <TableRow>
-                  <TableCell>Full Name</TableCell>
-                  <TableCell>Email</TableCell>
-                  <TableCell>Gender</TableCell>
-                  <TableCell>Date of Birth</TableCell>
-                  <TableCell>Active</TableCell>
-                  <TableCell>Roles</TableCell>
-                  <TableCell align="right">Actions</TableCell>
+                  <TableCell sx={{ color: '#fff' }}>Full Name</TableCell>
+                  <TableCell sx={{ color: '#fff' }}>Email</TableCell>
+                  <TableCell sx={{ color: '#fff' }}>Gender</TableCell>
+                  <TableCell sx={{ color: '#fff' }}>Date of Birth</TableCell>
+                  <TableCell sx={{ color: '#fff' }}>Active</TableCell>
+                  <TableCell sx={{ color: '#fff' }}>Roles</TableCell>
+                  <TableCell align="right" sx={{ color: '#fff' }}>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {users.map((user) => (
-                  <TableRow key={user._id}>
-                    <TableCell>{user.fullName}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>{user.gender}</TableCell>
-                    <TableCell>{user.date_of_birth ? user.date_of_birth.slice(0, 10) : ''}</TableCell>
-                    <TableCell>
+                  <TableRow key={user._id} sx={{ background: '#101624', color: '#fff' }}>
+                    <TableCell sx={{ color: '#fff' }}>{user.fullName}</TableCell>
+                    <TableCell sx={{ color: '#fff' }}>{user.email}</TableCell>
+                    <TableCell sx={{ color: '#fff' }}>{user.gender}</TableCell>
+                    <TableCell sx={{ color: '#fff' }}>{user.date_of_birth ? user.date_of_birth.slice(0, 10) : ''}</TableCell>
+                    <TableCell sx={{ color: '#fff' }}>
                       {user.isActivated ? (
                         <Chip label="Active" color="success" size="small" />
                       ) : (
                         <Chip label="Inactive" color="warning" size="small" />
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx={{ color: '#fff' }}>
                       {Array.isArray(user.roles) && user.roles.map(role => (
-                        <Chip key={role} label={role} size="small" sx={{ mr: 0.5 }} />
+                        <Chip key={role} label={role} size="small" sx={{ mr: 0.5, color: '#fff', bgcolor: '#1976d2', fontWeight: 600 }} />
                       ))}
                     </TableCell>
-                    <TableCell align="right">
+                    <TableCell align="right" sx={{ color: '#fff' }}>
                       <Tooltip title="Edit">
                         <IconButton color="primary" onClick={() => handleEdit(user)}><EditIcon /></IconButton>
                       </Tooltip>
@@ -249,7 +249,7 @@ export default function UserManagement() {
           </TableContainer>
         )}
         <Box display="flex" justifyContent="flex-end" mt={2}>
-          <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleAdd} disabled>
+          <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleAdd} sx={{ color: '#fff', bgcolor: '#1976d2', fontWeight: 600, '&:hover': { bgcolor: '#1565c0' } }}>
             Add User
           </Button>
         </Box>

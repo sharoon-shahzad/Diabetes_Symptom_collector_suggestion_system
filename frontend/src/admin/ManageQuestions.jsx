@@ -104,20 +104,21 @@ export default function ManageQuestions() {
 
   return (
     <Box p={3}>
-      <Paper elevation={3} sx={{ p: 4, mb: 2, borderRadius: 4, boxShadow: '0 4px 24px 0 rgba(25, 118, 210, 0.08)', background: 'linear-gradient(135deg, #f4f8fb 60%, #e3f0ff 100%)' }}>
-        <Typography variant="h5" fontWeight="bold" gutterBottom>
+      <Paper elevation={3} sx={{ p: 4, mb: 2, borderRadius: 4, boxShadow: '0 4px 24px 0 rgba(25, 118, 210, 0.08)', background: '#101624', color: '#fff' }}>
+        <Typography variant="h5" fontWeight="bold" gutterBottom color="#fff">
           Manage Questions
         </Typography>
         <FormControl fullWidth sx={{ mb: 2 }}>
-          <InputLabel>Select Disease</InputLabel>
+          <InputLabel sx={{ color: '#fff' }}>Select Disease</InputLabel>
           <Select
             label="Select Disease"
             value={diseases.map(d=>d._id).includes(selectedDisease) ? selectedDisease : (diseases[0]?._id || '')}
             onChange={e => setSelectedDisease(e.target.value)}
             disabled={loading || diseases.length === 0}
+            sx={{ color: '#fff', '.MuiSelect-icon': { color: '#fff' } }}
           >
             {loading ? (
-              <MenuItem value=""><CircularProgress size={20} /></MenuItem>
+              <MenuItem value=""><CircularProgress size={20} sx={{ color: '#fff' }} /></MenuItem>
             ) : diseases.length === 0 ? (
               <MenuItem value="" disabled>No diseases found</MenuItem>
             ) : (
@@ -128,15 +129,16 @@ export default function ManageQuestions() {
           </Select>
         </FormControl>
         <FormControl fullWidth sx={{ mb: 2 }} disabled={!selectedDisease}>
-          <InputLabel>Select Symptom</InputLabel>
+          <InputLabel sx={{ color: '#fff' }}>Select Symptom</InputLabel>
           <Select
             label="Select Symptom"
             value={symptoms.map(s=>s._id).includes(selectedSymptom) ? selectedSymptom : (symptoms[0]?._id || '')}
             onChange={e => setSelectedSymptom(e.target.value)}
             disabled={symptomLoading || !selectedDisease || symptoms.length === 0}
+            sx={{ color: '#fff', '.MuiSelect-icon': { color: '#fff' } }}
           >
             {symptomLoading ? (
-              <MenuItem value=""><CircularProgress size={20} /></MenuItem>
+              <MenuItem value=""><CircularProgress size={20} sx={{ color: '#fff' }} /></MenuItem>
             ) : symptoms.length === 0 ? (
               <MenuItem value="" disabled>No symptoms found</MenuItem>
             ) : (
@@ -150,31 +152,31 @@ export default function ManageQuestions() {
           <>
             {questionLoading ? (
               <Box display="flex" justifyContent="center" alignItems="center" minHeight={80}>
-                <CircularProgress />
+                <CircularProgress sx={{ color: '#fff' }} />
               </Box>
             ) : (
-              <List sx={{ background: 'transparent' }}>
-                {questions.map(question => (
-                  <ListItem key={question._id} divider sx={{ background: 'rgba(255,255,255,0.7)', borderRadius: 2, mb: 2, boxShadow: '0 2px 8px 0 rgba(25, 118, 210, 0.04)' }}>
-                    <ListItemText
-                      primary={question.question_text}
-                      secondary={
-                        question.question_type === 'text'
+              <Box>
+                {questions.map((question, idx) => (
+                  <Box key={question._id} display="flex" alignItems="center" justifyContent="space-between" py={2} borderBottom={idx !== questions.length - 1 ? '1px solid #263445' : 'none'}>
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight={700} color="#fff">{question.question_text}</Typography>
+                      <Typography variant="body2" color="#fff">
+                        {question.question_type === 'text'
                           ? 'Text Field'
-                          : `${question.question_type.charAt(0).toUpperCase() + question.question_type.slice(1)}: ${question.options?.join(', ')}`
-                      }
-                    />
-                    <ListItemSecondaryAction>
+                          : `${question.question_type.charAt(0).toUpperCase() + question.question_type.slice(1)}: ${question.options?.join(', ')}`}
+                      </Typography>
+                    </Box>
+                    <Box>
                       <IconButton edge="end" color="primary" onClick={() => handleEdit(question)}>
                         <EditIcon />
                       </IconButton>
                       <IconButton edge="end" color="error" onClick={() => handleDelete(question._id)}>
                         <DeleteIcon />
                       </IconButton>
-                    </ListItemSecondaryAction>
-                  </ListItem>
+                    </Box>
+                  </Box>
                 ))}
-              </List>
+              </Box>
             )}
             <Box display="flex" justifyContent="flex-end" mt={2}>
               <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleAdd}>

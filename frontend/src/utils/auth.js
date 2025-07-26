@@ -1,3 +1,4 @@
+import axiosInstance from './axiosInstance';
 import axios from 'axios';
 
 const API_URL = 'http://localhost:5000';
@@ -16,12 +17,12 @@ export async function refreshToken() {
 }
 
 export async function logout() {
-  await axios.get(`${API_URL}/api/v1/auth/logout`, { withCredentials: true });
+  await axiosInstance.get(`/auth/logout`, { withCredentials: true });
   localStorage.removeItem('accessToken');
 }
 export async function getCurrentUser() {
   try {
-    const res = await axios.get('http://localhost:5000/api/v1/auth/profile');
+    const res = await axiosInstance.get(`/auth/profile`);
     console.log('Current user fetched successfully:', res.data.data.user);
     return res.data.data.user;
   } catch (err) {
