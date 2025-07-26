@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Box, Drawer, List, ListItem, ListItemIcon, ListItemText, Typography, Avatar, CssBaseline, Paper, Card, CardContent, CircularProgress, Alert, Grid, Divider, Chip, Modal
+  Box, Drawer, List, ListItem, ListItemIcon, ListItemText, Typography, Avatar, CssBaseline, Paper, Card, CardContent, CircularProgress, Alert, Grid, Divider, Chip, Modal, IconButton, Tooltip
 } from '@mui/material';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import HealingIcon from '@mui/icons-material/Healing';
 import LogoutIcon from '@mui/icons-material/Logout';
 import EditIcon from '@mui/icons-material/Edit';
+import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from 'react-router-dom';
 import { logout, getCurrentUser } from '../utils/auth';
 import { fetchMyDiseaseData } from '../utils/api';
@@ -13,7 +14,7 @@ import LinearProgress from '@mui/material/LinearProgress';
 import Button from '@mui/material/Button';
 import EditDiseaseData from '../components/Dashboard/EditDiseaseData';
 
-const drawerWidth = 240;
+const drawerWidth = 220;
 
 const sections = [
   { label: 'My Account', icon: <AccountCircleIcon /> },
@@ -66,7 +67,6 @@ export default function Dashboard() {
   };
 
   const handleDataUpdated = () => {
-    // Refresh disease data when editing is complete
     if (selectedIndex === 1) {
       setLoading(true);
       fetchMyDiseaseData()
@@ -89,85 +89,128 @@ export default function Dashboard() {
             width: drawerWidth,
             bgcolor: '#1e2a3a',
             color: '#fff',
-            borderTopRightRadius: 32,
-            borderBottomRightRadius: 32,
+            borderTopRightRadius: 0,
+            borderBottomRightRadius: 0,
             boxShadow: '4px 0 24px 0 rgba(30,42,58,0.12)',
-            border: 'none',
-            pt: 2,
+            border: 'none', // Ensure no border or divider between sidebar and main area
+            pt: 0,
+            px: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
           },
         }}
       >
-        <Box display="flex" flexDirection="column" alignItems="center" mb={2}>
-          <Avatar sx={{ bgcolor: '#90caf9', width: 64, height: 64, mb: 1, fontSize: 32 }}>
-            {user?.fullName?.[0] || 'U'}
-          </Avatar>
-          <Typography fontWeight={700} fontSize={18}>{user?.fullName}</Typography>
-          <Typography fontSize={14} color="#b0bec5">{user?.email}</Typography>
+        <Box>
+          {/* User Info */}
+          <Box display="flex" flexDirection="column" alignItems="center" py={2}>
+            <Avatar sx={{ bgcolor: '#90caf9', width: 40, height: 40, mb: 1, fontSize: 20 }}>
+              {user?.fullName?.[0] || 'U'}
+            </Avatar>
+            <Typography fontWeight={700} fontSize={16}>{user?.fullName}</Typography>
+            <Typography fontSize={13} color="#b0bec5">{user?.email}</Typography>
+          </Box>
+          <Divider sx={{ my: 1, bgcolor: '#263445' }} />
+          {/* Navigation */}
+          <List>
+            {sections.map((section, idx) => (
+              <ListItem
+                key={section.label}
+                selected={selectedIndex === idx}
+                onClick={() => setSelectedIndex(idx)}
+                sx={{
+                  borderRadius: 2,
+                  mx: 1,
+                  my: 0.5,
+                  '&.Mui-selected': {
+                    bgcolor: '#263445',
+                  },
+                  transition: 'background 0.2s',
+                  cursor: 'pointer',
+                }}
+              >
+                <ListItemIcon sx={{ color: '#90caf9', minWidth: 36 }}>{section.icon}</ListItemIcon>
+                <ListItemText primary={<Typography fontWeight={600}>{section.label}</Typography>} />
+              </ListItem>
+            ))}
+          </List>
         </Box>
-        <List>
-          {sections.map((section, idx) => (
-            <ListItem key={section.label} selected={selectedIndex === idx} onClick={() => setSelectedIndex(idx)}>
-              <ListItemIcon sx={{ color: '#90caf9' }}>{section.icon}</ListItemIcon>
-              <ListItemText primary={section.label} />
-            </ListItem>
-          ))}
-          <ListItem onClick={handleLogout}>
-            <ListItemIcon sx={{ color: '#ef5350' }}><LogoutIcon /></ListItemIcon>
-            <ListItemText primary="Logout" />
-          </ListItem>
-        </List>
+        <Box pb={2} px={2}>
+          <Divider sx={{ mb: 1, bgcolor: '#263445' }} />
+          <Button
+            fullWidth
+            variant="outlined"
+            color="error"
+            startIcon={<LogoutIcon />}
+            onClick={handleLogout}
+            sx={{ borderRadius: 2, fontWeight: 700, borderColor: '#ef5350', color: '#ef5350', '&:hover': { bgcolor: '#2d3846', borderColor: '#ef5350' } }}
+          >
+            Logout
+          </Button>
+        </Box>
       </Drawer>
       {/* Main Content */}
       <Box component="main" sx={{
         flexGrow: 1,
         p: { xs: 2, md: 6 },
-        ml: { md: `${drawerWidth}px` },
+        ml: 0, // Remove left margin so content is flush with sidebar
         mt: 0,
         minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        background: 'linear-gradient(135deg, #23272f 60%, #0B1120 100%)',
+        background: '#101624', // Match the dark navy blue shade for the whole dashboard
       }}>
-        <Paper elevation={4} sx={{
+        <Paper elevation={6} sx={{
           width: '100%',
-          maxWidth: 800,
-          minHeight: 420,
+          maxWidth: 900,
+          minHeight: 480,
           borderRadius: 6,
-          p: 4,
+          p: { xs: 2, md: 5 },
           mt: 2,
           boxShadow: '0 8px 32px 0 rgba(25, 118, 210, 0.10)',
-          background: 'linear-gradient(135deg, #23272f 60%, #1e2a3a 100%)',
+          background: '#263445', // Match the main background for a unified look  
           color: '#fff',
         }}>
+          {/* Section Header */}
+          <Box mb={4} display="flex" alignItems="center" gap={2}>
+            <Typography variant="h4" fontWeight={900} color="#FFFFFF">
+              {selectedIndex === 0 ? 'My Account' : 'My Disease Data'}
+            </Typography>
+            {selectedIndex === 1 && diseaseData && diseaseData.disease && (
+              <Tooltip title="Edit Disease Data">
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<EditIcon />}
+                  onClick={handleEditDiseaseData}
+                  sx={{ borderRadius: 2, fontWeight: 700, ml: 2 }}
+                >
+                  Edit
+                </Button>
+              </Tooltip>
+            )}
+          </Box>
+          <Divider sx={{ mb: 4, bgcolor: '#263445' }} />
           {selectedIndex === 0 && (
-            <Box>
-              <Typography variant="h5" fontWeight={700} mb={2}>My Account</Typography>
-              <Typography variant="body1" mb={1}><b>Name:</b> {user?.fullName}</Typography>
-              <Typography variant="body1" mb={1}><b>Email:</b> {user?.email}</Typography>
-              <Typography variant="body1" mb={1}><b>Gender:</b> {user?.gender}</Typography>
-              <Typography variant="body1" mb={1}><b>Date of Birth:</b> {user?.date_of_birth}</Typography>
-              <Typography variant="body1" mb={1}><b>Account Status:</b> {user?.isActivated ? 'Activated' : 'Not Activated'}</Typography>
-            </Box>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Card elevation={3} sx={{ borderRadius: 4, bgcolor: '#101624', color: '#fff', mb: 2 }}>
+                  <CardContent>
+                    <Typography variant="h6" fontWeight={700} gutterBottom>Profile Information</Typography>
+                    <Divider sx={{ mb: 2, bgcolor: '#263445' }} />
+                    <Typography variant="body1" mb={1}><b>Name:</b> {user?.fullName}</Typography>
+                    <Typography variant="body1" mb={1}><b>Email:</b> {user?.email}</Typography>
+                    <Typography variant="body1" mb={1}><b>Gender:</b> {user?.gender}</Typography>
+                    <Typography variant="body1" mb={1}><b>Date of Birth:</b> {user?.date_of_birth}</Typography>
+                    <Typography variant="body1" mb={1}><b>Account Status:</b> {user?.isActivated ? 'Activated' : 'Not Activated'}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
           )}
           {selectedIndex === 1 && (
             <Box>
-              <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-                <Typography variant="h4" fontWeight="bold">
-                  My Disease Data
-                </Typography>
-                {diseaseData && diseaseData.disease && (
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<EditIcon />}
-                    onClick={handleEditDiseaseData}
-                    sx={{ borderRadius: 2, fontWeight: 600 }}
-                  >
-                    Edit My Disease Data
-                  </Button>
-                )}
-              </Box>
               {loading ? (
                 <Box display="flex" justifyContent="center" alignItems="center" minHeight={200}>
                   <CircularProgress />
@@ -240,21 +283,22 @@ export default function Dashboard() {
                       )}
                     </Box>
                   )}
-                  <Card elevation={4} sx={{ mb: 4, borderRadius: 3, background: 'linear-gradient(135deg, #f4f8fb 60%, #e3f0ff 100%)' }}>
-                    <CardContent>
-                      <Typography variant="h5" fontWeight="bold" color="primary.main">
-                        {diseaseData.disease}
-                      </Typography>
-                      <Typography variant="subtitle1" color="text.secondary" gutterBottom>
-                        Last updated: {diseaseData.lastUpdated ? new Date(diseaseData.lastUpdated).toLocaleString() : 'N/A'}
-                      </Typography>
-                    </CardContent>
-                  </Card>
-                  <Grid container spacing={3}>
-                    {diseaseData.symptoms && diseaseData.symptoms.length > 0 ? (
-                      diseaseData.symptoms.map((symptom, idx) => (
-                        <Grid xs={12} md={6} key={symptom.name || idx}>
-                          <Card elevation={2} sx={{ borderRadius: 3, mb: 2 }}>
+                  <Box sx={{ width: '100%', maxWidth: 900, mx: 'auto' }}>
+                    {/* Disease Info Card */}
+                    <Card elevation={4} sx={{ mb: 4, borderRadius: 3, background: 'linear-gradient(135deg, #f4f8fb 60%, #e3f0ff 100%)', color: '#23272f', width: '100%' }}>
+                      <CardContent>
+                        <Typography variant="h5" fontWeight="bold" color="primary.main">
+                          {diseaseData.disease}
+                        </Typography>
+                        <Typography variant="subtitle1" color="text.secondary" gutterBottom>
+                          Last updated: {diseaseData.lastUpdated ? new Date(diseaseData.lastUpdated).toLocaleString() : 'N/A'}
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                    <Box>
+                      {diseaseData.symptoms && diseaseData.symptoms.length > 0 ? (
+                        diseaseData.symptoms.map((symptom, idx) => (
+                          <Card key={symptom.name || idx} elevation={2} sx={{ borderRadius: 3, mb: 4, bgcolor: '#f4f8fb', color: '#23272f', width: '100%' }}>
                             <CardContent>
                               <Typography variant="h6" fontWeight="bold" color="secondary.main" gutterBottom>
                                 {symptom.name}
@@ -281,14 +325,12 @@ export default function Dashboard() {
                               )}
                             </CardContent>
                           </Card>
-                        </Grid>
-                      ))
-                    ) : (
-                      <Grid xs={12}>
+                        ))
+                      ) : (
                         <Alert severity="info">No symptoms or answers found for this disease.</Alert>
-                      </Grid>
-                    )}
-                  </Grid>
+                      )}
+                    </Box>
+                  </Box>
                 </>
               )}
             </Box>
@@ -317,9 +359,19 @@ export default function Dashboard() {
             borderRadius: 3,
             boxShadow: 24,
             overflow: 'auto',
-            p: 3
+            p: 3,
+            position: 'relative',
           }}
         >
+          <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+            <Typography id="edit-disease-data-modal" variant="h6" fontWeight={700} color="#23272f">
+              Edit Disease Data
+            </Typography>
+            <IconButton onClick={handleCloseEditModal}>
+              <CloseIcon />
+            </IconButton>
+          </Box>
+          <Divider sx={{ mb: 2 }} />
           <EditDiseaseData
             onClose={handleCloseEditModal}
             onDataUpdated={handleDataUpdated}
@@ -328,4 +380,4 @@ export default function Dashboard() {
       </Modal>
     </Box>
   );
-} 
+}

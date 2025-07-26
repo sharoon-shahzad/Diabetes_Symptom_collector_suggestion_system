@@ -87,20 +87,21 @@ export default function ManageSymptoms() {
 
   return (
     <Box p={3}>
-      <Paper elevation={3} sx={{ p: 4, mb: 2, borderRadius: 4, boxShadow: '0 4px 24px 0 rgba(25, 118, 210, 0.08)', background: 'linear-gradient(135deg, #f4f8fb 60%, #e3f0ff 100%)' }}>
-        <Typography variant="h5" fontWeight="bold" gutterBottom>
+      <Paper elevation={3} sx={{ p: 4, mb: 2, borderRadius: 4, boxShadow: '0 4px 24px 0 rgba(25, 118, 210, 0.08)', background: '#101624', color: '#fff' }}>
+        <Typography variant="h5" fontWeight="bold" gutterBottom color="#fff">
           Manage Symptoms
         </Typography>
         <FormControl fullWidth sx={{ mb: 2 }}>
-          <InputLabel>Select Disease</InputLabel>
+          <InputLabel sx={{ color: '#fff' }}>Select Disease</InputLabel>
           <Select
             label="Select Disease"
             value={diseases.map(d=>d._id).includes(selectedDisease) ? selectedDisease : (diseases[0]?._id || '')}
             onChange={e => setSelectedDisease(e.target.value)}
             disabled={loading || diseases.length === 0}
+            sx={{ color: '#fff', '.MuiSelect-icon': { color: '#fff' } }}
           >
             {loading ? (
-              <MenuItem value=""><CircularProgress size={20} /></MenuItem>
+              <MenuItem value=""><CircularProgress size={20} sx={{ color: '#fff' }} /></MenuItem>
             ) : diseases.length === 0 ? (
               <MenuItem value="" disabled>No diseases found</MenuItem>
             ) : (
@@ -114,31 +115,31 @@ export default function ManageSymptoms() {
           <>
             {symptomLoading ? (
               <Box display="flex" justifyContent="center" alignItems="center" minHeight={80}>
-                <CircularProgress />
+                <CircularProgress sx={{ color: '#fff' }} />
               </Box>
             ) : error ? (
               <Box display="flex" justifyContent="center" alignItems="center" minHeight={80}>
-                <Typography color="error">{error}</Typography>
+                <Typography color="#fff">{error}</Typography>
               </Box>
             ) : (
-              <List sx={{ background: 'transparent' }}>
-                {symptoms.map(symptom => (
-                  <ListItem key={symptom._id} divider sx={{ background: 'rgba(255,255,255,0.7)', borderRadius: 2, mb: 2, boxShadow: '0 2px 8px 0 rgba(25, 118, 210, 0.04)' }}>
-                    <ListItemText
-                      primary={symptom.name}
-                      secondary={symptom.description}
-                    />
-                    <ListItemSecondaryAction>
+              <Box>
+                {symptoms.map((symptom, idx) => (
+                  <Box key={symptom._id} display="flex" alignItems="center" justifyContent="space-between" py={2} borderBottom={idx !== symptoms.length - 1 ? '1px solid #263445' : 'none'}>
+                    <Box>
+                      <Typography variant="subtitle1" fontWeight={700} color="#fff">{symptom.name}</Typography>
+                      <Typography variant="body2" color="#fff">{symptom.description}</Typography>
+                    </Box>
+                    <Box>
                       <IconButton edge="end" color="primary" onClick={() => handleEdit(symptom)}>
                         <EditIcon />
                       </IconButton>
                       <IconButton edge="end" color="error" onClick={() => handleDelete(symptom._id)}>
                         <DeleteIcon />
                       </IconButton>
-                    </ListItemSecondaryAction>
-                  </ListItem>
+                    </Box>
+                  </Box>
                 ))}
-              </List>
+              </Box>
             )}
             <Box display="flex" justifyContent="flex-end" mt={2}>
               <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleAdd}>

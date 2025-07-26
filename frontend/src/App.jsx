@@ -27,7 +27,7 @@ const AppContent = () => {
   return (
     <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #23272f 60%, #0B1120 100%)' }}>
       {shouldShowHeader && <UniversalHeader />}
-      <Box sx={{ pt: shouldShowHeader ? 4 : 0 }}> {/* Only add top padding if header is shown */}
+      <Box> {/* Removed top padding to eliminate space between header and content */}
         <Routes>
           <Route path="/signin" element={<SignInSide />} />
           <Route path="/signup" element={<SignUpSide />} />

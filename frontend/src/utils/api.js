@@ -1,7 +1,7 @@
-import axios from 'axios';
+import axiosInstance from './axiosInstance';
 
 // Add this interceptor to include the access token in every request
-axios.interceptors.request.use(
+axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken');
     if (token) {
@@ -15,29 +15,29 @@ axios.interceptors.request.use(
 const API_URL = 'http://localhost:5000/api/v1';
 
 export async function fetchDiseases() {
-  const res = await axios.get(`${API_URL}/diseases`);
+  const res = await axiosInstance.get(`/diseases`);
   return res.data.data;
 }
 
 export async function addDisease(disease) {
-  const res = await axios.post(`${API_URL}/diseases`, disease);
+  const res = await axiosInstance.post(`/diseases`, disease);
   return res.data.data;
 }
 
 export async function updateDisease(id, disease) {
-  const res = await axios.put(`${API_URL}/diseases/${id}`, disease);
+  const res = await axiosInstance.put(`/diseases/${id}`, disease);
   return res.data.data;
 }
 
 export async function deleteDisease(id) {
-  const res = await axios.delete(`${API_URL}/diseases/${id}`);
+  const res = await axiosInstance.delete(`/diseases/${id}`);
   return res.data;
 }
 
 // Removed fetchQuestions and fetchSymptoms using API_BASE as API_BASE is not defined. Use fetchSymptomsByDisease and fetchQuestionsBySymptom instead.
 
 export async function fetchSymptomsByDisease(diseaseId) {
-  const res = await axios.get(`${API_URL}/questions/symptoms/${diseaseId}`);
+  const res = await axiosInstance.get(`/questions/symptoms/${diseaseId}`);
   // Accept both direct array and { data: array }
   if (Array.isArray(res.data)) return res.data;
   if (Array.isArray(res.data.data)) return res.data.data;
@@ -45,22 +45,22 @@ export async function fetchSymptomsByDisease(diseaseId) {
 }
 
 export async function addSymptom(diseaseId, symptom) {
-  const res = await axios.post(`${API_URL}/symptoms/${diseaseId}`, symptom);
+  const res = await axiosInstance.post(`/symptoms/${diseaseId}`, symptom);
   return res.data.data;
 }
 
 export async function updateSymptom(id, symptom) {
-  const res = await axios.put(`${API_URL}/symptoms/${id}`, symptom);
+  const res = await axiosInstance.put(`/symptoms/${id}`, symptom);
   return res.data.data;
 }
 
 export async function deleteSymptom(id) {
-  const res = await axios.delete(`${API_URL}/symptoms/${id}`);
+  const res = await axiosInstance.delete(`/symptoms/${id}`);
   return res.data;
 }
 
 export async function fetchQuestionsBySymptom(symptomId) {
-  const res = await axios.get(`${API_URL}/questions/questions/symptom/${symptomId}`);
+  const res = await axiosInstance.get(`/questions/questions/symptom/${symptomId}`);
   // Accept both direct array and { data: array }
   if (Array.isArray(res.data)) return res.data;
   if (Array.isArray(res.data.data)) return res.data.data;
@@ -68,33 +68,33 @@ export async function fetchQuestionsBySymptom(symptomId) {
 }
 
 export async function addQuestion(symptomId, question) {
-  const res = await axios.post(`${API_URL}/questions/questions/symptom/${symptomId}`, question);
+  const res = await axiosInstance.post(`/questions/questions/symptom/${symptomId}`, question);
   return res.data.data;
 }
 
 export async function updateQuestion(id, question) {
-  const res = await axios.put(`${API_URL}/questions/questions/${id}`, question);
+  const res = await axiosInstance.put(`/questions/questions/${id}`, question);
   return res.data.data;
 }
 
 export async function deleteQuestion(id) {
-  const res = await axios.delete(`${API_URL}/questions/questions/${id}`);
+  const res = await axiosInstance.delete(`/questions/questions/${id}`);
   return res.data;
 }
 
 export async function fetchMyDiseaseData() {
-  const res = await axios.get(`${API_URL}/users/my-disease-data`);
+  const res = await axiosInstance.get(`/users/my-disease-data`);
   return res.data.data;
 }
 
 // Disease data editing functions
 export async function fetchDiseaseDataForEditing() {
-  const res = await axios.get(`${API_URL}/users/disease-data-for-editing`);
+  const res = await axiosInstance.get(`/users/disease-data-for-editing`);
   return res.data.data;
 }
 
 export async function updateDiseaseDataAnswer(questionId, answerText) {
-  const res = await axios.put(`${API_URL}/users/update-disease-data-answer`, {
+  const res = await axiosInstance.put(`/users/update-disease-data-answer`, {
     questionId,
     answerText
   });
@@ -102,6 +102,6 @@ export async function updateDiseaseDataAnswer(questionId, answerText) {
 }
 
 export async function submitDiseaseData() {
-  const res = await axios.post(`${API_URL}/users/submit-disease-data`);
+  const res = await axiosInstance.post(`/users/submit-disease-data`);
   return res.data;
 } 

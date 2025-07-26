@@ -65,33 +65,37 @@ export default function ManageDiseases() {
 
   return (
     <Box p={3}>
-      <Paper elevation={3} sx={{ p: 4, mb: 2, borderRadius: 4, boxShadow: '0 4px 24px 0 rgba(25, 118, 210, 0.08)', background: 'linear-gradient(135deg, #f4f8fb 60%, #e3f0ff 100%)' }}>
-        <Typography variant="h5" fontWeight="bold" gutterBottom>
+      <Paper elevation={3} sx={{ p: 4, mb: 2, borderRadius: 4, boxShadow: '0 4px 24px 0 rgba(25, 118, 210, 0.08)', background: '#101624', color: '#fff' }}>
+        <Typography variant="h5" fontWeight="bold" gutterBottom color="#fff">
           Manage Diseases
         </Typography>
         {loading ? (
           <Box display="flex" justifyContent="center" alignItems="center" minHeight={120}>
-            <CircularProgress />
+            <CircularProgress sx={{ color: '#fff' }} />
           </Box>
         ) : (
-          <List sx={{ background: 'transparent' }}>
-            {diseases.map((disease) => (
-              <ListItem key={disease._id} divider sx={{ background: 'rgba(255,255,255,0.7)', borderRadius: 2, mb: 2, boxShadow: '0 2px 8px 0 rgba(25, 118, 210, 0.04)' }}>
-                <ListItemText
-                  primary={disease.name}
-                  secondary={disease.description}
-                />
-                <ListItemSecondaryAction>
-                  <IconButton edge="end" color="primary" onClick={() => handleEdit(disease)}>
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton edge="end" color="error" onClick={() => handleDelete(disease._id)}>
-                    <DeleteIcon />
-                  </IconButton>
-                </ListItemSecondaryAction>
-              </ListItem>
-            ))}
-          </List>
+          <Box>
+            {diseases.length === 0 ? (
+              <Typography color="#fff" sx={{ my: 2 }}>No diseases found.</Typography>
+            ) : (
+              diseases.map((disease, idx) => (
+                <Box key={disease._id} display="flex" alignItems="center" justifyContent="space-between" py={2} borderBottom={idx !== diseases.length - 1 ? '1px solid #263445' : 'none'}>
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight={700} color="#fff">{disease.name}</Typography>
+                    <Typography variant="body2" color="#fff">{disease.description}</Typography>
+                  </Box>
+                  <Box>
+                    <IconButton edge="end" color="primary" onClick={() => handleEdit(disease)}>
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton edge="end" color="error" onClick={() => handleDelete(disease._id)}>
+                      <DeleteIcon />
+                    </IconButton>
+                  </Box>
+                </Box>
+              ))
+            )}
+          </Box>
         )}
         <Box display="flex" justifyContent="flex-end" mt={2}>
           <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleAdd}>
