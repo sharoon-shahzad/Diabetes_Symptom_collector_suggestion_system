@@ -1,12 +1,16 @@
 import { Symptom } from '../models/Symptom.js';
+import mongoose from 'mongoose';
 
 // Get all symptoms for a disease
 export const getSymptomsByDisease = async (req, res) => {
   try {
     const { diseaseId } = req.params;
-    const symptoms = await Symptom.find({ disease_id: diseaseId });
-    res.json(symptoms);
+    console.log('Fetching symptoms for diseaseId:', diseaseId);
+    const symptoms = await Symptom.find({ disease_id: new mongoose.Types.ObjectId(diseaseId), deleted_at: null });
+    console.log('Symptoms found:', symptoms);
+    res.json({ success: true, data: symptoms });
   } catch (err) {
+    console.error('Error in getSymptomsByDisease:', err);
     res.status(500).json({ message: 'Error fetching symptoms', error: err.message });
   }
 };
@@ -18,9 +22,10 @@ export const addSymptom = async (req, res) => {
     const { name, description } = req.body;
     const newSymptom = new Symptom({ name, description, disease_id: diseaseId });
     await newSymptom.save();
-    res.status(201).json(newSymptom);
+    res.status(201).json({ success: true, data: newSymptom });
   } catch (err) {
-    res.status(500).json({ message: 'Error adding symptom', error: err.message });
+    console.error('Error adding symptom:', err);
+    res.status(500).json({ success: false, message: 'Error adding symptom', error: err.message });
   }
 };
 
@@ -35,11 +40,12 @@ export const updateSymptom = async (req, res) => {
       { new: true }
     );
     if (!updatedSymptom) {
-      return res.status(404).json({ message: 'Symptom not found' });
+      return res.status(404).json({ success: false, message: 'Symptom not found' });
     }
-    res.json(updatedSymptom);
+    res.json({ success: true, data: updatedSymptom });
   } catch (err) {
-    res.status(500).json({ message: 'Error updating symptom', error: err.message });
+    console.error('Error updating symptom:', err);
+    res.status(500).json({ success: false, message: 'Error updating symptom', error: err.message });
   }
 };
 
@@ -49,10 +55,11 @@ export const deleteSymptom = async (req, res) => {
     const { id } = req.params;
     const deletedSymptom = await Symptom.findByIdAndDelete(id);
     if (!deletedSymptom) {
-      return res.status(404).json({ message: 'Symptom not found' });
+      return res.status(404).json({ success: false, message: 'Symptom not found' });
     }
-    res.json({ message: 'Symptom deleted successfully' });
+    res.json({ success: true, message: 'Symptom deleted successfully' });
   } catch (err) {
-    res.status(500).json({ message: 'Error deleting symptom', error: err.message });
+    console.error('Error deleting symptom:', err);
+    res.status(500).json({ success: false, message: 'Error deleting symptom', error: err.message });
   }
 }; 

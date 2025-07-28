@@ -37,11 +37,8 @@ export async function deleteDisease(id) {
 // Removed fetchQuestions and fetchSymptoms using API_BASE as API_BASE is not defined. Use fetchSymptomsByDisease and fetchQuestionsBySymptom instead.
 
 export async function fetchSymptomsByDisease(diseaseId) {
-  const res = await axiosInstance.get(`/questions/symptoms/${diseaseId}`);
-  // Accept both direct array and { data: array }
-  if (Array.isArray(res.data)) return res.data;
-  if (Array.isArray(res.data.data)) return res.data.data;
-  return [];
+  const res = await axiosInstance.get(`/symptoms/${diseaseId}`);
+  return res.data.data || [];
 }
 
 export async function addSymptom(diseaseId, symptom) {

@@ -22,8 +22,16 @@ export default function ManageSymptoms() {
   useEffect(() => {
     const loadDiseases = async () => {
       setLoading(true);
-      const data = await fetchDiseases();
-      setDiseases(data);
+      try {
+        const data = await fetchDiseases();
+        console.log('Diseases loaded:', data);
+        setDiseases(data);
+        if (data && data.length > 0) {
+          setSelectedDisease(data[0]._id);
+        }
+      } catch (err) {
+        console.error('Error loading diseases:', err);
+      }
       setLoading(false);
     };
     loadDiseases();
@@ -31,14 +39,17 @@ export default function ManageSymptoms() {
 
   useEffect(() => {
     if (selectedDisease) {
+      console.log('Selected disease ID:', selectedDisease);
       setSymptomLoading(true);
       setError(null);
       fetchSymptomsByDisease(selectedDisease)
         .then(data => {
+          console.log('Symptoms fetched:', data);
           setSymptoms(data);
           setSymptomLoading(false);
         })
         .catch(err => {
+          console.error('Error fetching symptoms:', err);
           setError('Failed to fetch symptoms.');
           setSymptoms([]);
           setSymptomLoading(false);

@@ -9,6 +9,7 @@ import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import QuestionList from './QuestionList';
 import { getCurrentUser } from '../../utils/auth';
+import { fetchSymptomsByDisease } from '../../utils/api';
 
 
 const CARD_MIN_HEIGHT = 180;
@@ -27,11 +28,8 @@ const SymptomCard = ({ diseaseId }) => {
       if (!diseaseId) return;
       try {
         setLoading(true);
-        const response = await fetch(`/api/v1/questions/symptoms/${diseaseId}`);
-        const data = await response.json();
-        if (Array.isArray(data)) setSymptoms(data);
-        else if (Array.isArray(data.data)) setSymptoms(data.data);
-        else setSymptoms([]);
+        const data = await fetchSymptomsByDisease(diseaseId);
+        setSymptoms(data);
         setError(null);
       } catch (err) {
         setError('Error fetching symptoms.');
