@@ -26,8 +26,16 @@ export default function ManageQuestions() {
   useEffect(() => {
     const loadDiseases = async () => {
       setLoading(true);
-      const data = await fetchDiseases();
-      setDiseases(data);
+      try {
+        const data = await fetchDiseases();
+        console.log('Diseases loaded (questions):', data);
+        setDiseases(data);
+        if (data && data.length > 0) {
+          setSelectedDisease(data[0]._id);
+        }
+      } catch (err) {
+        console.error('Error loading diseases (questions):', err);
+      }
       setLoading(false);
     };
     loadDiseases();
@@ -35,14 +43,21 @@ export default function ManageQuestions() {
 
   useEffect(() => {
     if (selectedDisease) {
+      console.log('Selected disease ID (questions):', selectedDisease);
       setSymptomLoading(true);
       setSymptomError(null);
       fetchSymptomsByDisease(selectedDisease)
         .then(data => {
+          console.log('Symptoms fetched (questions):', data);
           setSymptoms(data);
+          // Auto-select the first symptom if available
+          if (data && data.length > 0) {
+            setSelectedSymptom(data[0]._id);
+          }
           setSymptomLoading(false);
         })
         .catch(err => {
+          console.error('Error fetching symptoms (questions):', err);
           setSymptomError('Failed to fetch symptoms.');
           setSymptoms([]);
           setSymptomLoading(false);
@@ -56,9 +71,15 @@ export default function ManageQuestions() {
 
   useEffect(() => {
     if (selectedSymptom) {
+      console.log('Fetching questions for symptom:', selectedSymptom);
       setQuestionLoading(true);
       fetchQuestionsBySymptom(selectedSymptom).then(data => {
+        console.log('Questions fetched:', data);
         setQuestions(data);
+        setQuestionLoading(false);
+      }).catch(err => {
+        console.error('Error fetching questions:', err);
+        setQuestions([]);
         setQuestionLoading(false);
       });
     } else {

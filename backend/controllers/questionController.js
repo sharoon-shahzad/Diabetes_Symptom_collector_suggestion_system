@@ -16,44 +16,82 @@ export const getQuestionsByDisease = async (req, res) => {
   }
 };
 
-// Get all symptoms for a disease
-export const getSymptomsByDisease = async (req, res) => {
-  try {
-    const { diseaseId } = req.params;
-    console.log('Fetching symptoms for diseaseId:', diseaseId);
-    // Query using the string directly
-    const symptoms = await Symptom.find({ disease_id: diseaseId });
-    res.json(symptoms);
-  } catch (err) {
-    console.error('Error in getSymptomsByDisease:', err);
-    res.status(500).json({ message: "Error fetching symptoms", error: err.message });
-  }
-};
+
 
 // Get all questions for a symptom
 export const getQuestionsBySymptom = async (req, res) => {
   try {
     const { symptomId } = req.params;
-    const questions = await Question.find({ symptom_id: symptomId, deleted_at: null });
+    console.log('Fetching questions for symptomId:', symptomId);
+    const questions = await Question.find({ symptom_id: new mongoose.Types.ObjectId(symptomId), deleted_at: null });
+    console.log('Questions found:', questions);
     res.status(200).json({ success: true, data: questions });
   } catch (err) {
+    console.error('Error in getQuestionsBySymptom:', err);
     res.status(500).json({ success: false, message: 'Error fetching questions for symptom', error: err.message });
   }
 };
 
-// Add a question to a symptom (stub)
+// Add a question to a symptom
 export const addQuestion = async (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
+  try {
+    const { symptomId } = req.params;
+    const { question_text, question_type, options } = req.body;
+    
+    const newQuestion = new Question({
+      question_text,
+      question_type,
+      options: options || [],
+      symptom_id: symptomId
+    });
+    
+    await newQuestion.save();
+    res.status(201).json({ success: true, data: newQuestion });
+  } catch (err) {
+    console.error('Error adding question:', err);
+    res.status(500).json({ success: false, message: 'Error adding question', error: err.message });
+  }
 };
 
-// Update a question (stub)
+// Update a question
 export const updateQuestion = async (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
+  try {
+    const { id } = req.params;
+    const { question_text, question_type, options } = req.body;
+    
+    const updatedQuestion = await Question.findByIdAndUpdate(
+      id,
+      { question_text, question_type, options: options || [] },
+      { new: true }
+    );
+    
+    if (!updatedQuestion) {
+      return res.status(404).json({ success: false, message: 'Question not found' });
+    }
+    
+    res.json({ success: true, data: updatedQuestion });
+  } catch (err) {
+    console.error('Error updating question:', err);
+    res.status(500).json({ success: false, message: 'Error updating question', error: err.message });
+  }
 };
 
-// Delete a question (stub)
+// Delete a question
 export const deleteQuestion = async (req, res) => {
-  res.status(501).json({ message: 'Not implemented' });
+  try {
+    const { id } = req.params;
+    
+    const deletedQuestion = await Question.findByIdAndDelete(id);
+    
+    if (!deletedQuestion) {
+      return res.status(404).json({ success: false, message: 'Question not found' });
+    }
+    
+    res.json({ success: true, message: 'Question deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting question:', err);
+    res.status(500).json({ success: false, message: 'Error deleting question', error: err.message });
+  }
 };
 
 // Save user's answer for onboarding
