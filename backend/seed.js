@@ -5,6 +5,8 @@ import { Question } from './models/Question.js';
 import { Role } from './models/Role.js';
 import { UsersRoles } from './models/User_Role.js';
 import { User } from './models/User.js';
+import { Permission } from './models/Permission.js';
+import { RolePermissions } from './models/RolePermissions.js';
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/Diavise';
 
@@ -158,6 +160,56 @@ const symptomsData = [
   },
 ];
 
+const permissionsData = [
+  // Dashboard Permissions
+  { name: "dashboard:access:patient", description: "Access patient dashboard", resource: "dashboard", action: "access", scope: "patient", category: "dashboard" },
+  { name: "dashboard:access:doctor", description: "Access doctor/subadmin dashboard", resource: "dashboard", action: "access", scope: "doctor", category: "dashboard" },
+  { name: "dashboard:access:admin", description: "Access superadmin dashboard", resource: "dashboard", action: "access", scope: "admin", category: "dashboard" },
+  
+  // Authentication & Profile Permissions
+  { name: "profile:view:own", description: "View own profile", resource: "profile", action: "view", scope: "own", category: "profile" },
+  { name: "profile:edit:own", description: "Edit own profile", resource: "profile", action: "edit", scope: "own", category: "profile" },
+  { name: "password:change:own", description: "Change own password", resource: "password", action: "change", scope: "own", category: "profile" },
+  
+  // User Management Permissions
+  { name: "user:create:all", description: "Create any type of user", resource: "user", action: "create", scope: "all", category: "user_management" },
+  { name: "user:read:all", description: "View all users", resource: "user", action: "read", scope: "all", category: "user_management" },
+  { name: "user:update:all", description: "Update any user", resource: "user", action: "update", scope: "all", category: "user_management" },
+  { name: "user:delete:all", description: "Delete any user", resource: "user", action: "delete", scope: "all", category: "user_management" },
+  { name: "user:read:assigned", description: "View assigned patients/users", resource: "user", action: "read", scope: "assigned", category: "user_management" },
+  { name: "user:assign:patients", description: "Assign patients to doctors", resource: "user", action: "assign", scope: "patients", category: "user_management" },
+  
+  // Disease Data Permissions
+  { name: "disease:view:own", description: "View own disease data", resource: "disease", action: "view", scope: "own", category: "medical_data" },
+  { name: "disease:edit:own", description: "Edit own disease data (within 7 days)", resource: "disease", action: "edit", scope: "own", category: "medical_data" },
+  { name: "disease:submit:own", description: "Submit own disease data", resource: "disease", action: "submit", scope: "own", category: "medical_data" },
+  { name: "disease:view:assigned", description: "View assigned patients' disease data", resource: "disease", action: "view", scope: "assigned", category: "medical_data" },
+  { name: "disease:edit:assigned", description: "Edit assigned patients' disease data", resource: "disease", action: "edit", scope: "assigned", category: "medical_data" },
+  { name: "disease:manage:all", description: "Manage all disease data", resource: "disease", action: "manage", scope: "all", category: "medical_data" },
+  
+  // Medical Content Management Permissions
+  { name: "disease:create:all", description: "Create disease entries", resource: "disease", action: "create", scope: "all", category: "content_management" },
+  { name: "disease:update:all", description: "Update disease entries", resource: "disease", action: "update", scope: "all", category: "content_management" },
+  { name: "disease:delete:all", description: "Delete disease entries", resource: "disease", action: "delete", scope: "all", category: "content_management" },
+  { name: "symptom:create:all", description: "Create symptoms", resource: "symptom", action: "create", scope: "all", category: "content_management" },
+  { name: "symptom:update:all", description: "Update symptoms", resource: "symptom", action: "update", scope: "all", category: "content_management" },
+  { name: "symptom:delete:all", description: "Delete symptoms", resource: "symptom", action: "delete", scope: "all", category: "content_management" },
+  { name: "question:create:all", description: "Create questions", resource: "question", action: "create", scope: "all", category: "content_management" },
+  { name: "question:update:all", description: "Update questions", resource: "question", action: "update", scope: "all", category: "content_management" },
+  { name: "question:delete:all", description: "Delete questions", resource: "question", action: "delete", scope: "all", category: "content_management" },
+  
+  // Onboarding & Assessment Permissions
+  { name: "onboarding:access:own", description: "Access onboarding process", resource: "onboarding", action: "access", scope: "own", category: "assessment" },
+  { name: "answer:submit:own", description: "Submit answers to questions", resource: "answer", action: "submit", scope: "own", category: "assessment" },
+  { name: "assessment:view:assigned", description: "View assigned patients' assessments", resource: "assessment", action: "view", scope: "assigned", category: "assessment" },
+  
+  // System Administration Permissions
+  { name: "permission:manage:all", description: "Manage system permissions", resource: "permission", action: "manage", scope: "all", category: "system_admin" },
+  { name: "role:manage:all", description: "Manage user roles", resource: "role", action: "manage", scope: "all", category: "system_admin" },
+  { name: "settings:manage:all", description: "Manage system settings", resource: "settings", action: "manage", scope: "all", category: "system_admin" },
+  { name: "submission:manage:all", description: "Manage user submissions", resource: "submission", action: "manage", scope: "all", category: "system_admin" }
+];
+
 async function seed() {
   await mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
   console.log('Connected to MongoDB');
@@ -171,8 +223,8 @@ async function seed() {
   console.log('Admin role upserted:', adminRole.role_name);
 
   // Assign admin role to the specified user only
-  const adminUserId = new mongoose.Types.ObjectId('687f6de1cb1f9bb7047216e9');
-  const adminUserEmail = 'zeeshanasghar1502@gmail.com';
+  const adminUserId = new mongoose.Types.ObjectId('6889f16c6012be5f42a9a85b');
+  const adminUserEmail = 'kpsharoon7@gmail.com'; // Change this to your admin email
   const adminUser = await User.findOne({ _id: adminUserId, email: adminUserEmail });
   if (adminUser) {
     const alreadyAssigned = await UsersRoles.findOne({ user_id: adminUser._id, role_id: adminRole._id });
@@ -196,7 +248,7 @@ async function seed() {
 
   // Assign user role to the specified user
   const normalUserId = '6880d502873514b36914e931';
-  const normalUserEmail = '221360@students.au.edu.pk';
+  const normalUserEmail = '221465@students.au.edu.pk'; // Change this to your normal user email
   const normalUser = await User.findOne({ _id: normalUserId, email: normalUserEmail });
   if (normalUser) {
     const alreadyAssigned = await UsersRoles.findOne({ user_id: normalUser._id, role_id: userRole._id });
@@ -251,6 +303,92 @@ async function seed() {
       console.log('  Question upserted:', q.question_text);
     }
   }
+
+  // Seed Permissions
+  console.log('Seeding permissions...');
+  for (const permData of permissionsData) {
+    await Permission.findOneAndUpdate(
+      { name: permData.name },
+      permData,
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    console.log('  Permission upserted:', permData.name);
+  }
+
+  // Assign Permissions to Roles
+  console.log('Assigning permissions to roles...');
+  
+  // Patient Role Permissions (using existing 'user' role as patient)
+  const patientPermissions = [
+    'dashboard:access:patient',
+    'profile:view:own',
+    'profile:edit:own', 
+    'password:change:own',
+    'disease:view:own',
+    'disease:edit:own',
+    'disease:submit:own',
+    'onboarding:access:own',
+    'answer:submit:own'
+  ];
+  
+  // Subadmin/Doctor Role Permissions
+  const subadminPermissions = [
+    'dashboard:access:doctor',
+    'profile:view:own',
+    'profile:edit:own',
+    'password:change:own',
+    'user:read:assigned',
+    'disease:view:assigned',
+    'disease:edit:assigned',
+    'assessment:view:assigned'
+  ];
+  
+  // Superadmin Role Permissions (all permissions)
+  const superadminPermissions = permissionsData.map(p => p.name);
+  
+  // Assign permissions to user role (patient)
+  if (userRole) {
+    console.log('Assigning permissions to user role (patient)...');
+    for (const permName of patientPermissions) {
+      const permission = await Permission.findOne({ name: permName });
+      if (permission) {
+        await RolePermissions.findOneAndUpdate(
+          { role_id: userRole._id, permission_id: permission._id },
+          { 
+            role_id: userRole._id, 
+            permission_id: permission._id,
+            assigned_at: new Date()
+          },
+          { upsert: true, new: true }
+        );
+        console.log('  Assigned permission to user role:', permName);
+      }
+    }
+  }
+  
+  // Assign permissions to admin role (superadmin)
+  if (adminRole) {
+    console.log('Assigning permissions to admin role (superadmin)...');
+    for (const permName of superadminPermissions) {
+      const permission = await Permission.findOne({ name: permName });
+      if (permission) {
+        await RolePermissions.findOneAndUpdate(
+          { role_id: adminRole._id, permission_id: permission._id },
+          { 
+            role_id: adminRole._id, 
+            permission_id: permission._id,
+            assigned_at: new Date()
+          },
+          { upsert: true, new: true }
+        );
+        console.log('  Assigned permission to admin role:', permName);
+      }
+    }
+  }
+  
+
+  
+  
 
   console.log('Seeding complete!');
   await mongoose.disconnect();
