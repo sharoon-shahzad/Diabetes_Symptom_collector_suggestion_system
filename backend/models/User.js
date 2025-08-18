@@ -70,4 +70,7 @@ const userSchema = new mongoose.Schema({
     },
 }, { timestamps: true });
 
+// Add index for onboarding completion check
+userSchema.index({ _id: 1, onboardingCompleted: 1 });
+
 export const User = mongoose.model('User', userSchema);
