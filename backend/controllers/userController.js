@@ -484,3 +484,5 @@ export const submitDiseaseData = async (req, res) => {
     });
   }
 };
+
+

@@ -121,59 +121,120 @@ export const saveUserAnswer = async (req, res) => {
     const ua = await UsersAnswers.create({ user_id: userId, question_id: questionId, answer_id: answer._id });
 
     // Check if user has now completed all onboarding questions
+    // Use findOneAndUpdate with atomic operation to prevent race conditions
     const user = await (await import('../models/User.js')).User.findById(userId);
+    
     // Find the user's disease (from the most recent answer)
     const question = await Question.findById(questionId).populate({ path: 'symptom_id', populate: { path: 'disease_id' } });
     const disease = question?.symptom_id?.disease_id;
-    if (disease) {
+    
+    if (disease && !user.onboardingCompleted) {
       // Count total questions for this disease
       const allSymptoms = await Symptom.find({ disease_id: disease._id, deleted_at: null });
       const symptomIds = allSymptoms.map(s => s._id);
       const totalQuestions = await Question.countDocuments({ symptom_id: { $in: symptomIds }, deleted_at: null });
+      
       // Count user's answered questions (not deleted)
       const userAnswers = await UsersAnswers.find({ user_id: userId, deleted_at: null });
       const answeredQuestions = new Set(userAnswers.map(ua => String(ua.question_id))).size;
-      if (totalQuestions > 0 && answeredQuestions === totalQuestions && !user.onboardingCompleted) {
-        // Fetch all user's answers for this disease
-        const detailedAnswers = await UsersAnswers.find({ user_id: userId, deleted_at: null })
-          .populate({
-            path: 'question_id',
-            populate: {
-              path: 'symptom_id',
-              model: 'Symptom',
-            },
-            model: 'Question',
-          })
-          .populate('answer_id');
-        // Group answers by symptom
-        const symptomMap = {};
-        detailedAnswers.forEach(ua => {
-          const symptom = ua.question_id?.symptom_id;
-          if (!symptom) return;
-          const symptomName = symptom.name || 'Unknown Symptom';
-          if (!symptomMap[symptomName]) {
-            symptomMap[symptomName] = [];
+      
+      console.log('📊 Completion check:', {
+        totalQuestions,
+        answeredQuestions,
+        isComplete: totalQuestions > 0 && answeredQuestions === totalQuestions
+      });
+      
+      if (totalQuestions > 0 && answeredQuestions === totalQuestions) {
+        console.log('🎉 User has completed all questions! Attempting to update...');
+        
+        // Use atomic operation to prevent multiple emails
+        const updatedUser = await (await import('../models/User.js')).User.findOneAndUpdate(
+          { 
+            _id: userId, 
+            onboardingCompleted: { $ne: true } // Only update if not already completed
+          },
+          {
+            $set: {
+              onboardingCompleted: true,
+              onboardingCompletedAt: new Date(),
+              diseaseDataSubmittedAt: new Date(),
+              diseaseDataEditingExpiresAt: new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)), // 7 days
+              diseaseDataStatus: 'draft'
+            }
+          },
+          { new: true } // Return the updated document
+        );
+        
+        // Only send email if the user was actually updated (not already completed)
+        if (updatedUser) {
+          console.log('✅ User updated successfully, checking email conditions...');
+          
+          // Additional check to prevent duplicate emails
+          const { canSendOnboardingEmail } = await import('../utils/emailUtils.js');
+          
+          const canSend = await canSendOnboardingEmail(userId, user.email);
+          console.log('📧 Can send email:', canSend);
+          
+          if (canSend) {
+            console.log('📧 Fetching user answers for email...');
+            
+            // Fetch all user's answers for this disease
+            const detailedAnswers = await UsersAnswers.find({ user_id: userId, deleted_at: null })
+              .populate({
+                path: 'question_id',
+                populate: {
+                  path: 'symptom_id',
+                  model: 'Symptom',
+                },
+                model: 'Question',
+              })
+              .populate({
+                path: 'answer_id',
+                model: 'Answer'
+              });
+            
+            console.log('📧 Found answers:', detailedAnswers.length);
+            
+            // Group answers by symptom
+            const symptomMap = {};
+            detailedAnswers.forEach(ua => {
+              const symptom = ua.question_id?.symptom_id;
+              if (!symptom) return;
+              const symptomName = symptom.name || 'Unknown Symptom';
+              if (!symptomMap[symptomName]) {
+                symptomMap[symptomName] = [];
+              }
+              symptomMap[symptomName].push({
+                question: ua.question_id?.question_text || 'Unknown Question',
+                answer: ua.answer_id?.answer_text || 'N/A',
+              });
+            });
+            
+            console.log('📧 Symptom map created:', Object.keys(symptomMap));
+            
+            // Send onboarding completion email with details
+            try {
+              console.log('📧 Attempting to send email to:', user.email);
+              console.log('📧 User details:', { fullName: user.fullName, diseaseName: disease.name });
+              console.log('📧 Symptom map keys:', Object.keys(symptomMap));
+              
+              const { sendOnboardingCompletionEmail } = await import('../services/emailService.js');
+              console.log('📧 Email service imported successfully');
+              
+              await sendOnboardingCompletionEmail(user.email, user.fullName, disease.name, symptomMap);
+              console.log('✅ Email sent successfully!');
+            } catch (emailError) {
+              console.error('❌ Email sending failed:', emailError.message);
+              console.error('❌ Full email error:', emailError);
+              console.error('❌ Error stack:', emailError.stack);
+              // Don't fail the entire request if email fails
+            }
+          } else {
+            console.log('⚠️ Email sending blocked by duplicate prevention');
           }
-          symptomMap[symptomName].push({
-            question: ua.question_id?.question_text || 'Unknown Question',
-            answer: ua.answer_id?.answer_text || 'N/A',
-          });
-        });
-        // Send onboarding completion email with details
-        const { sendOnboardingCompletionEmail } = await import('../services/emailService.js');
-        await sendOnboardingCompletionEmail(user.email, user.fullName, disease.name, symptomMap);
-        user.onboardingCompleted = true;
-        user.onboardingCompletedAt = new Date();
-        
-        // Set disease data editing window (7 days from completion)
-        const completionDate = new Date();
-        const editingExpiresAt = new Date(completionDate.getTime() + (7 * 24 * 60 * 60 * 1000)); // 7 days
-        
-        user.diseaseDataSubmittedAt = completionDate;
-        user.diseaseDataEditingExpiresAt = editingExpiresAt;
-        user.diseaseDataStatus = 'draft'; // Initially draft, will be submitted after 7 days
-        
-        await user.save();
+        } else {
+          console.log('⚠️ User was not updated (already completed)');
+        }
       }
     }
 
