@@ -1,5 +1,7 @@
 import express from 'express';
 import { verifyAccessTokenMiddleware } from '../middlewares/authMiddleware.js';
+import { roleCheckMiddleware } from '../middlewares/roleCheckMiddleware.js';
+import { superAdminMiddleware } from '../middlewares/superAdminMiddleware.js';
 import { 
   getCurrentUser, 
   getAllUsers, 
@@ -8,9 +10,11 @@ import {
   getMyDiseaseData,
   getUserDiseaseDataForEditing,
   updateUserDiseaseDataAnswer,
-  submitDiseaseData
+  submitDiseaseData,
+  getAllAdmins,
+  getUserRoles,
+  updateUserRole
 } from '../controllers/userController.js';
-import { roleCheckMiddleware } from '../middlewares/roleCheckMiddleware.js';
 
 const router = express.Router();
 
@@ -32,5 +36,10 @@ router.get('/my-disease-data', verifyAccessTokenMiddleware, getMyDiseaseData);
 router.get('/disease-data-for-editing', verifyAccessTokenMiddleware, getUserDiseaseDataForEditing);
 router.put('/update-disease-data-answer', verifyAccessTokenMiddleware, updateUserDiseaseDataAnswer);
 router.post('/submit-disease-data', verifyAccessTokenMiddleware, submitDiseaseData);
+
+// New routes for super admin functionality
+router.get('/allAdmins', verifyAccessTokenMiddleware, superAdminMiddleware, getAllAdmins);
+router.get('/roles', verifyAccessTokenMiddleware, getUserRoles);
+router.put('/updateUserRole/:id', verifyAccessTokenMiddleware, superAdminMiddleware, updateUserRole);
 
 export default router;

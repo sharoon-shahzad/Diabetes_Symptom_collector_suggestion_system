@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Box, Typography, Button, Paper, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Switch, FormControlLabel, MenuItem, CircularProgress, Tooltip, Chip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow
+  Box, Typography, Button, Paper, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Switch, FormControlLabel, MenuItem, CircularProgress, Tooltip, Chip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, FormControl, InputLabel, Select
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -15,13 +15,14 @@ const GENDER_OPTIONS = [
   { value: 'other', label: 'Other' },
 ];
 
-function UserFormDialog({ open, onClose, onSubmit, initialData }) {
+function UserFormDialog({ open, onClose, onSubmit, initialData, isSuperAdmin, roles }) {
   const [form, setForm] = useState({
     fullName: '',
     email: '',
     gender: '',
     date_of_birth: '',
     isActivated: true,
+    role: ''
   });
   const [loading, setLoading] = useState(false);
 
@@ -33,9 +34,10 @@ function UserFormDialog({ open, onClose, onSubmit, initialData }) {
         gender: initialData.gender || '',
         date_of_birth: initialData.date_of_birth ? initialData.date_of_birth.slice(0, 10) : '',
         isActivated: initialData.isActivated,
+        role: initialData.roles?.[0] || ''
       });
     } else {
-      setForm({ fullName: '', email: '', gender: '', date_of_birth: '', isActivated: true });
+      setForm({ fullName: '', email: '', gender: '', date_of_birth: '', isActivated: true, role: '' });
     }
   }, [initialData, open]);
 
@@ -51,6 +53,10 @@ function UserFormDialog({ open, onClose, onSubmit, initialData }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatRole = (roleName) => {
+    return roleName.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   return (
@@ -101,6 +107,34 @@ function UserFormDialog({ open, onClose, onSubmit, initialData }) {
           control={<Switch checked={form.isActivated} onChange={handleChange} name="isActivated" />}
           label="Activated"
         />
+        
+        {/* Role selection - only visible to super admins */}
+        {isSuperAdmin ? (
+          <>
+            <Typography variant="body2" color="#90caf9" sx={{ mt: 2, mb: 1 }}>
+              Super Admin: You can change this user's role
+            </Typography>
+            <FormControl fullWidth margin="normal">
+              <InputLabel>Role</InputLabel>
+              <Select
+                name="role"
+                value={form.role}
+                onChange={handleChange}
+                label="Role"
+              >
+                {roles.map((role) => (
+                  <MenuItem key={role._id} value={role.role_name}>
+                    {formatRole(role.role_name)}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </>
+        ) : (
+          <Typography variant="body2" color="#b0bec5" sx={{ mt: 2, mb: 1, fontStyle: 'italic' }}>
+            Note: Only Super Admins can change user roles
+          </Typography>
+        )}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
@@ -132,6 +166,8 @@ export default function UserManagement() {
   const [editData, setEditData] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
+  const [roles, setRoles] = useState([]); // State to hold roles for super admin
+  const [currentUserRoles, setCurrentUserRoles] = useState([]); // Current user's roles
 
   const loadUsers = async () => {
     setLoading(true);
@@ -145,9 +181,38 @@ export default function UserManagement() {
     }
   };
 
+  const loadRoles = async () => {
+    try {
+      // Only try to fetch roles if user is super admin
+      if (currentUserRoles.includes('super_admin')) {
+        const res = await axiosInstance.get('/roles');
+        setRoles(res.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch roles:', err);
+    }
+  };
+
+  const loadCurrentUserRoles = async () => {
+    try {
+      const res = await axiosInstance.get('/users/roles');
+      setCurrentUserRoles(res.data.data);
+    } catch (err) {
+      console.error('Failed to fetch current user roles:', err);
+    }
+  };
+
   useEffect(() => {
     loadUsers();
+    loadCurrentUserRoles();
   }, []);
+
+  // Load roles after current user roles are loaded
+  useEffect(() => {
+    if (currentUserRoles.includes('super_admin')) {
+      loadRoles();
+    }
+  }, [currentUserRoles]);
 
   const handleAdd = () => {
     setEditData(null);
@@ -167,7 +232,22 @@ export default function UserManagement() {
   const handleFormSubmit = async (data) => {
     try {
       if (editData) {
-        await axiosInstance.put(`/users/updateUser/${editData._id}`, data);
+        // Update user details
+        await axiosInstance.put(`/users/updateUser/${editData._id}`, {
+          fullName: data.fullName,
+          email: data.email,
+          gender: data.gender,
+          date_of_birth: data.date_of_birth,
+          isActivated: data.isActivated
+        });
+
+        // Update user role if it's a super admin and role has changed
+        if (isSuperAdmin && data.role && data.role !== editData.roles?.[0]) {
+          await axiosInstance.put(`/users/updateUserRole/${editData._id}`, {
+            role: data.role
+          });
+        }
+
         toast.success('User updated successfully');
       } else {
         toast.info('Add user not implemented');
@@ -191,12 +271,23 @@ export default function UserManagement() {
     }
   };
 
+  const isSuperAdmin = currentUserRoles.includes('super_admin');
+
   return (
     <Box p={3}>
       <Paper elevation={3} sx={{ p: 4, mb: 2, borderRadius: 4, boxShadow: '0 4px 24px 0 rgba(25, 118, 210, 0.08)', background: '#101624', color: '#fff' }}>
         <Typography variant="h5" fontWeight="bold" gutterBottom color="#fff">
           User Management
         </Typography>
+        {isSuperAdmin ? (
+          <Typography variant="body2" color="#90caf9" mb={2}>
+            Super Admin Mode: You can edit user roles and permissions
+          </Typography>
+        ) : (
+          <Typography variant="body2" color="#b0bec5" mb={2}>
+            Admin Mode: You can edit user details but cannot change roles
+          </Typography>
+        )}
         {loading ? (
           <Box display="flex" justifyContent="center" alignItems="center" minHeight={120}>
             <CircularProgress sx={{ color: '#fff' }} />
@@ -211,8 +302,30 @@ export default function UserManagement() {
                   <TableCell sx={{ color: '#fff' }}>Gender</TableCell>
                   <TableCell sx={{ color: '#fff' }}>Date of Birth</TableCell>
                   <TableCell sx={{ color: '#fff' }}>Active</TableCell>
-                  <TableCell sx={{ color: '#fff' }}>Roles</TableCell>
-                  <TableCell align="right" sx={{ color: '#fff' }}>Actions</TableCell>
+                  <TableCell sx={{ color: '#fff' }}>
+                    Roles
+                    {isSuperAdmin ? (
+                      <Typography variant="caption" display="block" sx={{ color: '#90caf9', fontWeight: 'normal' }}>
+                        (Editable)
+                      </Typography>
+                    ) : (
+                      <Typography variant="caption" display="block" sx={{ color: '#b0bec5', fontWeight: 'normal' }}>
+                        (View only)
+                      </Typography>
+                    )}
+                  </TableCell>
+                  <TableCell align="right" sx={{ color: '#fff' }}>
+                    Actions
+                    {isSuperAdmin ? (
+                      <Typography variant="caption" display="block" sx={{ color: '#90caf9', fontWeight: 'normal' }}>
+                        (Full access)
+                      </Typography>
+                    ) : (
+                      <Typography variant="caption" display="block" sx={{ color: '#b0bec5', fontWeight: 'normal' }}>
+                        (Limited access)
+                      </Typography>
+                    )}
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -231,7 +344,17 @@ export default function UserManagement() {
                     </TableCell>
                     <TableCell sx={{ color: '#fff' }}>
                       {Array.isArray(user.roles) && user.roles.map(role => (
-                        <Chip key={role} label={role} size="small" sx={{ mr: 0.5, color: '#fff', bgcolor: '#1976d2', fontWeight: 600 }} />
+                        <Chip 
+                          key={role} 
+                          label={role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} 
+                          size="small" 
+                          sx={{ 
+                            mr: 0.5, 
+                            color: '#fff', 
+                            bgcolor: role === 'super_admin' ? '#d32f2f' : role === 'admin' ? '#ed6c02' : '#1976d2', 
+                            fontWeight: 600 
+                          }} 
+                        />
                       ))}
                     </TableCell>
                     <TableCell align="right" sx={{ color: '#fff' }}>
@@ -241,6 +364,20 @@ export default function UserManagement() {
                       <Tooltip title="Delete">
                         <IconButton color="error" onClick={() => handleDelete(user._id)}><DeleteIcon /></IconButton>
                       </Tooltip>
+                      {isSuperAdmin && (
+                        <Tooltip title="Super Admin: Can edit roles">
+                          <Chip 
+                            label="Role Editable" 
+                            size="small" 
+                            sx={{ 
+                              ml: 1, 
+                              color: '#fff', 
+                              bgcolor: '#4caf50', 
+                              fontSize: '0.7rem' 
+                            }} 
+                          />
+                        </Tooltip>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -259,6 +396,8 @@ export default function UserManagement() {
         onClose={() => setFormOpen(false)}
         onSubmit={handleFormSubmit}
         initialData={editData}
+        isSuperAdmin={isSuperAdmin}
+        roles={roles}
       />
       <ConfirmDialog
         open={confirmOpen}

@@ -5,7 +5,7 @@ import { Question } from './models/Question.js';
 import { Role } from './models/Role.js';
 import { UsersRoles } from './models/User_Role.js';
 import { User } from './models/User.js';
-import { Permission } from './models/Permission.js';
+import { Permission } from './models/Permissions.js';
 import { RolePermissions } from './models/RolePermissions.js';
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/Diavise';
@@ -214,13 +214,45 @@ async function seed() {
   await mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
   console.log('Connected to MongoDB');
 
-  // Ensure admin role exists
+  // Ensure super admin role exists (highest level)
+  let superAdminRole = await Role.findOneAndUpdate(
+    { role_name: 'super_admin' },
+    { role_name: 'super_admin' },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+  console.log('Super Admin role upserted:', superAdminRole.role_name);
+
+  // Ensure admin role exists (middle level)
   let adminRole = await Role.findOneAndUpdate(
     { role_name: 'admin' },
     { role_name: 'admin' },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
   console.log('Admin role upserted:', adminRole.role_name);
+
+  // Ensure user role exists (lowest level)
+  let userRole = await Role.findOneAndUpdate(
+    { role_name: 'user' },
+    { role_name: 'user' },
+    { upsert: true, setDefaultsOnInsert: true }
+  );
+  console.log('User role upserted:', userRole.role_name);
+
+  // Assign super admin role to the specified user
+  const superAdminUserId = new mongoose.Types.ObjectId('687f6de1cb1f9bb7047216e9');
+  const superAdminUserEmail = 'zeeshanasghar1502@gmail.com';
+  const superAdminUser = await User.findOne({ _id: superAdminUserId, email: superAdminUserEmail });
+  if (superAdminUser) {
+    const alreadyAssigned = await UsersRoles.findOne({ user_id: superAdminUser._id, role_id: superAdminRole._id });
+    if (!alreadyAssigned) {
+      await UsersRoles.create({ user_id: superAdminUser._id, role_id: superAdminRole._id });
+      console.log('Super Admin role assigned to user:', superAdminUser.email);
+    } else {
+      console.log('Super Admin role already assigned to user:', superAdminUser.email);
+    }
+  } else {
+    console.log('Super Admin user not found, cannot assign super admin role.');
+  }
 
   // Assign admin role to the specified user only
   const adminUserId = new mongoose.Types.ObjectId('6889f16c6012be5f42a9a85b');
@@ -237,14 +269,6 @@ async function seed() {
   } else {
     console.log('Admin user not found, cannot assign admin role.');
   }
-
-  // Ensure user role exists
-  let userRole = await Role.findOneAndUpdate(
-    { role_name: 'user' },
-    { role_name: 'user' },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
-  );
-  console.log('User role upserted:', userRole.role_name);
 
   // Assign user role to the specified user
   const normalUserId = '6880d502873514b36914e931';
@@ -331,15 +355,27 @@ async function seed() {
     'answer:submit:own'
   ];
   
-  // Subadmin/Doctor Role Permissions
-  const subadminPermissions = [
-    'dashboard:access:doctor',
+  // Admin Role Permissions (middle level access)
+  const adminPermissions = [
+    'dashboard:access:admin',
     'profile:view:own',
     'profile:edit:own',
     'password:change:own',
-    'user:read:assigned',
-    'disease:view:assigned',
-    'disease:edit:assigned',
+    'user:read:all',
+    'user:update:all',
+    'user:delete:all',
+    'disease:view:all',
+    'disease:edit:all',
+    'disease:manage:all',
+    'disease:create:all',
+    'disease:update:all',
+    'disease:delete:all',
+    'symptom:create:all',
+    'symptom:update:all',
+    'symptom:delete:all',
+    'question:create:all',
+    'question:update:all',
+    'question:delete:all',
     'assessment:view:assigned'
   ];
   
@@ -366,10 +402,10 @@ async function seed() {
     }
   }
   
-  // Assign permissions to admin role (superadmin)
+  // Assign permissions to admin role
   if (adminRole) {
-    console.log('Assigning permissions to admin role (superadmin)...');
-    for (const permName of superadminPermissions) {
+    console.log('Assigning permissions to admin role...');
+    for (const permName of adminPermissions) {
       const permission = await Permission.findOne({ name: permName });
       if (permission) {
         await RolePermissions.findOneAndUpdate(
@@ -386,9 +422,25 @@ async function seed() {
     }
   }
   
-
-  
-  
+  // Assign permissions to super admin role
+  if (superAdminRole) {
+    console.log('Assigning permissions to super admin role...');
+    for (const permName of superadminPermissions) {
+      const permission = await Permission.findOne({ name: permName });
+      if (permission) {
+        await RolePermissions.findOneAndUpdate(
+          { role_id: superAdminRole._id, permission_id: permission._id },
+          { 
+            role_id: superAdminRole._id, 
+            permission_id: permission._id,
+            assigned_at: new Date()
+          },
+          { upsert: true, new: true }
+        );
+        console.log('  Assigned permission to super admin role:', permName);
+      }
+    }
+  }
 
   console.log('Seeding complete!');
   await mongoose.disconnect();

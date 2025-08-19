@@ -9,23 +9,21 @@ import ManageDiseases from '../admin/ManageDiseases';
 import ManageSymptoms from '../admin/ManageSymptoms';
 import ManageQuestions from '../admin/ManageQuestions';
 import UserManagement from '../admin/UserManagement';
+import ManageAdmins from '../admin/ManageAdmins';
+import ManageRolesPermissions from '../admin/ManageRolesPermissions';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import SecurityIcon from '@mui/icons-material/Security';
 import { getCurrentUser, logout } from '../utils/auth';
 import { useNavigate } from 'react-router-dom';
 
 const drawerWidth = 220;
 const fontFamily = `'Inter', 'Roboto', 'Open Sans', 'Helvetica Neue', Arial, sans-serif`;
 
-const sections = [
-  { label: 'Manage Diseases', icon: <HealingIcon />, component: <ManageDiseases /> },
-  { label: 'Manage Symptoms', icon: <BugReportIcon />, component: <ManageSymptoms /> },
-  { label: 'Manage Questions', icon: <QuizIcon />, component: <ManageQuestions /> },
-  { label: 'User Management', icon: <AccountCircleIcon />, component: <UserManagement /> },
-];
-
 export default function AdminDashboard() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [user, setUser] = useState(null);
+  const [userRoles, setUserRoles] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -40,6 +38,16 @@ export default function AdminDashboard() {
       try {
         const userData = await getCurrentUser();
         setUser(userData);
+        
+        // Fetch user roles to determine available sections
+        const token = localStorage.getItem('accessToken');
+        const rolesResponse = await fetch('http://localhost:5000/api/v1/users/roles', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (rolesResponse.ok) {
+          const rolesData = await rolesResponse.json();
+          setUserRoles(rolesData.data || []);
+        }
       } catch {
         navigate('/signin');
       }
@@ -51,6 +59,28 @@ export default function AdminDashboard() {
     await logout();
     navigate('/signin');
   };
+
+  // Define sections based on user role
+  const getSections = () => {
+    const baseSections = [
+      { label: 'Manage Diseases', icon: <HealingIcon />, component: <ManageDiseases /> },
+      { label: 'Manage Symptoms', icon: <BugReportIcon />, component: <ManageSymptoms /> },
+      { label: 'Manage Questions', icon: <QuizIcon />, component: <ManageQuestions /> },
+      { label: 'User Management', icon: <AccountCircleIcon />, component: <UserManagement /> },
+    ];
+
+    // Add super admin sections if user has super admin role
+    if (userRoles.includes('super_admin')) {
+      baseSections.push(
+        { label: 'Manage Admins', icon: <AdminPanelSettingsIcon />, component: <ManageAdmins /> },
+        { label: 'Manage Roles & Permissions', icon: <SecurityIcon />, component: <ManageRolesPermissions /> }
+      );
+    }
+
+    return baseSections;
+  };
+
+  const sections = getSections();
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#0B1120' }}>
@@ -85,7 +115,10 @@ export default function AdminDashboard() {
               {user?.fullName?.[0] || 'A'}
             </Avatar>
             <Typography fontWeight={700} fontSize={16}>{user?.fullName}</Typography>
-            {/* Optionally add email or role here if needed */}
+            <Typography fontSize={12} color="#b0bec5" textAlign="center">
+              {userRoles.includes('super_admin') ? 'Super Admin' : 
+               userRoles.includes('admin') ? 'Admin' : 'User'}
+            </Typography>
           </Box>
           <Divider sx={{ my: 1, bgcolor: '#263445' }} />
           {/* Navigation */}
