@@ -90,7 +90,6 @@ export const updateUser = async (req, res) => {
         if (!date_of_birth) {
             return res.status(400).json({ success: false, message: "Date of birth is required" });
         }
-        // Optionally validate isActivated, phone_number, whatsapp_number as needed
 
         // Check for email uniqueness if email is being changed
         if (email !== user.email) {
@@ -100,23 +99,25 @@ export const updateUser = async (req, res) => {
             }
         }
 
-        // Update allowed fields
-        user.fullName = fullName;
-        user.email = email;
-        user.gender = gender;
-        user.date_of_birth = date_of_birth;
-        if (typeof isActivated !== 'undefined') user.isActivated = isActivated;
-        // if (typeof phone_number !== 'undefined') user.phone_number = phone_number;
-        // if (typeof whatsapp_number !== 'undefined') user.whatsapp_number = whatsapp_number;
-
-        await user.save();
-
-        // Exclude sensitive fields in response
-        const { password, refreshToken, activationToken, resetPasswordToken, ...safeUser } = user.toObject();
+        // Update user
+        const updatedUser = await User.findByIdAndUpdate(
+            id,
+            {
+                fullName,
+                email,
+                gender,
+                date_of_birth,
+                isActivated,
+                phone_number,
+                whatsapp_number
+            },
+            { new: true, runValidators: true }
+        );
 
         return res.status(200).json({
             success: true,
-            data: safeUser
+            message: "User updated successfully",
+            data: updatedUser
         });
     } catch (error) {
         console.error('Update user error:', error);
@@ -483,6 +484,115 @@ export const submitDiseaseData = async (req, res) => {
       message: 'Error submitting disease data'
     });
   }
+};
+
+// Get all admins (users with admin or super_admin role)
+export const getAllAdmins = async (req, res) => {
+    try {
+        // Get admin and super_admin role IDs
+        const { Role } = await import('../models/Role.js');
+        const adminRole = await Role.findOne({ role_name: 'admin' });
+        const superAdminRole = await Role.findOne({ role_name: 'super_admin' });
+        
+        if (!adminRole || !superAdminRole) {
+            return res.status(500).json({
+                success: false,
+                message: 'Admin roles not found'
+            });
+        }
+
+        // Find users with admin or super_admin roles
+        const adminUsers = await UsersRoles.find({
+            role_id: { $in: [adminRole._id, superAdminRole._id] }
+        }).populate('user_id').populate('role_id');
+
+        // Format the response
+        const admins = adminUsers.map(ur => {
+            const user = ur.user_id;
+            const role = ur.role_id;
+            const { password, refreshToken, activationToken, resetPasswordToken, ...safeUser } = user.toObject();
+            return {
+                ...safeUser,
+                roles: [role.role_name]
+            };
+        });
+
+        return res.status(200).json({
+            success: true,
+            data: admins
+        });
+    } catch (error) {
+        console.error('Get all admins error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error fetching admins'
+        });
+    }
+};
+
+// Get user roles
+export const getUserRoles = async (req, res) => {
+    try {
+        const user = req.user;
+        const userRoles = await UsersRoles.find({ user_id: user._id }).populate('role_id');
+        const roles = userRoles.map(ur => ur.role_id.role_name);
+        
+        return res.status(200).json({
+            success: true,
+            data: roles
+        });
+    } catch (error) {
+        console.error('Get user roles error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error fetching user roles'
+        });
+    }
+};
+
+// Update user role
+export const updateUserRole = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { role } = req.body;
+
+        if (!role) {
+            return res.status(400).json({
+                success: false,
+                message: 'Role is required'
+            });
+        }
+
+        // Find the role
+        const { Role } = await import('../models/Role.js');
+        const targetRole = await Role.findOne({ role_name: role });
+        if (!targetRole) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid role'
+            });
+        }
+
+        // Remove existing roles for this user
+        await UsersRoles.deleteMany({ user_id: id });
+
+        // Assign new role
+        await UsersRoles.create({
+            user_id: id,
+            role_id: targetRole._id
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: 'User role updated successfully'
+        });
+    } catch (error) {
+        console.error('Update user role error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error updating user role'
+        });
+    }
 };
 
 

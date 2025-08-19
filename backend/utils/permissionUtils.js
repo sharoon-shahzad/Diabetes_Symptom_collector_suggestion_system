@@ -1,6 +1,6 @@
 import { UsersRoles } from '../models/User_Role.js';
 import { RolePermissions } from '../models/RolePermissions.js';
-import { Permission } from '../models/Permission.js';
+import { Permission } from '../models/Permissions.js';
 import mongoose from 'mongoose';
 
 /**
