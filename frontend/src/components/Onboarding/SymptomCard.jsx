@@ -4,13 +4,12 @@ import { Navigation, Pagination } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
-import { Card, CardContent, Typography, CircularProgress, Alert, Collapse, Box, Button, Stack, Badge, Chip } from '@mui/material';
+import { Card, CardContent, Typography, CircularProgress, Alert, Collapse, Box, Button, Stack } from '@mui/material';
 import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import QuestionList from './QuestionList';
 import { getCurrentUser } from '../../utils/auth';
-import { fetchSymptomsByDisease } from '../../utils/api';
-
+import axiosInstance from '../../utils/axiosInstance';
 
 const CARD_MIN_HEIGHT = 180;
 
@@ -28,7 +27,8 @@ const SymptomCard = ({ diseaseId }) => {
       if (!diseaseId) return;
       try {
         setLoading(true);
-        const data = await fetchSymptomsByDisease(diseaseId);
+        const res = await axiosInstance.get(`/symptoms/${diseaseId}`);
+        const data = res.data?.data || [];
         setSymptoms(data);
         setError(null);
       } catch (err) {
@@ -64,41 +64,26 @@ const SymptomCard = ({ diseaseId }) => {
     try {
       const token = localStorage.getItem('accessToken');
       if (!token) return;
-      
-      // Try using my-disease-data endpoint instead
-      const response = await fetch('/api/v1/users/my-disease-data', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const data = await response.json();
-      
+      const response = await axiosInstance.get('/users/my-disease-data');
+      const data = response.data;
       if (data.success && data.data && data.data.symptoms) {
         const answeredIds = new Set();
         const completionStatus = {};
-        
         data.data.symptoms.forEach(symptom => {
           const symptomQuestions = symptom.questions || [];
           const answeredCount = symptomQuestions.length;
-          
-          // A symptom is completed if it has any answered questions
           const isCompleted = answeredCount > 0;
-          
-          // Use symptom name as key for better matching
           const symptomKey = symptom.name?.toLowerCase().trim();
-          
           completionStatus[symptomKey] = {
             answered: answeredCount,
             total: answeredCount,
             completed: isCompleted,
             symptomId: symptom._id
           };
-          
           symptomQuestions.forEach(question => {
             answeredIds.add(question._id);
           });
         });
-        
         setAnsweredQuestions(answeredIds);
         setSymptomCompletionStatus(completionStatus);
       }
@@ -110,13 +95,10 @@ const SymptomCard = ({ diseaseId }) => {
   const handleExpand = (symptomId) => setExpanded(expanded === symptomId ? null : symptomId);
 
   const isSymptomCompleted = (symptomId) => {
-    // Try to find the symptom by name in the completion status
     const symptom = symptoms.find(s => s._id === symptomId);
     if (!symptom) return false;
-    
     const symptomName = symptom.name?.toLowerCase().trim();
     const completionInfo = symptomCompletionStatus[symptomName];
-    
     return completionInfo?.completed || false;
   };
 
