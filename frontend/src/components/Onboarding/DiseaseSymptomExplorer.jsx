@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, CircularProgress, Alert } from '@mui/material';
-import axios from 'axios';
+import axiosInstance from '../../utils/axiosInstance';
 import SymptomCard from './SymptomCard';
 
 const DiseaseSymptomExplorer = () => {
@@ -11,8 +11,7 @@ const DiseaseSymptomExplorer = () => {
   useEffect(() => {
     const fetchDiseases = async () => {
       try {
-        const response = await axios.get('/api/v1/diseases');
-        console.log('Fetched diseases:', response.data);
+        const response = await axiosInstance.get('/diseases');
         let data = response.data;
         if (Array.isArray(data)) setDiseases(data);
         else if (Array.isArray(data.data)) setDiseases(data.data);

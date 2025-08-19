@@ -1,7 +1,6 @@
 import express from 'express';
 import { verifyAccessTokenMiddleware } from '../middlewares/authMiddleware.js';
-import { roleCheckMiddleware } from '../middlewares/roleCheckMiddleware.js';
-import { superAdminMiddleware } from '../middlewares/superAdminMiddleware.js';
+import { requirePermission } from '../middlewares/permissionMiddleware.js';
 import { 
   getCurrentUser, 
   getAllUsers, 
@@ -18,28 +17,33 @@ import {
 
 const router = express.Router();
 
-//! Protected Routes for admin
-
+// User profile - accessible to authenticated users
 router.get('/profile', verifyAccessTokenMiddleware, getCurrentUser);
 
-//! protected routes for admin
-router.get('/allUsers', verifyAccessTokenMiddleware, roleCheckMiddleware, getAllUsers);
+// Get all users - requires user read permission
+router.get('/allUsers', verifyAccessTokenMiddleware, requirePermission('user:read:all'), getAllUsers);
 
-router.put('/updateUser/:id', verifyAccessTokenMiddleware, roleCheckMiddleware, updateUser);
+// Update user - requires user update permission
+router.put('/updateUser/:id', verifyAccessTokenMiddleware, requirePermission('user:update:all'), updateUser);
 
-router.delete('/deleteUser/:id', verifyAccessTokenMiddleware, roleCheckMiddleware, deleteUser);
+// Delete user - requires user delete permission
+router.delete('/deleteUser/:id', verifyAccessTokenMiddleware, requirePermission('user:delete:all'), deleteUser);
 
-// Add this route for dashboard disease data
-router.get('/my-disease-data', verifyAccessTokenMiddleware, getMyDiseaseData);
+// User's own disease data - accessible to users who can view their own disease data
+router.get('/my-disease-data', verifyAccessTokenMiddleware, requirePermission('disease:view:own'), getMyDiseaseData);
 
-// Disease data editing routes
-router.get('/disease-data-for-editing', verifyAccessTokenMiddleware, getUserDiseaseDataForEditing);
-router.put('/update-disease-data-answer', verifyAccessTokenMiddleware, updateUserDiseaseDataAnswer);
-router.post('/submit-disease-data', verifyAccessTokenMiddleware, submitDiseaseData);
+// Disease data editing routes - accessible to users who can edit their own disease data
+router.get('/disease-data-for-editing', verifyAccessTokenMiddleware, requirePermission('disease:edit:own'), getUserDiseaseDataForEditing);
+router.put('/update-disease-data-answer', verifyAccessTokenMiddleware, requirePermission('disease:edit:own'), updateUserDiseaseDataAnswer);
+router.post('/submit-disease-data', verifyAccessTokenMiddleware, requirePermission('disease:submit:own'), submitDiseaseData);
 
-// New routes for super admin functionality
-router.get('/allAdmins', verifyAccessTokenMiddleware, superAdminMiddleware, getAllAdmins);
+// Super admin specific routes - require role management permission
+router.get('/allAdmins', verifyAccessTokenMiddleware, requirePermission('role:manage:all'), getAllAdmins);
+
+// Current user's roles - any authenticated user
 router.get('/roles', verifyAccessTokenMiddleware, getUserRoles);
-router.put('/updateUserRole/:id', verifyAccessTokenMiddleware, superAdminMiddleware, updateUserRole);
+
+// Update a user's role - require role management permission
+router.put('/updateUserRole/:id', verifyAccessTokenMiddleware, requirePermission('role:manage:all'), updateUserRole);
 
 export default router;

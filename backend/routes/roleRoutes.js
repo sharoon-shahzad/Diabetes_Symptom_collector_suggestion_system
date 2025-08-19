@@ -1,6 +1,6 @@
 import express from 'express';
 import { verifyAccessTokenMiddleware } from '../middlewares/authMiddleware.js';
-import { superAdminMiddleware } from '../middlewares/superAdminMiddleware.js';
+import { requirePermission } from '../middlewares/permissionMiddleware.js';
 import { 
     getAllRoles, 
     getRolePermissions, 
@@ -9,8 +9,8 @@ import {
 
 const router = express.Router();
 
-// All routes require authentication and super admin role
-router.use(verifyAccessTokenMiddleware, superAdminMiddleware);
+// All routes require authentication and role management permission
+router.use(verifyAccessTokenMiddleware, requirePermission('role:manage:all'));
 
 // Get all roles
 router.get('/', getAllRoles);
