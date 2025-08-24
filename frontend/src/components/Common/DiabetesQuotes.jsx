@@ -11,15 +11,15 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 const items = [
   {
     quote: "Diabetes is a journey, not a destination.",
-    icon: <FormatQuoteIcon sx={{ fontSize: 100, color: '#f0f1f5' }} />,
+    icon: <FormatQuoteIcon sx={{ fontSize: 100, color: 'text.secondary' }} />,
   },
   {
     quote: "Awareness is the first step toward cure.",
-    icon: <LocalHospitalIcon sx={{ fontSize: 100, color: '#f0f1f5' }} />,
+    icon: <LocalHospitalIcon sx={{ fontSize: 100, color: 'text.secondary' }} />,
   },
   {
     quote: "Your health is an investment, not an expense.",
-    icon: <FavoriteIcon sx={{ fontSize: 100, color: '#f0f1f5' }} />,
+    icon: <FavoriteIcon sx={{ fontSize: 100, color: 'text.secondary' }} />,
   },
 ];
 
@@ -40,10 +40,10 @@ export default function DiabetesQuotes() {
         width: { xs: '100%', md: 500 },
         maxWidth: '100%',
         '& .slick-dots li button:before': {
-          color: 'white', // inactive dot color
+          color: 'text.secondary', // inactive dot color
         },
         '& .slick-dots li.slick-active button:before': {
-          color: 'white', // active dot color
+          color: 'text.primary', // active dot color
         },
       }}
     >
@@ -53,7 +53,7 @@ export default function DiabetesQuotes() {
             <Box display="flex" justifyContent="center" alignItems="center" sx={{ mb: 2 }}>
               {item.icon}
             </Box>
-            <Typography variant="h6" fontWeight="bold" color="white" fontSize="22px">
+            <Typography variant="h6" fontWeight="bold" color="text.primary" fontSize="22px">
               {item.quote}
             </Typography>
           </Box>

@@ -44,9 +44,10 @@ export default function ForgotPasswordForm({ setSuccess, setError }) {
       sx={{
         p: 4,
         width: 360,
-        backgroundColor: '#060c1a',
+        backgroundColor: 'background.paper',
         borderRadius: 3,
-        color: 'white',
+        color: 'text.primary',
+        border: (theme) => `1px solid ${theme.palette.divider}`,
       }}
     >
       <Typography variant="h5" fontWeight="bold" gutterBottom>
@@ -64,21 +65,14 @@ export default function ForgotPasswordForm({ setSuccess, setError }) {
           value={email}
           onChange={e => setEmail(e.target.value)}
           sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-          InputProps={{ style: { color: '#fff' } }}
-          InputLabelProps={{ style: { color: '#aaa' } }}
         />
         <Button
           variant="contained"
           fullWidth
           sx={{
             mt: 2,
-            backgroundColor: '#ffffff',
-            color: '#1e2a3a',
             fontWeight: 'bold',
             borderRadius: 2,
-            '&:hover': {
-              backgroundColor: '#f0f0f0',
-            },
           }}
           type="submit"
           disabled={loading || !email || !!localError}

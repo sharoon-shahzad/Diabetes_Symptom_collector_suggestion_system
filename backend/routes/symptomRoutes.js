@@ -5,6 +5,9 @@ import { getSymptomsByDisease, addSymptom, updateSymptom, deleteSymptom } from '
 
 const router = express.Router();
 
+// Public endpoint for onboarding - no authentication required
+router.get('/public/:diseaseId', getSymptomsByDisease);
+
 // Get all symptoms for a disease - requires either admin read or onboarding access
 router.get('/:diseaseId', verifyAccessTokenMiddleware, requireAnyPermission(['symptom:view:all', 'onboarding:access:own']), getSymptomsByDisease);
 

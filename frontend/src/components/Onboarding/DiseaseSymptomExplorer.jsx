@@ -11,7 +11,7 @@ const DiseaseSymptomExplorer = () => {
   useEffect(() => {
     const fetchDiseases = async () => {
       try {
-        const response = await axiosInstance.get('/diseases');
+        const response = await axiosInstance.get('/diseases/public');
         let data = response.data;
         if (Array.isArray(data)) setDiseases(data);
         else if (Array.isArray(data.data)) setDiseases(data.data);

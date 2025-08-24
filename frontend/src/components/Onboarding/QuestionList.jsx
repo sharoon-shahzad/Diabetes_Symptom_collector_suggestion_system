@@ -42,7 +42,7 @@ const QuestionList = ({ symptomId, symptomName, isLoggedIn, onDataUpdated }) => 
       if (!symptomId) return;
       try {
         setLoading(true);
-        const response = await fetch(`/api/v1/questions/questions/symptom/${symptomId}`);
+        const response = await fetch(`/api/v1/questions/public/symptom/${symptomId}`);
         const data = await response.json();
         if (Array.isArray(data)) setQuestions(data);
         else if (Array.isArray(data.data)) setQuestions(data.data);

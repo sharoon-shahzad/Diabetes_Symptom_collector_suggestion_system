@@ -1,51 +1,40 @@
 import React, { useState } from 'react';
-import { CssBaseline, Stack, ThemeProvider, createTheme, Typography, Button, Box } from '@mui/material';
+import { Stack, Typography, Button, Box } from '@mui/material';
 import SignInForm from '../components/SignIn/SignInForm';
 import DiabetesQuotes from '../components/Common/DiabetesQuotes';
 import { useNavigate } from 'react-router-dom';
-
-const theme = createTheme({
-  palette: {
-    mode: 'dark',
-    background: {
-      default: '#0B1120',
-      paper: '#1e2a3a',
-    },
-    text: {
-      primary: '#ffffff',
-    },
-  },
-});
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function SignInSide() {
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { isDarkMode } = useTheme();
+  
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline enableColorScheme />
-      <Stack
-        direction="column"
-        component="main"
-        sx={[
-          {
-            justifyContent: 'center',
-            height: '100vh',
-            position: 'relative',
-            overflow: 'hidden',
+    <Stack
+      direction="column"
+      component="main"
+      sx={[
+        {
+          justifyContent: 'center',
+          height: '100vh',
+          position: 'relative',
+          overflow: 'hidden',
+        },
+        {
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            zIndex: -1,
+            inset: 0,
+            backgroundImage: isDarkMode 
+              ? 'radial-gradient(at 50% 50%, hsla(210, 100%, 16%, 0.5), hsl(220, 30%, 5%))'
+              : 'radial-gradient(at 50% 50%, hsla(210, 100%, 90%, 0.5), hsl(220, 30%, 95%))',
           },
-          {
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              zIndex: -1,
-              inset: 0,
-              backgroundImage:
-                'radial-gradient(at 50% 50%, hsla(210, 100%, 16%, 0.5), hsl(220, 30%, 5%))',
-            },
-          },
-        ]}
-      >
+        },
+      ]}
+    >
         <Stack
           direction={{ xs: 'column-reverse', md: 'row' }}
           sx={{
@@ -75,6 +64,5 @@ export default function SignInSide() {
         {success && <Typography color="success.main">{success}</Typography>}
         {error && <Typography color="error.main">{error}</Typography>}
       </Stack>
-    </ThemeProvider>
   );
 }

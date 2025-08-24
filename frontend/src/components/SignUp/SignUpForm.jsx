@@ -99,9 +99,10 @@ export default function SignUpForm() {
             sx={{
                 p: 4,
                 width: 360,
-                backgroundColor: '#060c1a',
+                backgroundColor: 'background.paper',
                 borderRadius: 3,
-                color: 'white',
+                color: 'text.primary',
+                border: (theme) => `1px solid ${theme.palette.divider}`,
             }}
         >
             <Typography variant="h5" fontWeight="bold" gutterBottom>
@@ -117,8 +118,6 @@ export default function SignUpForm() {
                     value={fullName}
                     onChange={e => setFullName(e.target.value)}
                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                    InputProps={{ style: { color: '#fff' } }}
-                    InputLabelProps={{ style: { color: '#aaa' } }}
                 />
                 <TextField
                     label="Email"
@@ -127,8 +126,6 @@ export default function SignUpForm() {
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                    InputProps={{ style: { color: '#fff' } }}
-                    InputLabelProps={{ style: { color: '#aaa' } }}
                 />
                 <TextField
                     label="Password"
@@ -139,21 +136,18 @@ export default function SignUpForm() {
                     onChange={e => setPassword(e.target.value)}
                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                     InputProps={{
-                        style: { color: '#fff' },
                         endAdornment: (
                             <InputAdornment position="end">
                                 <IconButton
                                     aria-label={showPassword ? 'Hide password' : 'Show password'}
                                     onClick={() => setShowPassword((show) => !show)}
                                     edge="end"
-                                    sx={{ color: '#fff' }}
                                 >
                                     {showPassword ? <VisibilityOff /> : <Visibility />}
                                 </IconButton>
                             </InputAdornment>
                         ),
                     }}
-                    InputLabelProps={{ style: { color: '#aaa' } }}
                 />
                 <LocalizationProvider dateAdapter={AdapterDateFns}>
                     <DatePicker
@@ -166,8 +160,6 @@ export default function SignUpForm() {
                                 fullWidth: true,
                                 margin: 'normal',
                                 sx: { '& .MuiOutlinedInput-root': { borderRadius: 2 } },
-                                InputProps: { style: { color: '#fff' } },
-                                InputLabelProps: { style: { color: '#aaa' } },
                             },
                         }}
                     />

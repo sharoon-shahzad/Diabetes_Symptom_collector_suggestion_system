@@ -13,6 +13,7 @@ import { fetchMyDiseaseData } from '../utils/api';
 import LinearProgress from '@mui/material/LinearProgress';
 import Button from '@mui/material/Button';
 import EditDiseaseData from '../components/Dashboard/EditDiseaseData';
+import ThemeToggle from '../components/Common/ThemeToggle';
 
 const drawerWidth = 220;
 
@@ -77,7 +78,7 @@ export default function Dashboard() {
   };
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: '#0B1120' }}>
+    <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
       <CssBaseline />
       {/* Sidebar */}
       <Drawer
@@ -87,11 +88,11 @@ export default function Dashboard() {
           flexShrink: 0,
           [`& .MuiDrawer-paper`]: {
             width: drawerWidth,
-            bgcolor: '#1e2a3a',
-            color: '#fff',
+            bgcolor: 'background.sidebar',
+            color: 'text.primary',
             borderTopRightRadius: 0,
             borderBottomRightRadius: 0,
-            boxShadow: '4px 0 24px 0 rgba(30,42,58,0.12)',
+            boxShadow: '4px 0 24px 0 rgba(0,0,0,0.12)',
             border: 'none', // Ensure no border or divider between sidebar and main area
             pt: 0,
             px: 0,
@@ -104,13 +105,13 @@ export default function Dashboard() {
         <Box>
           {/* User Info */}
           <Box display="flex" flexDirection="column" alignItems="center" py={2}>
-            <Avatar sx={{ bgcolor: '#90caf9', width: 40, height: 40, mb: 1, fontSize: 20 }}>
+            <Avatar sx={{ bgcolor: 'primary.main', width: 40, height: 40, mb: 1, fontSize: 20 }}>
               {user?.fullName?.[0] || 'U'}
             </Avatar>
             <Typography fontWeight={700} fontSize={16}>{user?.fullName}</Typography>
-            <Typography fontSize={13} color="#b0bec5">{user?.email}</Typography>
+            <Typography fontSize={13} color="text.secondary">{user?.email}</Typography>
           </Box>
-          <Divider sx={{ my: 1, bgcolor: '#263445' }} />
+          <Divider sx={{ my: 1, bgcolor: 'divider' }} />
           {/* Navigation */}
           <List>
             {sections.map((section, idx) => (
@@ -123,27 +124,30 @@ export default function Dashboard() {
                   mx: 1,
                   my: 0.5,
                   '&.Mui-selected': {
-                    bgcolor: '#263445',
+                    bgcolor: 'action.selected',
                   },
                   transition: 'background 0.2s',
                   cursor: 'pointer',
                 }}
               >
-                <ListItemIcon sx={{ color: '#90caf9', minWidth: 36 }}>{section.icon}</ListItemIcon>
+                <ListItemIcon sx={{ color: 'primary.main', minWidth: 36 }}>{section.icon}</ListItemIcon>
                 <ListItemText primary={<Typography fontWeight={600}>{section.label}</Typography>} />
               </ListItem>
             ))}
           </List>
         </Box>
         <Box pb={2} px={2}>
-          <Divider sx={{ mb: 1, bgcolor: '#263445' }} />
+          <Divider sx={{ mb: 1, bgcolor: 'divider' }} />
+          <Box display="flex" justifyContent="center" mb={1}>
+            <ThemeToggle size="small" />
+          </Box>
           <Button
             fullWidth
             variant="outlined"
             color="error"
             startIcon={<LogoutIcon />}
             onClick={handleLogout}
-            sx={{ borderRadius: 2, fontWeight: 700, borderColor: '#ef5350', color: '#ef5350', '&:hover': { bgcolor: '#2d3846', borderColor: '#ef5350' } }}
+            sx={{ borderRadius: 2, fontWeight: 700 }}
           >
             Logout
           </Button>
@@ -159,7 +163,7 @@ export default function Dashboard() {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        background: '#101624', // Match the dark navy blue shade for the whole dashboard
+        background: 'background.default',
       }}>
         <Paper elevation={6} sx={{
           width: '100%',
@@ -168,13 +172,13 @@ export default function Dashboard() {
           borderRadius: 6,
           p: { xs: 2, md: 5 },
           mt: 2,
-          boxShadow: '0 8px 32px 0 rgba(25, 118, 210, 0.10)',
-          background: '#263445', // Match the main background for a unified look  
-          color: '#fff',
+          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.10)',
+          background: 'background.paper',
+          color: 'text.primary',
         }}>
           {/* Section Header */}
           <Box mb={4} display="flex" alignItems="center" gap={2}>
-            <Typography variant="h4" fontWeight={900} color="#FFFFFF">
+            <Typography variant="h4" fontWeight={900}>
               {selectedIndex === 0 ? 'My Account' : 'My Disease Data'}
             </Typography>
             {selectedIndex === 1 && diseaseData && diseaseData.disease && (
@@ -191,11 +195,11 @@ export default function Dashboard() {
               </Tooltip>
             )}
           </Box>
-          <Divider sx={{ mb: 4, bgcolor: '#263445' }} />
+          <Divider sx={{ mb: 4, bgcolor: 'divider' }} />
           {selectedIndex === 0 && (
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
-                <Card elevation={3} sx={{ borderRadius: 4, bgcolor: '#101624', color: '#fff', mb: 2 }}>
+                <Card elevation={3} sx={{ borderRadius: 4, bgcolor: 'background.card', color: 'text.primary', mb: 2 }}>
                   <CardContent>
                     <Typography variant="h6" fontWeight={700} gutterBottom>Profile Information</Typography>
                     <Divider sx={{ mb: 2, bgcolor: '#263445' }} />

@@ -5,6 +5,9 @@ import { getAllDiseases, addDisease, updateDisease, deleteDisease } from '../con
 
 const router = express.Router();
 
+// Public endpoint for onboarding - no authentication required
+router.get('/public', getAllDiseases);
+
 // Get all diseases - requires either admin view or user onboarding access
 router.get('/', verifyAccessTokenMiddleware, requireAnyPermission(['disease:view:all', 'onboarding:access:own']), getAllDiseases);
 

@@ -32,9 +32,9 @@ export default function ActivateAccount() {
   }, [token, navigate]);
 
   return (
-    <Box minHeight="100vh" display="flex" alignItems="center" justifyContent="center" bgcolor="#0B1120">
-      <Paper elevation={4} sx={{ p: 4, borderRadius: 3, minWidth: 340, textAlign: 'center', background: '#fff' }}>
-        {status === 'loading' && <CircularProgress sx={{ color: '#1976d2', mb: 2 }} />}
+    <Box minHeight="100vh" display="flex" alignItems="center" justifyContent="center" bgcolor="background.default">
+      <Paper elevation={4} sx={{ p: 4, borderRadius: 3, minWidth: 340, textAlign: 'center', background: 'background.paper' }}>
+        {status === 'loading' && <CircularProgress sx={{ color: 'primary.main', mb: 2 }} />}
         {status === 'success' && <CheckCircleIcon sx={{ color: 'green', fontSize: 48, mb: 1 }} />}
         {status === 'error' && <ErrorIcon sx={{ color: 'red', fontSize: 48, mb: 1 }} />}
         <Typography variant="h6" color={status === 'error' ? 'error' : 'primary'} gutterBottom>

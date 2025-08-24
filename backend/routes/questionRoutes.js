@@ -12,6 +12,9 @@ import {
 
 const router = express.Router();
 
+// Public endpoint for onboarding - no authentication required
+router.get('/public/symptom/:symptomId', getQuestionsBySymptom);
+
 // Get all questions for a disease - requires either admin read or onboarding access
 router.get('/questions/:diseaseId', verifyAccessTokenMiddleware, requireAnyPermission(['question:view:all', 'onboarding:access:own']), getQuestionsByDisease);
 
