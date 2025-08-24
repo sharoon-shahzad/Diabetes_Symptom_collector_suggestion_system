@@ -13,7 +13,8 @@ import {
   Button,
   AppBar,
   Toolbar,
-  Container
+  Container,
+  useTheme
 } from '@mui/material';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LoginIcon from '@mui/icons-material/Login';
@@ -24,8 +25,10 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, logout } from '../../utils/auth';
 import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
+import ThemeToggle from './ThemeToggle';
 
 export default function UniversalHeader() {
+  const theme = useTheme();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -214,9 +217,9 @@ export default function UniversalHeader() {
               <IconButton
                 onClick={() => navigate('/')}
                 sx={{
-                  color: '#90caf9',
+                  color: 'primary.main',
                   '&:hover': {
-                    backgroundColor: 'rgba(144, 202, 249, 0.08)'
+                    backgroundColor: 'action.hover'
                   }
                 }}
               >
@@ -225,14 +228,15 @@ export default function UniversalHeader() {
             </Box>
 
             {/* User Menu */}
-            <Box display="flex" alignItems="center">
+            <Box display="flex" alignItems="center" gap={1}>
+              <ThemeToggle size="small" />
               {user ? (
                 <>
-                  <Typography variant="body2" color="#b0bec5" mr={2}>
+                  <Typography variant="body2" color="text.secondary" mr={2}>
                     Welcome, {user.fullName}
                   </Typography>
                   <IconButton onClick={handleAvatarClick} size="large">
-                    <Avatar sx={{ bgcolor: '#90caf9', width: 40, height: 40 }}>
+                    <Avatar sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}>
                       {user.fullName?.[0] || <AccountCircleIcon />}
                     </Avatar>
                   </IconButton>
@@ -244,11 +248,8 @@ export default function UniversalHeader() {
                   startIcon={<LoginIcon />}
                   onClick={handleLoginClick}
                   sx={{
-                    color: '#90caf9',
-                    borderColor: '#90caf9',
                     '&:hover': {
-                      borderColor: '#1976d2',
-                      backgroundColor: 'rgba(144, 202, 249, 0.08)'
+                      backgroundColor: 'action.hover'
                     }
                   }}
                 >
@@ -304,11 +305,12 @@ export default function UniversalHeader() {
             left: '50%',
             transform: 'translate(-50%, -50%)',
             width: 360,
-            bgcolor: '#1e2a3a',
-            color: 'white',
+            bgcolor: 'background.paper',
+            color: 'text.primary',
             borderRadius: 3,
             boxShadow: 24,
             p: 4,
+            border: `1px solid ${theme.palette.divider}`,
           }}
         >
           <Typography variant="h6" fontWeight="bold" mb={2}>
@@ -321,8 +323,6 @@ export default function UniversalHeader() {
               margin="normal"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              InputProps={{ style: { color: '#fff' } }}
-              InputLabelProps={{ style: { color: '#aaa' } }}
               sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
             />
             {resendSuccess && <Alert severity="success" sx={{ mb: 2 }}>{resendSuccess}</Alert>}
@@ -330,7 +330,7 @@ export default function UniversalHeader() {
             <Button
               variant="contained"
               fullWidth
-              sx={{ mt: 2, backgroundColor: '#1976d2', color: '#fff', fontWeight: 'bold', borderRadius: 2 }}
+              sx={{ mt: 2, fontWeight: 'bold', borderRadius: 2 }}
               type="submit"
               disabled={resendLoading}
             >
@@ -349,11 +349,12 @@ export default function UniversalHeader() {
             left: '50%',
             transform: 'translate(-50%, -50%)',
             width: 360,
-            bgcolor: '#1e2a3a',
-            color: 'white',
+            bgcolor: 'background.paper',
+            color: 'text.primary',
             borderRadius: 3,
             boxShadow: 24,
             p: 4,
+            border: `1px solid ${theme.palette.divider}`,
           }}
         >
           <Typography variant="h6" fontWeight="bold" mb={2}>
@@ -369,13 +370,11 @@ export default function UniversalHeader() {
               onChange={e => setCurrentPassword(e.target.value)}
               InputProps={{
                 endAdornment: (
-                  <IconButton onClick={() => setShowCurrentPw((show) => !show)} edge="end" sx={{ color: '#fff' }}>
+                  <IconButton onClick={() => setShowCurrentPw((show) => !show)} edge="end">
                     {showCurrentPw ? <VisibilityOff /> : <Visibility />}
                   </IconButton>
-                ),
-                style: { color: '#fff' }
+                )
               }}
-              InputLabelProps={{ style: { color: '#aaa' } }}
             />
             <TextField
               label="New Password"
@@ -386,13 +385,11 @@ export default function UniversalHeader() {
               onChange={e => setNewPassword(e.target.value)}
               InputProps={{
                 endAdornment: (
-                  <IconButton onClick={() => setShowNewPw((show) => !show)} edge="end" sx={{ color: '#fff' }}>
+                  <IconButton onClick={() => setShowNewPw((show) => !show)} edge="end">
                     {showNewPw ? <VisibilityOff /> : <Visibility />}
                   </IconButton>
-                ),
-                style: { color: '#fff' }
+                )
               }}
-              InputLabelProps={{ style: { color: '#aaa' } }}
             />
             <TextField
               label="Confirm New Password"
@@ -403,20 +400,18 @@ export default function UniversalHeader() {
               onChange={e => setConfirmPassword(e.target.value)}
               InputProps={{
                 endAdornment: (
-                  <IconButton onClick={() => setShowConfirmPw((show) => !show)} edge="end" sx={{ color: '#fff' }}>
+                  <IconButton onClick={() => setShowConfirmPw((show) => !show)} edge="end">
                     {showConfirmPw ? <VisibilityOff /> : <Visibility />}
                   </IconButton>
-                ),
-                style: { color: '#fff' }
+                )
               }}
-              InputLabelProps={{ style: { color: '#aaa' } }}
             />
             {pwSuccess && <Alert severity="success" sx={{ mb: 2 }}>{pwSuccess}</Alert>}
             {pwError && <Alert severity="error" sx={{ mb: 2 }}>{pwError}</Alert>}
             <Button
               variant="contained"
               fullWidth
-              sx={{ mt: 2, backgroundColor: '#1976d2', color: '#fff', fontWeight: 'bold', borderRadius: 2 }}
+              sx={{ mt: 2, fontWeight: 'bold', borderRadius: 2 }}
               type="submit"
               disabled={pwLoading}
             >

@@ -27,7 +27,7 @@ const SymptomCard = ({ diseaseId }) => {
       if (!diseaseId) return;
       try {
         setLoading(true);
-        const res = await axiosInstance.get(`/symptoms/${diseaseId}`);
+        const res = await axiosInstance.get(`/symptoms/public/${diseaseId}`);
         const data = res.data?.data || [];
         setSymptoms(data);
         setError(null);

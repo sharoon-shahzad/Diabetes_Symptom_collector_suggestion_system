@@ -2,6 +2,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Box } from '@mui/material';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import SignInSide from './pages/SignInSide';
 import SignUpSide from './pages/SignUpSide';
 import ActivateAccount from './pages/ActivateAccount';
@@ -17,6 +18,7 @@ import 'react-toastify/dist/ReactToastify.css';
 // Component to conditionally render header
 const AppContent = () => {
   const location = useLocation();
+  const { isDarkMode } = useTheme();
   
   // Pages where we don't want the universal header
   const noHeaderPages = ['/signin', '/signup', '/forgotpassword', '/reset-password', '/'];
@@ -25,7 +27,11 @@ const AppContent = () => {
                           !location.pathname.startsWith('/reset-password/');
 
   return (
-    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #23272f 60%, #0B1120 100%)' }}>
+    <Box sx={{ 
+      minHeight: '100vh', 
+      background: (theme) => theme.palette.background.gradient || theme.palette.background.default,
+      transition: 'background 0.3s ease'
+    }}>
       {shouldShowHeader && <UniversalHeader />}
       <Box> {/* Removed top padding to eliminate space between header and content */}
         <Routes>
@@ -40,16 +46,22 @@ const AppContent = () => {
           <Route path="/" element={<SignInSide />} />
         </Routes>
       </Box>
-      <ToastContainer position="top-right" autoClose={3000} />
+      <ToastContainer 
+        position="top-right" 
+        autoClose={3000}
+        theme={isDarkMode ? 'dark' : 'light'}
+      />
     </Box>
   );
 };
 
 const App = () => {
   return (
-    <Router>
-      <AppContent />
-    </Router>
+    <ThemeProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </ThemeProvider>
   );
 };
 

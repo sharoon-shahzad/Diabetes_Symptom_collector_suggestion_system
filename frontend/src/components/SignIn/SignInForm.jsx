@@ -49,7 +49,7 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
             if (res.data.data && res.data.data.user && res.data.data.accessToken) {
                 localStorage.setItem('accessToken', res.data.data.accessToken);
                 const roles = res.data.data.user.roles || [];
-                if (roles.includes('admin')) {
+                if (roles.includes('admin') || roles.includes('super_admin')) {
                     navigate('/admin-dashboard');
                 } else {
                     navigate('/dashboard');
@@ -72,9 +72,10 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
             sx={{
                 p: 4,
                 width: 360,
-                backgroundColor: '#060c1a',
+                backgroundColor: 'background.paper',
                 borderRadius: 3,
-                color: 'white',
+                color: 'text.primary',
+                border: (theme) => `1px solid ${theme.palette.divider}`,
             }}
         >
             <Typography variant="h5" fontWeight="bold" gutterBottom>
@@ -88,10 +89,8 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     InputProps={{
-                        style: { color: '#fff' },
                         sx: { borderRadius: 2 },
                     }}
-                    InputLabelProps={{ style: { color: '#aaa' } }}
                 />
                 <TextField
                     label="Password"
@@ -101,14 +100,12 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     InputProps={{
-                        style: { color: '#fff' },
                         sx: { borderRadius: 2 },
                     }}
-                    InputLabelProps={{ style: { color: '#aaa' } }}
                 />
                 <Box display="flex" justifyContent="space-between" alignItems="center">
                     <FormControlLabel
-                        control={<Checkbox sx={{ color: '#fff' }} />}
+                        control={<Checkbox />}
                         label="Remember me"
                     />
                     <Link
@@ -116,12 +113,12 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                         to="/forgotpassword"
                         underline="hover"
                         sx={{
-                            color: '#f2f3f5',
+                            color: 'text.secondary',
                             textDecoration: 'none',
                             borderBottom: '1px solid transparent',
                             transition: 'border-bottom 0.3s ease',
                             '&:hover': {
-                                borderBottom: '1px solid transparent',
+                                borderBottom: '1px solid currentColor',
                             },
                         }}
                     >
@@ -133,13 +130,8 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                     fullWidth
                     sx={{
                         mt: 2,
-                        backgroundColor: '#ffffff',
-                        color: '#1e2a3a',
                         fontWeight: 'bold',
                         borderRadius: 2,
-                        '&:hover': {
-                            backgroundColor: '#f0f0f0',
-                        },
                     }}
                     type="submit"
                     disabled={loading}
@@ -153,12 +145,12 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                     component={RouterLink}
                     to="/signup"
                     sx={{
-                        color: '#f2f3f5',
+                        color: 'text.secondary',
                         textDecoration: 'none',
                         borderBottom: '1px solid transparent',
                         transition: 'border-bottom 0.3s ease',
                         '&:hover': {
-                            borderBottom: '1px solid transparent',
+                            borderBottom: '1px solid currentColor',
                         },
                     }}
                 >

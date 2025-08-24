@@ -257,6 +257,22 @@ async function seed() {
     console.log('Super Admin user not found, cannot assign super admin role.');
   }
 
+  // Assign super admin role to Hassan Raza
+  const hassanRazaUserId = new mongoose.Types.ObjectId('68ab208c0d25de55cec6bccb');
+  const hassanRazaUserEmail = '221429@students.au.edu.pk';
+  const hassanRazaUser = await User.findOne({ _id: hassanRazaUserId, email: hassanRazaUserEmail });
+  if (hassanRazaUser) {
+    const alreadyAssigned = await UsersRoles.findOne({ user_id: hassanRazaUser._id, role_id: superAdminRole._id });
+    if (!alreadyAssigned) {
+      await UsersRoles.create({ user_id: hassanRazaUser._id, role_id: superAdminRole._id });
+      console.log('Super Admin role assigned to user:', hassanRazaUser.email);
+    } else {
+      console.log('Super Admin role already assigned to user:', hassanRazaUser.email);
+    }
+  } else {
+    console.log('Hassan Raza user not found, cannot assign super admin role.');
+  }
+
   // Assign admin role to the specified user only
   const adminUserId = new mongoose.Types.ObjectId('6889f16c6012be5f42a9a85b');
   const adminUserEmail = 'kpsharoon7@gmail.com'; // Change this to your admin email
@@ -287,6 +303,17 @@ async function seed() {
     }
   } else {
     console.log('Normal user not found, cannot assign user role.');
+  }
+
+  // Assign user role to ALL existing users who don't have any roles yet
+  console.log('Assigning user role to all users without roles...');
+  const allUsers = await User.find({});
+  for (const user of allUsers) {
+    const hasAnyRole = await UsersRoles.findOne({ user_id: user._id });
+    if (!hasAnyRole) {
+      await UsersRoles.create({ user_id: user._id, role_id: userRole._id });
+      console.log('User role assigned to user without roles:', user.email);
+    }
   }
 
   // Upsert Diabetes Disease
@@ -354,6 +381,9 @@ async function seed() {
     'disease:view:own',
     'disease:edit:own',
     'disease:submit:own',
+    'disease:view:all',        // Allow users to view disease content for onboarding
+    'symptom:view:all',        // Allow users to view symptoms for onboarding
+    'question:view:all',       // Allow users to view questions for onboarding
     'onboarding:access:own',
     'answer:submit:own'
   ];
@@ -454,4 +484,4 @@ async function seed() {
 seed().catch(err => {
   console.error('Seed error:', err);
   process.exit(1);
-}); 
+});
