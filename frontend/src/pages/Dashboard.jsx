@@ -9,10 +9,11 @@ import EditIcon from '@mui/icons-material/Edit';
 import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from 'react-router-dom';
 import { logout, getCurrentUser } from '../utils/auth';
-import { fetchMyDiseaseData } from '../utils/api';
+import { fetchMyDiseaseData, assessDiabetesRisk } from '../utils/api';
 import LinearProgress from '@mui/material/LinearProgress';
 import Button from '@mui/material/Button';
 import EditDiseaseData from '../components/Dashboard/EditDiseaseData';
+import DiabetesRiskPanel from '../components/Dashboard/DiabetesRiskPanel';
 import ThemeToggle from '../components/Common/ThemeToggle';
 
 const drawerWidth = 220;
@@ -29,6 +30,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [riskLoading, setRiskLoading] = useState(false);
+  const [riskError, setRiskError] = useState('');
+  const [riskResult, setRiskResult] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -74,6 +78,20 @@ export default function Dashboard() {
         .then((data) => setDiseaseData(data))
         .catch(() => setError('Failed to load disease data.'))
         .finally(() => setLoading(false));
+    }
+  };
+
+  const handleAssessRisk = async () => {
+    try {
+      setRiskLoading(true);
+      setRiskError('');
+      setRiskResult(null);
+      const data = await assessDiabetesRisk();
+      setRiskResult(data);
+    } catch (e) {
+      setRiskError('Failed to assess risk. Complete onboarding and try again.');
+    } finally {
+      setRiskLoading(false);
     }
   };
 
@@ -194,6 +212,16 @@ export default function Dashboard() {
                 </Button>
               </Tooltip>
             )}
+            {selectedIndex === 1 && (
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={() => navigate('/assessment')}
+                sx={{ borderRadius: 2, fontWeight: 700, ml: 1 }}
+              >
+                View Assessment
+              </Button>
+            )}
           </Box>
           <Divider sx={{ mb: 4, bgcolor: 'divider' }} />
           {selectedIndex === 0 && (
@@ -288,6 +316,12 @@ export default function Dashboard() {
                     </Box>
                   )}
                   <Box sx={{ width: '100%', maxWidth: 900, mx: 'auto' }}>
+                    {riskError && (
+                      <Alert severity="error" sx={{ mb: 2 }}>{riskError}</Alert>
+                    )}
+                    {riskResult && (
+                      <DiabetesRiskPanel data={riskResult} />
+                    )}
                     {/* Disease Info Card */}
                     <Card elevation={4} sx={{ mb: 4, borderRadius: 3, background: 'linear-gradient(135deg, #f4f8fb 60%, #e3f0ff 100%)', color: '#23272f', width: '100%' }}>
                       <CardContent>

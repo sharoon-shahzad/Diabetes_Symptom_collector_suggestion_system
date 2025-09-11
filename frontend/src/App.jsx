@@ -7,6 +7,7 @@ import SignInSide from './pages/SignInSide';
 import SignUpSide from './pages/SignUpSide';
 import ActivateAccount from './pages/ActivateAccount';
 import Dashboard from './pages/Dashboard';
+import Assessment from './pages/Assessment';
 import Onboarding from './pages/Onboarding';
 import AdminDashboard from './pages/AdminDashboard';
 import ForgotPassword from './pages/ForgotPassword';
@@ -40,6 +41,7 @@ const AppContent = () => {
           <Route path="/activate/:token" element={<ActivateAccount />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/assessment" element={<Assessment />} />
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
           <Route path="/forgotpassword" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />

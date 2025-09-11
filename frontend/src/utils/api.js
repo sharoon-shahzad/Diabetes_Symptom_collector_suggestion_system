@@ -102,3 +102,8 @@ export async function submitDiseaseData() {
   const res = await axiosInstance.post(`/users/submit-disease-data`);
   return res.data;
 } 
+
+export async function assessDiabetesRisk() {
+  const res = await axiosInstance.post(`/assessment/diabetes`);
+  return res.data.data;
+}
