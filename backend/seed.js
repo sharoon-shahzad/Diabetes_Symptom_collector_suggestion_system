@@ -151,7 +151,7 @@ async function seed() {
 
   // Assign admin role to the specified user only
   const adminUserId = new mongoose.Types.ObjectId('6889f16c6012be5f42a9a85b');
-  const adminUserEmail = 'kpsharoon7@gmail.com'; // Change this to your admin email
+  const adminUserEmail = 'kpsharoon7@gmail.com'; // Legacy example; will be ignored if user not found
   const adminUser = await User.findOne({ _id: adminUserId, email: adminUserEmail });
   if (adminUser) {
     const alreadyAssigned = await UsersRoles.findOne({ user_id: adminUser._id, role_id: adminRole._id });
@@ -167,7 +167,7 @@ async function seed() {
 
   // Assign user role to the specified user
   const normalUserId = '6880d502873514b36914e931';
-  const normalUserEmail = '221465@students.au.edu.pk'; // Change this to your normal user email
+  const normalUserEmail = '221465@students.au.edu.pk'; // Legacy example; superseded by explicit assignment below
   const normalUser = await User.findOne({ _id: normalUserId, email: normalUserEmail });
   if (normalUser) {
     const alreadyAssigned = await UsersRoles.findOne({ user_id: normalUser._id, role_id: userRole._id });
@@ -179,6 +179,38 @@ async function seed() {
     }
   } else {
     console.log('Normal user not found, cannot assign user role.');
+  }
+
+  // Explicit assignment: Make Sharoon (kpsharoon7@gmail.com) a super admin
+  const sharoonSuperId = new mongoose.Types.ObjectId('68c7b7a09348b4f4a44ba09b');
+  const sharoonSuperEmail = 'kpsharoon7@gmail.com';
+  const sharoonSuperUser = await User.findOne({ _id: sharoonSuperId, email: sharoonSuperEmail });
+  if (sharoonSuperUser) {
+    const alreadyAssigned = await UsersRoles.findOne({ user_id: sharoonSuperUser._id, role_id: superAdminRole._id });
+    if (!alreadyAssigned) {
+      await UsersRoles.create({ user_id: sharoonSuperUser._id, role_id: superAdminRole._id });
+      console.log('Super Admin role assigned to user:', sharoonSuperUser.email);
+    } else {
+      console.log('Super Admin role already assigned to user:', sharoonSuperUser.email);
+    }
+  } else {
+    console.log('Specified super admin user not found (Sharoon).');
+  }
+
+  // Explicit assignment: Make 221465@students.au.edu.pk a regular user
+  const sharoonUserId = new mongoose.Types.ObjectId('68c7b8059348b4f4a44ba09e');
+  const sharoonUserEmail = '221465@students.au.edu.pk';
+  const sharoonUser = await User.findOne({ _id: sharoonUserId, email: sharoonUserEmail });
+  if (sharoonUser) {
+    const alreadyAssigned = await UsersRoles.findOne({ user_id: sharoonUser._id, role_id: userRole._id });
+    if (!alreadyAssigned) {
+      await UsersRoles.create({ user_id: sharoonUser._id, role_id: userRole._id });
+      console.log('User role assigned to user:', sharoonUser.email);
+    } else {
+      console.log('User role already assigned to user:', sharoonUser.email);
+    }
+  } else {
+    console.log('Specified regular user not found (221465@students.au.edu.pk).');
   }
 
   // Assign user role to ALL existing users who don't have any roles yet

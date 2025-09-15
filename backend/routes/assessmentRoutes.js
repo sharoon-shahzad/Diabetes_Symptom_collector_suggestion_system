@@ -10,3 +10,5 @@ router.post('/diabetes', verifyAccessTokenMiddleware, requirePermission('disease
 export default router;
 
 
+
+
