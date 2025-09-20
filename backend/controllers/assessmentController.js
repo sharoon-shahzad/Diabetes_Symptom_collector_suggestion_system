@@ -26,19 +26,19 @@ function mapAnswersToFeatures(answersByQuestionId, questions) {
   };
 
   const symptomNameToFeature = {
-    'Frequent Urination (Polyuria)': 'Polyuria',
-    'Excessive Thirst (Polydipsia)': 'Polydipsia',
-    'Unexplained Weight Loss': 'sudden weight loss',
-    'Fatigue / Tiredness': 'weakness',
-    'Increased Hunger (Polyphagia)': 'Polyphagia',
-    'Frequent Infections': 'Genital thrush',
-    'Blurred Vision': 'visual blurring',
-    'Very Dry Skin': 'Itching',
-    'Irritability / Mood Changes': 'Irritability',
-    'Slow Healing Wounds': 'delayed healing',
-    'Muscle Weakness': 'partial paresis',
-    'Muscle Stiffness / Cramps': 'muscle stiffness',
-    'Hair Loss / Thinning': 'Alopecia',
+    'Polyuria': 'Polyuria',
+    'Polydipsia': 'Polydipsia',
+    'sudden weight loss': 'sudden weight loss',
+    'weakness': 'weakness',
+    'Polyphagia': 'Polyphagia',
+    'Genital thrush': 'Genital thrush',
+    'visual blurring': 'visual blurring',
+    'Itching': 'Itching',
+    'Irritability': 'Irritability',
+    'delayed healing': 'delayed healing',
+    'partial paresis': 'partial paresis',
+    'muscle stiffness': 'muscle stiffness',
+    'Alopecia': 'Alopecia',
   };
 
   for (const q of questions) {
@@ -80,20 +80,35 @@ export const assessDiabetes = async (req, res) => {
     const userId = req.user?._id;
     if (!userId) return res.status(401).json({ success: false, message: 'Not authenticated' });
 
+    console.log('Assessment request for user:', userId);
+
     // Load user's latest answers with populated question and symptom
     const userAnswers = await UsersAnswers.find({ user_id: userId, deleted_at: null })
       .populate({ path: 'question_id', model: 'Question', populate: { path: 'symptom_id', model: 'Symptom' } })
       .populate({ path: 'answer_id', model: 'Answer' });
 
+    console.log('Found user answers:', userAnswers.length);
+    console.log('User answers data:', userAnswers.map(ua => ({
+      question: ua.question_id?.question_text,
+      answer: ua.answer_id?.answer_text,
+      symptom: ua.question_id?.symptom_id?.name
+    })));
+
     const questions = userAnswers.map(ua => ua.question_id).filter(Boolean);
     const answersByQuestionId = new Map(userAnswers.map(ua => [String(ua.question_id?._id), ua]));
 
+    console.log('Questions found:', questions.length);
+    console.log('Answers by question ID:', Array.from(answersByQuestionId.entries()));
+
     const features = mapAnswersToFeatures(answersByQuestionId, questions);
+    console.log('Mapped features for ML model:', features);
 
     const result = await assessDiabetesRiskPython(features);
+    console.log('ML model result:', result);
 
     return res.status(200).json({ success: true, data: { features, result } });
   } catch (err) {
+    console.error('Assessment error:', err);
     return res.status(500).json({ success: false, message: 'Assessment failed', error: err.message });
   }
 };
