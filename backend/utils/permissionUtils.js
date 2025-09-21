@@ -3,12 +3,6 @@ import { RolePermissions } from '../models/RolePermissions.js';
 import { Permission } from '../models/Permissions.js';
 import mongoose from 'mongoose';
 
-/**
- * Check if a user has a specific permission
- * @param {string|ObjectId} userId - The user ID
- * @param {string} permissionName - The permission name to check (e.g., "dashboard:access:patient")
- * @returns {Promise<boolean>} - Returns true if user has permission, false otherwise
- */
 export async function hasPermission(userId, permissionName) {
     try {
         // Input validation
