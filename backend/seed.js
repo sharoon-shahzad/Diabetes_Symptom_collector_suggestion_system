@@ -7,6 +7,8 @@ import { UsersRoles } from './models/User_Role.js';
 import { User } from './models/User.js';
 import { Permission } from './models/Permissions.js';
 import { RolePermissions } from './models/RolePermissions.js';
+import Category from './models/Category.js';
+import Content from './models/Content.js';
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/Diavise';
 
@@ -86,8 +88,251 @@ const permissionsData = [
   { name: "permission:manage:all", description: "Manage system permissions", resource: "permission", action: "manage", scope: "all", category: "system_admin" },
   { name: "role:manage:all", description: "Manage user roles", resource: "role", action: "manage", scope: "all", category: "system_admin" },
   { name: "settings:manage:all", description: "Manage system settings", resource: "settings", action: "manage", scope: "all", category: "system_admin" },
-  { name: "submission:manage:all", description: "Manage user submissions", resource: "submission", action: "manage", scope: "all", category: "system_admin" }
+  { name: "submission:manage:all", description: "Manage user submissions", resource: "submission", action: "manage", scope: "all", category: "system_admin" },
+  
+  // CMS Permissions
+  { name: "content:view:all", description: "View all content", resource: "content", action: "view", scope: "all", category: "cms" },
+  { name: "content:create:all", description: "Create content", resource: "content", action: "create", scope: "all", category: "cms" },
+  { name: "content:update:all", description: "Update content", resource: "content", action: "update", scope: "all", category: "cms" },
+  { name: "content:delete:all", description: "Delete content", resource: "content", action: "delete", scope: "all", category: "cms" },
+  { name: "category:view:all", description: "View all categories", resource: "category", action: "view", scope: "all", category: "cms" },
+  { name: "category:create:all", description: "Create categories", resource: "category", action: "create", scope: "all", category: "cms" },
+  { name: "category:update:all", description: "Update categories", resource: "category", action: "update", scope: "all", category: "cms" },
+  { name: "category:delete:all", description: "Delete categories", resource: "category", action: "delete", scope: "all", category: "cms" }
 ];
+
+// CMS Data
+const categoriesData = [
+  {
+    name: 'Diet & Nutrition',
+    description: 'Healthy eating habits and nutritional guidance for diabetes management',
+    color: '#4caf50',
+    icon: 'nutrition',
+    isActive: true
+  },
+  {
+    name: 'Exercise & Fitness',
+    description: 'Physical activity recommendations and workout routines',
+    color: '#2196f3',
+    icon: 'exercise',
+    isActive: true
+  },
+  {
+    name: 'Medication & Treatment',
+    description: 'Information about diabetes medications and treatment options',
+    color: '#ff9800',
+    icon: 'medication',
+    isActive: true
+  },
+  {
+    name: 'Research & Studies',
+    description: 'Latest research findings and scientific studies on diabetes',
+    color: '#9c27b0',
+    icon: 'research',
+    isActive: true
+  },
+  {
+    name: 'Awareness & Education',
+    description: 'Educational content to raise awareness about diabetes',
+    color: '#f44336',
+    icon: 'awareness',
+    isActive: true
+  },
+  {
+    name: 'Prevention',
+    description: 'Tips and strategies for preventing diabetes',
+    color: '#00bcd4',
+    icon: 'prevention',
+    isActive: true
+  },
+  {
+    name: 'Lifestyle',
+    description: 'General lifestyle tips for living well with diabetes',
+    color: '#795548',
+    icon: 'lifestyle',
+    isActive: true
+  },
+  {
+    name: 'Monitoring',
+    description: 'Blood sugar monitoring and tracking techniques',
+    color: '#607d8b',
+    icon: 'monitoring',
+    isActive: true
+  }
+];
+
+const contentData = [
+  {
+    title: 'Understanding Type 2 Diabetes: A Comprehensive Guide',
+    excerpt: 'Learn about the causes, symptoms, and management strategies for Type 2 diabetes. This comprehensive guide covers everything you need to know about living with diabetes.',
+    content: `
+      <h2>What is Type 2 Diabetes?</h2>
+      <p>Type 2 diabetes is a chronic condition that affects how your body processes blood sugar (glucose). Unlike Type 1 diabetes, where the body doesn't produce insulin, Type 2 diabetes occurs when your body becomes resistant to insulin or doesn't produce enough insulin.</p>
+      
+      <h3>Common Symptoms</h3>
+      <ul>
+        <li>Increased thirst and frequent urination</li>
+        <li>Unexplained weight loss</li>
+        <li>Fatigue and weakness</li>
+        <li>Blurred vision</li>
+        <li>Slow-healing sores</li>
+      </ul>
+      
+      <h3>Risk Factors</h3>
+      <p>Several factors can increase your risk of developing Type 2 diabetes:</p>
+      <ul>
+        <li>Family history of diabetes</li>
+        <li>Being overweight or obese</li>
+        <li>Physical inactivity</li>
+        <li>Age (45 or older)</li>
+        <li>High blood pressure</li>
+      </ul>
+      
+      <h3>Management Strategies</h3>
+      <p>Managing Type 2 diabetes involves a combination of lifestyle changes, medication, and regular monitoring. Key strategies include:</p>
+      <ul>
+        <li>Maintaining a healthy diet</li>
+        <li>Regular physical activity</li>
+        <li>Blood sugar monitoring</li>
+        <li>Medication adherence</li>
+        <li>Regular healthcare checkups</li>
+      </ul>
+    `,
+    categoryName: 'Awareness & Education',
+    tags: ['diabetes', 'type 2', 'symptoms', 'management', 'health'],
+    status: 'published',
+    isFeatured: true,
+    featuredImage: {
+      url: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=800&h=400&fit=crop',
+      alt: 'Diabetes awareness and education'
+    },
+    seo: {
+      metaTitle: 'Understanding Type 2 Diabetes: Complete Guide',
+      metaDescription: 'Comprehensive guide to Type 2 diabetes including symptoms, causes, and management strategies.',
+      keywords: ['diabetes', 'type 2 diabetes', 'diabetes symptoms', 'diabetes management']
+    }
+  },
+  {
+    title: 'The Mediterranean Diet for Diabetes Management',
+    excerpt: 'Discover how the Mediterranean diet can help manage blood sugar levels and improve overall health for people with diabetes.',
+    content: `
+      <h2>What is the Mediterranean Diet?</h2>
+      <p>The Mediterranean diet is based on the traditional eating patterns of countries bordering the Mediterranean Sea. It emphasizes whole foods, healthy fats, and plant-based ingredients.</p>
+      
+      <h3>Key Components</h3>
+      <ul>
+        <li>Olive oil as the primary fat source</li>
+        <li>Abundant fruits and vegetables</li>
+        <li>Whole grains and legumes</li>
+        <li>Fish and seafood</li>
+        <li>Nuts and seeds</li>
+        <li>Moderate amounts of dairy</li>
+      </ul>
+      
+      <h3>Benefits for Diabetes</h3>
+      <p>Research has shown that the Mediterranean diet can:</p>
+      <ul>
+        <li>Improve blood sugar control</li>
+        <li>Reduce insulin resistance</li>
+        <li>Lower cardiovascular risk</li>
+        <li>Support weight management</li>
+        <li>Reduce inflammation</li>
+      </ul>
+      
+      <h3>Getting Started</h3>
+      <p>To adopt the Mediterranean diet:</p>
+      <ol>
+        <li>Replace butter with olive oil</li>
+        <li>Increase fish consumption to 2-3 times per week</li>
+        <li>Add more vegetables to every meal</li>
+        <li>Choose whole grains over refined grains</li>
+        <li>Snack on nuts and fruits</li>
+      </ol>
+    `,
+    categoryName: 'Diet & Nutrition',
+    tags: ['mediterranean diet', 'nutrition', 'blood sugar', 'healthy eating', 'diabetes diet'],
+    status: 'published',
+    isFeatured: true,
+    featuredImage: {
+      url: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&h=400&fit=crop',
+      alt: 'Mediterranean diet foods'
+    },
+    seo: {
+      metaTitle: 'Mediterranean Diet for Diabetes: Benefits & Guide',
+      metaDescription: 'Learn how the Mediterranean diet can help manage diabetes and improve blood sugar control.',
+      keywords: ['mediterranean diet', 'diabetes diet', 'blood sugar control', 'healthy eating']
+    }
+  }
+];
+
+async function seedCMS(superAdminRole) {
+  console.log('Seeding CMS data...');
+  
+  // Find a super admin user to use as the author
+  const superAdminUser = await User.findOne({ 
+    _id: { $in: await UsersRoles.find({ role_id: superAdminRole._id }).distinct('user_id') }
+  });
+  
+  if (!superAdminUser) {
+    console.log('No super admin user found for CMS seeding');
+    return;
+  }
+
+  // Seed Categories
+  console.log('Seeding categories...');
+  const createdCategories = [];
+  for (const categoryData of categoriesData) {
+    const slug = categoryData.name
+      .toLowerCase()
+      .replace(/[^a-z0-9 -]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim('-');
+    
+    const category = await Category.findOneAndUpdate(
+      { name: categoryData.name },
+      {
+        ...categoryData,
+        slug,
+        createdBy: superAdminUser._id
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    createdCategories.push(category);
+    console.log(`Category upserted: ${category.name}`);
+  }
+
+  // Seed Content
+  console.log('Seeding content...');
+  for (const contentItem of contentData) {
+    const slug = contentItem.title
+      .toLowerCase()
+      .replace(/[^a-z0-9 -]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim('-');
+    
+    const category = createdCategories.find(c => c.name === contentItem.categoryName);
+    if (!category) {
+      console.log(`Category not found for content: ${contentItem.title}`);
+      continue;
+    }
+    
+    await Content.findOneAndUpdate(
+      { title: contentItem.title },
+      {
+        ...contentItem,
+        slug,
+        category: category._id,
+        author: superAdminUser._id
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    console.log(`Content upserted: ${contentItem.title}`);
+  }
+  
+  console.log('CMS seeding completed!');
+}
 
 async function seed() {
   await mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
@@ -286,6 +531,7 @@ async function seed() {
     console.log('  Permission upserted:', permData.name);
   }
 
+
   // Assign Permissions to Roles
   console.log('Assigning permissions to roles...');
   
@@ -393,6 +639,9 @@ async function seed() {
       }
     }
   }
+
+  // Seed CMS Data
+  await seedCMS(superAdminRole);
 
   console.log('Seeding complete!');
   await mongoose.disconnect();
