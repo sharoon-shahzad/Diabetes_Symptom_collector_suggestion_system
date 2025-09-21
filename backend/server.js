@@ -12,6 +12,8 @@ import symptomRoutes from './routes/symptomRoutes.js';
 import roleRoutes from './routes/roleRoutes.js';
 import permissionRoutes from './routes/permissionRoutes.js';
 import assessmentRoutes from './routes/assessmentRoutes.js';
+import categoryRoutes from './routes/categoryRoutes.js';
+import contentRoutes from './routes/contentRoutes.js';
 
 dotenv.config();
 
@@ -36,6 +38,8 @@ app.use('/api/v1/symptoms', symptomRoutes);
 app.use('/api/v1/roles', roleRoutes);
 app.use('/api/v1/permissions', permissionRoutes);
 app.use('/api/v1/assessment', assessmentRoutes);
+app.use('/api/v1/categories', categoryRoutes);
+app.use('/api/v1/content', contentRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
