@@ -8,7 +8,7 @@ import {
   getCategoryStats
 } from '../controllers/categoryController.js';
 import { verifyAccessTokenMiddleware } from '../middlewares/authMiddleware.js';
-import { superAdminMiddleware } from '../middlewares/superAdminMiddleware.js';
+import { requirePermission } from '../middlewares/permissionMiddleware.js';
 import {
   validateCategory,
   validateCategoryUpdate,
@@ -20,12 +20,12 @@ const router = express.Router();
 
 // Public routes
 router.get('/', validateCategoryQuery, getAllCategories);
-router.get('/stats', verifyAccessTokenMiddleware, superAdminMiddleware, getCategoryStats);
+router.get('/stats', verifyAccessTokenMiddleware, requirePermission('category:view:all'), getCategoryStats);
 router.get('/:id', validateId, getCategory);
 
-// Protected routes (SuperAdmin only)
-router.post('/', verifyAccessTokenMiddleware, superAdminMiddleware, validateCategory, createCategory);
-router.put('/:id', verifyAccessTokenMiddleware, superAdminMiddleware, validateId, validateCategoryUpdate, updateCategory);
-router.delete('/:id', verifyAccessTokenMiddleware, superAdminMiddleware, validateId, deleteCategory);
+// Protected routes (CMS permissions required)
+router.post('/', verifyAccessTokenMiddleware, requirePermission('category:create:all'), validateCategory, createCategory);
+router.put('/:id', verifyAccessTokenMiddleware, requirePermission('category:update:all'), validateId, validateCategoryUpdate, updateCategory);
+router.delete('/:id', verifyAccessTokenMiddleware, requirePermission('category:delete:all'), validateId, deleteCategory);
 
 export default router;

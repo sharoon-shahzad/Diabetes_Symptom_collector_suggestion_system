@@ -51,8 +51,8 @@ export const getAllContent = async (req, res) => {
     // Execute query
     const content = await Content.find(filter)
       .populate('category', 'name slug color icon')
-      .populate('author', 'firstName lastName email')
-      .populate('lastModifiedBy', 'firstName lastName email')
+      .populate('author', 'fullName email')
+      .populate('lastModifiedBy', 'fullName email')
       .sort(sort)
       .skip(skip)
       .limit(parseInt(limit));
@@ -84,8 +84,8 @@ export const getContent = async (req, res) => {
   try {
     const content = await Content.findById(req.params.id)
       .populate('category', 'name slug color icon')
-      .populate('author', 'firstName lastName email')
-      .populate('lastModifiedBy', 'firstName lastName email');
+      .populate('author', 'fullName email')
+      .populate('lastModifiedBy', 'fullName email');
 
     if (!content) {
       return res.status(404).json({
@@ -121,8 +121,8 @@ export const getContentBySlug = async (req, res) => {
   try {
     const content = await Content.findOne({ slug: req.params.slug })
       .populate('category', 'name slug color icon')
-      .populate('author', 'firstName lastName email')
-      .populate('lastModifiedBy', 'firstName lastName email');
+      .populate('author', 'fullName email')
+      .populate('lastModifiedBy', 'fullName email');
 
     if (!content) {
       return res.status(404).json({
@@ -221,7 +221,7 @@ export const createContent = async (req, res) => {
 
     const populatedContent = await Content.findById(newContent._id)
       .populate('category', 'name slug color icon')
-      .populate('author', 'firstName lastName email');
+      .populate('author', 'fullName email');
 
     res.status(201).json({
       success: true,
@@ -314,8 +314,8 @@ export const updateContent = async (req, res) => {
 
     const updatedContent = await Content.findById(existingContent._id)
       .populate('category', 'name slug color icon')
-      .populate('author', 'firstName lastName email')
-      .populate('lastModifiedBy', 'firstName lastName email');
+      .populate('author', 'fullName email')
+      .populate('lastModifiedBy', 'fullName email');
 
     res.status(200).json({
       success: true,
@@ -415,7 +415,7 @@ export const getContentStats = async (req, res) => {
 
     const recentContent = await Content.find({ status: 'published' })
       .populate('category', 'name color')
-      .populate('author', 'firstName lastName')
+      .populate('author', 'fullName')
       .sort({ publishedAt: -1 })
       .limit(5)
       .select('title slug publishedAt viewCount category author');
@@ -467,7 +467,7 @@ export const getRelatedContent = async (req, res) => {
       ]
     })
       .populate('category', 'name slug color icon')
-      .populate('author', 'firstName lastName')
+      .populate('author', 'fullName')
       .sort({ publishedAt: -1 })
       .limit(4)
       .select('title slug excerpt featuredImage publishedAt readingTime viewCount category author');

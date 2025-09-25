@@ -10,7 +10,7 @@ import {
   getRelatedContent
 } from '../controllers/contentController.js';
 import { verifyAccessTokenMiddleware } from '../middlewares/authMiddleware.js';
-import { superAdminMiddleware } from '../middlewares/superAdminMiddleware.js';
+import { requirePermission } from '../middlewares/permissionMiddleware.js';
 import {
   validateContent,
   validateContentUpdate,
@@ -23,14 +23,14 @@ const router = express.Router();
 
 // Public routes
 router.get('/', validateContentQuery, getAllContent);
-router.get('/stats', verifyAccessTokenMiddleware, superAdminMiddleware, getContentStats);
+router.get('/stats', verifyAccessTokenMiddleware, requirePermission('content:view:all'), getContentStats);
 router.get('/slug/:slug', validateSlug, getContentBySlug);
 router.get('/:id/related', validateId, getRelatedContent);
 router.get('/:id', validateId, getContent);
 
-// Protected routes (SuperAdmin only)
-router.post('/', verifyAccessTokenMiddleware, superAdminMiddleware, validateContent, createContent);
-router.put('/:id', verifyAccessTokenMiddleware, superAdminMiddleware, validateId, validateContentUpdate, updateContent);
-router.delete('/:id', verifyAccessTokenMiddleware, superAdminMiddleware, validateId, deleteContent);
+// Protected routes (CMS permissions required)
+router.post('/', verifyAccessTokenMiddleware, requirePermission('content:create:all'), validateContent, createContent);
+router.put('/:id', verifyAccessTokenMiddleware, requirePermission('content:update:all'), validateId, validateContentUpdate, updateContent);
+router.delete('/:id', verifyAccessTokenMiddleware, requirePermission('content:delete:all'), validateId, deleteContent);
 
 export default router;

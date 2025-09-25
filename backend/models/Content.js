@@ -12,7 +12,8 @@ const contentSchema = new mongoose.Schema({
     required: true,
     unique: true,
     lowercase: true,
-    trim: true
+    trim: true,
+    index: true
   },
   excerpt: {
     type: String,
@@ -122,7 +123,6 @@ contentSchema.pre('save', function(next) {
 });
 
 // Indexes for better performance
-contentSchema.index({ slug: 1 });
 contentSchema.index({ status: 1 });
 contentSchema.index({ category: 1 });
 contentSchema.index({ publishedAt: -1 });
