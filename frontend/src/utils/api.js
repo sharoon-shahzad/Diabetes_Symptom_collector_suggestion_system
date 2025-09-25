@@ -107,3 +107,77 @@ export async function assessDiabetesRisk() {
   const res = await axiosInstance.post(`/assessment/diabetes`);
   return res.data.data;
 }
+
+// CMS API Functions
+// Categories
+export async function fetchCategories(status = 'active') {
+  const res = await axiosInstance.get(`/categories?status=${status}`);
+  return res.data.data;
+}
+
+export async function fetchCategory(id) {
+  const res = await axiosInstance.get(`/categories/${id}`);
+  return res.data.data;
+}
+
+export async function createCategory(category) {
+  const res = await axiosInstance.post(`/categories`, category);
+  return res.data.data;
+}
+
+export async function updateCategory(id, category) {
+  const res = await axiosInstance.put(`/categories/${id}`, category);
+  return res.data.data;
+}
+
+export async function deleteCategory(id) {
+  const res = await axiosInstance.delete(`/categories/${id}`);
+  return res.data;
+}
+
+export async function fetchCategoryStats() {
+  const res = await axiosInstance.get(`/categories/stats`);
+  return res.data.data;
+}
+
+// Content
+export async function fetchContent(params = {}) {
+  const queryParams = new URLSearchParams(params).toString();
+  const res = await axiosInstance.get(`/content?${queryParams}`);
+  return res.data;
+}
+
+export async function fetchContentById(id) {
+  const res = await axiosInstance.get(`/content/${id}`);
+  return res.data.data;
+}
+
+export async function fetchContentBySlug(slug) {
+  const res = await axiosInstance.get(`/content/slug/${slug}`);
+  return res.data.data;
+}
+
+export async function createContent(content) {
+  const res = await axiosInstance.post(`/content`, content);
+  return res.data.data;
+}
+
+export async function updateContent(id, content) {
+  const res = await axiosInstance.put(`/content/${id}`, content);
+  return res.data.data;
+}
+
+export async function deleteContent(id) {
+  const res = await axiosInstance.delete(`/content/${id}`);
+  return res.data;
+}
+
+export async function fetchContentStats() {
+  const res = await axiosInstance.get(`/content/stats`);
+  return res.data.data;
+}
+
+export async function fetchRelatedContent(id) {
+  const res = await axiosInstance.get(`/content/${id}/related`);
+  return res.data.data;
+}

@@ -13,6 +13,8 @@ import AdminDashboard from './pages/AdminDashboard';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import UniversalHeader from './components/Common/UniversalHeader';
+import CMSManagement from './cms/pages/CMSManagement';
+import PublicCMS from './cms/pages/PublicCMS';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -25,7 +27,8 @@ const AppContent = () => {
   const noHeaderPages = ['/signin', '/signup', '/forgotpassword', '/reset-password', '/'];
   const shouldShowHeader = !noHeaderPages.includes(location.pathname) && 
                           !location.pathname.startsWith('/activate/') &&
-                          !location.pathname.startsWith('/reset-password/');
+                          !location.pathname.startsWith('/reset-password/') &&
+                          !location.pathname.startsWith('/content/');
 
   return (
     <Box sx={{ 
@@ -43,6 +46,9 @@ const AppContent = () => {
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/assessment" element={<Assessment />} />
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
+          <Route path="/cms" element={<CMSManagement />} />
+          <Route path="/content" element={<PublicCMS />} />
+          <Route path="/content/:slug" element={<PublicCMS />} />
           <Route path="/forgotpassword" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/" element={<SignInSide />} />

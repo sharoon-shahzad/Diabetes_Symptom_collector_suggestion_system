@@ -14,9 +14,11 @@ import ManageRolesPermissions from '../admin/ManageRolesPermissions';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import SecurityIcon from '@mui/icons-material/Security';
+import ArticleIcon from '@mui/icons-material/Article';
 import { getCurrentUser, logout } from '../utils/auth';
 import { useNavigate } from 'react-router-dom';
 import ThemeToggle from '../components/Common/ThemeToggle';
+import CMSManagement from '../cms/pages/CMSManagement';
 
 const drawerWidth = 220;
 const fontFamily = `'Inter', 'Roboto', 'Open Sans', 'Helvetica Neue', Arial, sans-serif`;
@@ -69,6 +71,13 @@ export default function AdminDashboard() {
       { label: 'Manage Questions', icon: <QuizIcon />, component: <ManageQuestions /> },
       { label: 'User Management', icon: <AccountCircleIcon />, component: <UserManagement /> },
     ];
+
+    // Add CMS management for users with content permissions
+    if (userRoles.includes('super_admin') || userRoles.includes('admin')) {
+      baseSections.push(
+        { label: 'Content Management', icon: <ArticleIcon />, component: <CMSManagement /> }
+      );
+    }
 
     // Add super admin sections if user has super admin role
     if (userRoles.includes('super_admin')) {
