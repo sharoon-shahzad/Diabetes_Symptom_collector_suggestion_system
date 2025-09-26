@@ -3,6 +3,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Box } from '@mui/material';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import LandingPage from './pages/LandingPage';
 import SignInSide from './pages/SignInSide';
 import SignUpSide from './pages/SignUpSide';
 import ActivateAccount from './pages/ActivateAccount';
@@ -39,6 +40,7 @@ const AppContent = () => {
       {shouldShowHeader && <UniversalHeader />}
       <Box> {/* Removed top padding to eliminate space between header and content */}
         <Routes>
+          <Route path="/" element={<LandingPage />} />
           <Route path="/signin" element={<SignInSide />} />
           <Route path="/signup" element={<SignUpSide />} />
           <Route path="/activate/:token" element={<ActivateAccount />} />
@@ -51,7 +53,6 @@ const AppContent = () => {
           <Route path="/content/:slug" element={<PublicCMS />} />
           <Route path="/forgotpassword" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
-          <Route path="/" element={<SignInSide />} />
         </Routes>
       </Box>
       <ToastContainer 
