@@ -1,247 +1,98 @@
-import Content from '../models/Content.js';
 import Category from '../models/Category.js';
 import { validationResult } from 'express-validator';
 
-// @desc    Get all content
-// @route   GET /api/v1/content
+// @desc    Get all categories
+// @route   GET /api/v1/categories
 // @access  Public
-export const getAllContent = async (req, res) => {
+export const getAllCategories = async (req, res) => {
   try {
     const {
       page = 1,
       limit = 10,
-      status = 'published',
-      category,
-      tag,
+      isActive,
       search,
-      sort = '-publishedAt',
-      featured
+      sort = 'name'
     } = req.query;
 
     // Build filter
     let filter = {};
     
-    if (status !== 'all') {
-      filter.status = status;
-    }
-    
-    if (category) {
-      filter.category = category;
-    }
-    
-    if (tag) {
-      filter.tags = { $in: [tag.toLowerCase()] };
+    if (isActive !== undefined) {
+      filter.isActive = isActive === 'true';
     }
     
     if (search) {
       filter.$or = [
-        { title: { $regex: search, $options: 'i' } },
-        { excerpt: { $regex: search, $options: 'i' } },
-        { content: { $regex: search, $options: 'i' } }
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
       ];
-    }
-    
-    if (featured === 'true') {
-      filter.isFeatured = true;
     }
 
     // Calculate pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     // Execute query
-    const content = await Content.find(filter)
-      .populate('category', 'name slug color icon')
-      .populate('author', 'fullName email')
-      .populate('lastModifiedBy', 'fullName email')
+    const categories = await Category.find(filter)
+      .populate('createdBy', 'fullName email')
+      .populate('updatedBy', 'fullName email')
       .sort(sort)
       .skip(skip)
       .limit(parseInt(limit));
 
-    const total = await Content.countDocuments(filter);
+    const total = await Category.countDocuments(filter);
 
     res.status(200).json({
       success: true,
-      count: content.length,
+      count: categories.length,
       total,
       page: parseInt(page),
       pages: Math.ceil(total / parseInt(limit)),
-      data: content
+      data: categories
     });
   } catch (error) {
-    console.error('Error fetching content:', error);
+    console.error('Error fetching categories:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching content',
+      message: 'Error fetching categories',
       error: error.message
     });
   }
 };
 
-// @desc    Get single content
-// @route   GET /api/v1/content/:id
+// @desc    Get single category
+// @route   GET /api/v1/categories/:id
 // @access  Public
-export const getContent = async (req, res) => {
+export const getCategory = async (req, res) => {
   try {
-    const content = await Content.findById(req.params.id)
-      .populate('category', 'name slug color icon')
-      .populate('author', 'fullName email')
-      .populate('lastModifiedBy', 'fullName email');
+    const category = await Category.findById(req.params.id)
+      .populate('createdBy', 'fullName email')
+      .populate('updatedBy', 'fullName email');
 
-    if (!content) {
+    if (!category) {
       return res.status(404).json({
-        success: false,
-        message: 'Content not found'
-      });
-    }
-
-    // Increment view count for published content
-    if (content.status === 'published') {
-      content.viewCount += 1;
-      await content.save();
-    }
-
-    res.status(200).json({
-      success: true,
-      data: content
-    });
-  } catch (error) {
-    console.error('Error fetching content:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching content',
-      error: error.message
-    });
-  }
-};
-
-// @desc    Get content by slug
-// @route   GET /api/v1/content/slug/:slug
-// @access  Public
-export const getContentBySlug = async (req, res) => {
-  try {
-    const content = await Content.findOne({ slug: req.params.slug })
-      .populate('category', 'name slug color icon')
-      .populate('author', 'fullName email')
-      .populate('lastModifiedBy', 'fullName email');
-
-    if (!content) {
-      return res.status(404).json({
-        success: false,
-        message: 'Content not found'
-      });
-    }
-
-    // Only show published content to public
-    if (content.status !== 'published') {
-      return res.status(404).json({
-        success: false,
-        message: 'Content not found'
-      });
-    }
-
-    // Increment view count
-    content.viewCount += 1;
-    await content.save();
-
-    res.status(200).json({
-      success: true,
-      data: content
-    });
-  } catch (error) {
-    console.error('Error fetching content by slug:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching content',
-      error: error.message
-    });
-  }
-};
-
-// @desc    Create new content
-// @route   POST /api/v1/content
-// @access  Private (SuperAdmin only)
-export const createContent = async (req, res) => {
-  try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation errors',
-        errors: errors.array()
-      });
-    }
-
-    const {
-      title,
-      excerpt,
-      content,
-      featuredImage,
-      category,
-      tags,
-      status,
-      isFeatured,
-      seo
-    } = req.body;
-
-    // Verify category exists
-    const categoryExists = await Category.findById(category);
-    if (!categoryExists) {
-      return res.status(400).json({
         success: false,
         message: 'Category not found'
       });
     }
 
-    // Check if content with same title exists
-    const existingContent = await Content.findOne({ 
-      title: { $regex: new RegExp(`^${title}$`, 'i') }
-    });
-
-    if (existingContent) {
-      return res.status(400).json({
-        success: false,
-        message: 'Content with this title already exists'
-      });
-    }
-
-    const newContent = new Content({
-      title,
-      excerpt,
-      content,
-      featuredImage,
-      category,
-      tags: tags || [],
-      status: status || 'draft',
-      isFeatured: isFeatured || false,
-      seo: seo || {},
-      author: req.user.id
-    });
-
-    await newContent.save();
-
-    const populatedContent = await Content.findById(newContent._id)
-      .populate('category', 'name slug color icon')
-      .populate('author', 'fullName email');
-
-    res.status(201).json({
+    res.status(200).json({
       success: true,
-      message: 'Content created successfully',
-      data: populatedContent
+      data: category
     });
   } catch (error) {
-    console.error('Error creating content:', error);
+    console.error('Error fetching category:', error);
     res.status(500).json({
       success: false,
-      message: 'Error creating content',
+      message: 'Error fetching category',
       error: error.message
     });
   }
 };
 
-// @desc    Update content
-// @route   PUT /api/v1/content/:id
-// @access  Private (SuperAdmin only)
-export const updateContent = async (req, res) => {
+// @desc    Create new category
+// @route   POST /api/v1/categories
+// @access  Private (CMS permissions required)
+export const createCategory = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -253,142 +104,191 @@ export const updateContent = async (req, res) => {
     }
 
     const {
-      title,
-      excerpt,
-      content,
-      featuredImage,
-      category,
-      tags,
-      status,
-      isFeatured,
-      seo
+      name,
+      description,
+      color,
+      icon,
+      isActive
     } = req.body;
 
-    const existingContent = await Content.findById(req.params.id);
-    if (!existingContent) {
+    // Check if category with same name exists
+    const existingCategory = await Category.findOne({ 
+      name: { $regex: new RegExp(`^${name}$`, 'i') }
+    });
+
+    if (existingCategory) {
+      return res.status(400).json({
+        success: false,
+        message: 'Category with this name already exists'
+      });
+    }
+
+    const newCategory = new Category({
+      name,
+      description,
+      color: color || '#1976d2',
+      icon: icon || 'article',
+      isActive: isActive !== undefined ? isActive : true,
+      createdBy: req.user.id
+    });
+
+    await newCategory.save();
+
+    const populatedCategory = await Category.findById(newCategory._id)
+      .populate('createdBy', 'fullName email');
+
+    res.status(201).json({
+      success: true,
+      message: 'Category created successfully',
+      data: populatedCategory
+    });
+  } catch (error) {
+    console.error('Error creating category:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creating category',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Update category
+// @route   PUT /api/v1/categories/:id
+// @access  Private (CMS permissions required)
+export const updateCategory = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Validation errors',
+        errors: errors.array()
+      });
+    }
+
+    const {
+      name,
+      description,
+      color,
+      icon,
+      isActive
+    } = req.body;
+
+    const existingCategory = await Category.findById(req.params.id);
+    if (!existingCategory) {
       return res.status(404).json({
         success: false,
-        message: 'Content not found'
+        message: 'Category not found'
       });
     }
 
-    // Verify category exists if being updated
-    if (category) {
-      const categoryExists = await Category.findById(category);
-      if (!categoryExists) {
-        return res.status(400).json({
-          success: false,
-          message: 'Category not found'
-        });
-      }
-    }
-
-    // Check if title is being changed and if it conflicts
-    if (title && title !== existingContent.title) {
-      const duplicateContent = await Content.findOne({ 
+    // Check if name is being changed and if it conflicts
+    if (name && name !== existingCategory.name) {
+      const duplicateCategory = await Category.findOne({ 
         _id: { $ne: req.params.id },
-        title: { $regex: new RegExp(`^${title}$`, 'i') }
+        name: { $regex: new RegExp(`^${name}$`, 'i') }
       });
 
-      if (duplicateContent) {
+      if (duplicateCategory) {
         return res.status(400).json({
           success: false,
-          message: 'Content with this title already exists'
+          message: 'Category with this name already exists'
         });
       }
     }
 
     // Update fields
-    if (title) existingContent.title = title;
-    if (excerpt) existingContent.excerpt = excerpt;
-    if (content) existingContent.content = content;
-    if (featuredImage) existingContent.featuredImage = featuredImage;
-    if (category) existingContent.category = category;
-    if (tags) existingContent.tags = tags;
-    if (status) existingContent.status = status;
-    if (isFeatured !== undefined) existingContent.isFeatured = isFeatured;
-    if (seo) existingContent.seo = { ...existingContent.seo, ...seo };
-    existingContent.lastModifiedBy = req.user.id;
+    if (name) existingCategory.name = name;
+    if (description !== undefined) existingCategory.description = description;
+    if (color) existingCategory.color = color;
+    if (icon) existingCategory.icon = icon;
+    if (isActive !== undefined) existingCategory.isActive = isActive;
+    existingCategory.updatedBy = req.user.id;
 
-    await existingContent.save();
+    await existingCategory.save();
 
-    const updatedContent = await Content.findById(existingContent._id)
-      .populate('category', 'name slug color icon')
-      .populate('author', 'fullName email')
-      .populate('lastModifiedBy', 'fullName email');
+    const updatedCategory = await Category.findById(existingCategory._id)
+      .populate('createdBy', 'fullName email')
+      .populate('updatedBy', 'fullName email');
 
     res.status(200).json({
       success: true,
-      message: 'Content updated successfully',
-      data: updatedContent
+      message: 'Category updated successfully',
+      data: updatedCategory
     });
   } catch (error) {
-    console.error('Error updating content:', error);
+    console.error('Error updating category:', error);
     res.status(500).json({
       success: false,
-      message: 'Error updating content',
+      message: 'Error updating category',
       error: error.message
     });
   }
 };
 
-// @desc    Delete content
-// @route   DELETE /api/v1/content/:id
-// @access  Private (SuperAdmin only)
-export const deleteContent = async (req, res) => {
+// @desc    Delete category
+// @route   DELETE /api/v1/categories/:id
+// @access  Private (CMS permissions required)
+export const deleteCategory = async (req, res) => {
   try {
-    const content = await Content.findById(req.params.id);
-    if (!content) {
+    const category = await Category.findById(req.params.id);
+    if (!category) {
       return res.status(404).json({
         success: false,
-        message: 'Content not found'
+        message: 'Category not found'
       });
     }
 
-    await Content.findByIdAndDelete(req.params.id);
+    // Check if category is being used by any content
+    const Content = (await import('../models/Content.js')).default;
+    const contentUsingCategory = await Content.findOne({ category: req.params.id });
+    
+    if (contentUsingCategory) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete category that is being used by content. Please reassign or delete the content first.'
+      });
+    }
+
+    await Category.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
       success: true,
-      message: 'Content deleted successfully'
+      message: 'Category deleted successfully'
     });
   } catch (error) {
-    console.error('Error deleting content:', error);
+    console.error('Error deleting category:', error);
     res.status(500).json({
       success: false,
-      message: 'Error deleting content',
+      message: 'Error deleting category',
       error: error.message
     });
   }
 };
 
-// @desc    Get content statistics
-// @route   GET /api/v1/content/stats
-// @access  Private (SuperAdmin only)
-export const getContentStats = async (req, res) => {
+// @desc    Get category statistics
+// @route   GET /api/v1/categories/stats
+// @access  Private (CMS permissions required)
+export const getCategoryStats = async (req, res) => {
   try {
-    const stats = await Content.aggregate([
+    const stats = await Category.aggregate([
       {
         $group: {
           _id: null,
-          totalContent: { $sum: 1 },
-          publishedContent: {
-            $sum: { $cond: [{ $eq: ['$status', 'published'] }, 1, 0] }
+          totalCategories: { $sum: 1 },
+          activeCategories: {
+            $sum: { $cond: ['$isActive', 1, 0] }
           },
-          draftContent: {
-            $sum: { $cond: [{ $eq: ['$status', 'draft'] }, 1, 0] }
-          },
-          archivedContent: {
-            $sum: { $cond: [{ $eq: ['$status', 'archived'] }, 1, 0] }
-          },
-          featuredContent: {
-            $sum: { $cond: ['$isFeatured', 1, 0] }
-          },
-          totalViews: { $sum: '$viewCount' }
+          inactiveCategories: {
+            $sum: { $cond: ['$isActive', 0, 1] }
+          }
         }
       }
     ]);
 
-    const categoryStats = await Content.aggregate([
+    // Get content count per category
+    const Content = (await import('../models/Content.js')).default;
+    const categoryContentStats = await Content.aggregate([
       {
         $lookup: {
           from: 'categories',
@@ -405,82 +305,40 @@ export const getContentStats = async (req, res) => {
           _id: '$category',
           categoryName: { $first: '$categoryInfo.name' },
           categoryColor: { $first: '$categoryInfo.color' },
-          count: { $sum: 1 }
+          contentCount: { $sum: 1 },
+          publishedContent: {
+            $sum: { $cond: [{ $eq: ['$status', 'published'] }, 1, 0] }
+          }
         }
       },
       {
-        $sort: { count: -1 }
+        $sort: { contentCount: -1 }
       }
     ]);
 
-    const recentContent = await Content.find({ status: 'published' })
-      .populate('category', 'name color')
-      .populate('author', 'fullName')
-      .sort({ publishedAt: -1 })
+    const recentCategories = await Category.find()
+      .populate('createdBy', 'fullName')
+      .sort({ createdAt: -1 })
       .limit(5)
-      .select('title slug publishedAt viewCount category author');
+      .select('name slug color icon isActive createdAt createdBy');
 
     res.status(200).json({
       success: true,
       data: {
         overview: stats[0] || {
-          totalContent: 0,
-          publishedContent: 0,
-          draftContent: 0,
-          archivedContent: 0,
-          featuredContent: 0,
-          totalViews: 0
+          totalCategories: 0,
+          activeCategories: 0,
+          inactiveCategories: 0
         },
-        categoryStats,
-        recentContent
+        categoryContentStats,
+        recentCategories
       }
     });
   } catch (error) {
-    console.error('Error fetching content stats:', error);
+    console.error('Error fetching category stats:', error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching content statistics',
-      error: error.message
-    });
-  }
-};
-
-// @desc    Get related content
-// @route   GET /api/v1/content/:id/related
-// @access  Public
-export const getRelatedContent = async (req, res) => {
-  try {
-    const content = await Content.findById(req.params.id);
-    if (!content) {
-      return res.status(404).json({
-        success: false,
-        message: 'Content not found'
-      });
-    }
-
-    const relatedContent = await Content.find({
-      _id: { $ne: req.params.id },
-      status: 'published',
-      $or: [
-        { category: content.category },
-        { tags: { $in: content.tags } }
-      ]
-    })
-      .populate('category', 'name slug color icon')
-      .populate('author', 'fullName')
-      .sort({ publishedAt: -1 })
-      .limit(4)
-      .select('title slug excerpt featuredImage publishedAt readingTime viewCount category author');
-
-    res.status(200).json({
-      success: true,
-      data: relatedContent
-    });
-  } catch (error) {
-    console.error('Error fetching related content:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching related content',
+      message: 'Error fetching category statistics',
       error: error.message
     });
   }
