@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -327,7 +327,7 @@ const LandingPage = () => {
                 <Button
                   variant="contained"
                   size="small"
-                  onClick={() => navigate('/signup')}
+                  onClick={() => navigate('/onboarding')}
                   startIcon={<ArrowForward sx={{ fontSize: 16 }} />}
                   sx={{
                     borderRadius: '20px',
@@ -438,7 +438,7 @@ const LandingPage = () => {
                             <Button
                               variant="contained"
                               size="large"
-                              onClick={() => navigate('/signup')}
+                              onClick={() => navigate('/onboarding')}
                               startIcon={<ArrowForward />}
                             sx={{
                               py: 1.5,
@@ -1164,7 +1164,7 @@ const LandingPage = () => {
                   <Button
                     variant="contained"
                     size="large"
-                    onClick={() => navigate('/signup')}
+                    onClick={() => navigate('/onboarding')}
                     sx={{
                       background: 'white',
                       color: theme.palette.primary.main,

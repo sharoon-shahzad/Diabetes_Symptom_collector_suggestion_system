@@ -106,10 +106,26 @@ export const assessDiabetes = async (req, res) => {
     const result = await assessDiabetesRiskPython(features);
     console.log('ML model result:', result);
 
+    // Check if the result contains an error
+    if (result.error) {
+      console.error('ML model returned error:', result.error);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Assessment failed', 
+        error: result.error,
+        details: 'The machine learning model encountered an error during processing'
+      });
+    }
+
     return res.status(200).json({ success: true, data: { features, result } });
   } catch (err) {
     console.error('Assessment error:', err);
-    return res.status(500).json({ success: false, message: 'Assessment failed', error: err.message });
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Assessment failed', 
+      error: err.message,
+      details: 'An error occurred while processing the diabetes risk assessment'
+    });
   }
 };
 

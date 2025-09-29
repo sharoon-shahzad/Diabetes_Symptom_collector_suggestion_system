@@ -86,6 +86,20 @@ export const register = async (req, res) => {
         
         await user.save();
         
+        // Assign 'user' role to the new user
+        try {
+            const { assignDefaultUserRole } = await import('../utils/roleUtils.js');
+            const roleAssigned = await assignDefaultUserRole(user._id);
+            if (roleAssigned) {
+                console.log('✅ Successfully assigned user role to new user:', user.email);
+            } else {
+                console.warn('⚠️ Failed to assign user role to new user:', user.email);
+            }
+        } catch (roleError) {
+            console.error('❌ Error assigning user role:', roleError);
+            // Don't fail registration if role assignment fails
+        }
+        
         // Send activation email
         await sendActivationEmail(email, activationToken);
         
