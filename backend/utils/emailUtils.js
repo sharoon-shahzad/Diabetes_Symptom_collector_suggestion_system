@@ -10,12 +10,14 @@ export async function canSendOnboardingEmail(userId, email) {
     
     // Prevent sending multiple emails within 5 minutes
     if (lastSent && (now - lastSent) < 5 * 60 * 1000) {
+        console.log('⚠️ Email blocked: Recently sent within 5 minutes');
         return false;
     }
     
-    // Double-check database state
+    // Check if user exists (but don't check onboardingCompleted since it's already been set to true)
     const user = await User.findById(userId);
-    if (!user || user.onboardingCompleted) {
+    if (!user) {
+        console.log('⚠️ Email blocked: User not found');
         return false;
     }
     
@@ -29,5 +31,6 @@ export async function canSendOnboardingEmail(userId, email) {
         }
     }
     
+    console.log('✅ Email allowed: User exists and no recent duplicate');
     return true;
 } 

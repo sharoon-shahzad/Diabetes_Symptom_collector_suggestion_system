@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { connectDB } from './config/db.js';
+import { ensureRolesExist } from './utils/roleUtils.js';
 import authRoutes from './routes/authRoute.js';
 import userRoutes from './routes/userRoutes.js';
 import questionRoutes from './routes/questionRoutes.js';
@@ -32,7 +33,25 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-connectDB();
+// Connect to database and ensure roles exist
+const startServer = async () => {
+    try {
+        await connectDB();
+        console.log('✅ Database connected successfully');
+        
+        // Ensure all required roles exist
+        await ensureRolesExist();
+        
+        // Start the server
+        const PORT = process.env.PORT || 5000;
+        app.listen(PORT, () => {
+            console.log(`✅ Server running on port ${PORT}`);
+        });
+    } catch (error) {
+        console.error('❌ Failed to start server:', error);
+        process.exit(1);
+    }
+};
 
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
@@ -55,7 +74,5 @@ app.get('*', (req, res) => {
   res.status(404).json({ message: 'Not found' });
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+// Start the server
+startServer();

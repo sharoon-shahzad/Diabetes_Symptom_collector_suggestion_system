@@ -26,6 +26,26 @@ const seedData = async () => {
     // await Category.deleteMany({});
     // await Content.deleteMany({});
 
+    // Create roles if they don't exist
+    const roles = [
+      { role_name: 'user' },
+      { role_name: 'admin' },
+      { role_name: 'super_admin' }
+    ];
+
+    const createdRoles = [];
+    for (const roleData of roles) {
+      let role = await Role.findOne({ role_name: roleData.role_name });
+      if (!role) {
+        role = new Role(roleData);
+        await role.save();
+        console.log(`Created role: ${role.role_name}`);
+      } else {
+        console.log(`Role already exists: ${role.role_name}`);
+      }
+      createdRoles.push(role);
+    }
+
     // Find or create a super admin user for content authoring
     let adminUser = await User.findOne({ email: 'admin@diavise.com' });
     if (!adminUser) {
@@ -38,6 +58,16 @@ const seedData = async () => {
       });
       await adminUser.save();
       console.log('Created admin user');
+
+      // Assign super_admin role to admin user
+      const superAdminRole = createdRoles.find(r => r.role_name === 'super_admin');
+      if (superAdminRole) {
+        await UsersRoles.create({
+          user_id: adminUser._id,
+          role_id: superAdminRole._id
+        });
+        console.log('Assigned super_admin role to admin user');
+      }
     }
 
     // Create sample categories
