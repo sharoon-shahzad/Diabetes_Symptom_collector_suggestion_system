@@ -103,7 +103,8 @@ export default function ManageRolesPermissions() {
       setSaveLoading(true);
       const token = localStorage.getItem('accessToken');
       
-      await axios.put(`http://localhost:5000/api/v1/roles/${selectedRole._id}/permissions`, {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      await axios.put(`${API_URL}/api/v1/roles/${selectedRole._id}/permissions`, {
         permissionIds: selectedPermissions
       }, {
         headers: { Authorization: `Bearer ${token}` }
