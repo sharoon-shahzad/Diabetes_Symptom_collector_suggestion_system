@@ -1,6 +1,6 @@
 // src/App.jsx
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { Box } from '@mui/material';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import LandingPage from './pages/LandingPage';
@@ -46,7 +46,7 @@ const AppContent = () => {
           <Route path="/activate/:token" element={<ActivateAccount />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/onboarding" element={<Onboarding />} />
-          <Route path="/assessment" element={<Assessment />} />
+          <Route path="/assessment" element={<RequireAuth redirectKey="assessment"><Assessment /></RequireAuth>} />
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
           <Route path="/cms" element={<CMSManagement />} />
           <Route path="/content" element={<PublicCMS />} />
@@ -62,6 +62,23 @@ const AppContent = () => {
       />
     </Box>
   );
+};
+
+// Simple route guard component that redirects to sign-in and preserves return target
+const RequireAuth = ({ children, redirectKey }) => {
+  const location = useLocation();
+  const token = localStorage.getItem('accessToken');
+
+  if (!token) {
+    // For known protected routes, pass a simple key SignIn can handle
+    if (redirectKey) {
+      return <Navigate to={`/signin?returnTo=${redirectKey}`} replace />;
+    }
+    // Fallback: preserve full path to return after login
+    const fullPath = encodeURIComponent(location.pathname + (location.search || ''));
+    return <Navigate to={`/signin?returnToPath=${fullPath}`} replace />;
+  }
+  return children;
 };
 
 const App = () => {

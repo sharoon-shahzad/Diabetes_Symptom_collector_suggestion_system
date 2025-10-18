@@ -10,6 +10,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import QuestionList from './QuestionList';
 import { getCurrentUser } from '../../utils/auth';
 import axiosInstance from '../../utils/axiosInstance';
+import { useNavigate } from 'react-router-dom';
 
 const CARD_MIN_HEIGHT = 180;
 
@@ -19,7 +20,6 @@ const SymptomCard = ({ diseaseId }) => {
   const [error, setError] = useState(null);
   const [expanded, setExpanded] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [answeredQuestions, setAnsweredQuestions] = useState(new Set());
   const [symptomCompletionStatus, setSymptomCompletionStatus] = useState({});
 
   useEffect(() => {
@@ -32,7 +32,8 @@ const SymptomCard = ({ diseaseId }) => {
         setSymptoms(data);
         setError(null);
       } catch (err) {
-        setError('Error fetching symptoms.');
+          console.error('Error fetching symptoms:', err?.message || err);
+          setError('Error fetching symptoms.');
       } finally {
         setLoading(false);
       }
@@ -84,15 +85,27 @@ const SymptomCard = ({ diseaseId }) => {
             answeredIds.add(question._id);
           });
         });
-        setAnsweredQuestions(answeredIds);
+        // answeredIds is used to compute completion status above; we don't keep a Set in state currently
         setSymptomCompletionStatus(completionStatus);
       }
     } catch (err) {
-      console.error('Error fetching answered questions:', err);
+      console.error('Error fetching answered questions:', err?.message || err);
     }
   };
 
+  const navigate = useNavigate();
+
   const handleExpand = (symptomId) => setExpanded(expanded === symptomId ? null : symptomId);
+
+  // If the user is not logged in and clicks Start, redirect to sign-in and include return params
+  const handleStartClick = (symptomId) => {
+    if (!isLoggedIn) {
+      // Redirect to sign-in and return to onboarding step 1 with the symptomId
+      navigate(`/signin?returnTo=onboarding&returnToStep=1&symptomId=${symptomId}`);
+      return;
+    }
+    handleExpand(symptomId);
+  };
 
   const isSymptomCompleted = (symptomId) => {
     const symptom = symptoms.find(s => s._id === symptomId);
@@ -210,7 +223,7 @@ const SymptomCard = ({ diseaseId }) => {
                         borderColor: isCompleted ? '#4caf50' : '#90caf9',
                       },
                     }}
-                    onClick={() => handleExpand(symptom._id)}
+                    onClick={() => handleStartClick(symptom._id)}
                     fullWidth
                   >
                     {expanded === symptom._id ? "Hide Questions" : (isCompleted ? "View Details" : "Start")}

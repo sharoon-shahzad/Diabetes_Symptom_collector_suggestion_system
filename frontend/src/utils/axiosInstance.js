@@ -1,9 +1,10 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const axiosInstance = axios.create({
-  baseURL: `${API_URL}/api/v1`
+  baseURL: `${API_URL}/api/v1`,
+  withCredentials: true
 });
 
 // Request interceptor: Attach access token
@@ -42,4 +43,4 @@ axiosInstance.interceptors.response.use(
   }
 );
 
-export default axiosInstance; 
+export default axiosInstance;

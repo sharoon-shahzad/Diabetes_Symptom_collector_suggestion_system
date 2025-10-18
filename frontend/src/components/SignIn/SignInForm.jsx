@@ -39,7 +39,8 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
         setSuccess('');
         setError('');
         try {
-                const res = await axios.post('http://localhost:5000/api/v1/auth/login', {
+                const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+                const res = await axios.post(`${API_URL}/api/v1/auth/login`, {
                 email,
                 password,
             }, { withCredentials: true });
@@ -48,11 +49,28 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
 
             if (res.data.data && res.data.data.user && res.data.data.accessToken) {
                 localStorage.setItem('accessToken', res.data.data.accessToken);
-                const roles = res.data.data.user.roles || [];
-                if (roles.includes('admin') || roles.includes('super_admin')) {
-                    navigate('/admin-dashboard');
+                
+                // Check for redirect parameters in URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const returnTo = urlParams.get('returnTo');
+                const returnToStep = urlParams.get('returnToStep');
+                
+                // Handle redirect based on parameters
+                if (returnTo === 'onboarding') {
+                    // Redirect back to onboarding with the step parameter and optional symptomId
+                    const symptomId = urlParams.get('symptomId');
+                    navigate(`/onboarding${returnToStep ? `?returnToStep=${returnToStep}${symptomId ? `&symptomId=${symptomId}` : ''}` : ''}`);
+                } else if (returnTo === 'assessment') {
+                    // Redirect to assessment if requested
+                    navigate('/assessment');
                 } else {
-                    navigate('/dashboard');
+                    // Default navigation based on user role
+                    const roles = res.data.data.user.roles || [];
+                    if (roles.includes('admin') || roles.includes('super_admin')) {
+                        navigate('/admin-dashboard');
+                    } else {
+                        navigate('/dashboard');
+                    }
                 }
             } else {
                 setError(res.data.message || 'Login failed.');
