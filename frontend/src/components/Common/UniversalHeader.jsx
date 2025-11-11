@@ -53,6 +53,13 @@ export default function UniversalHeader() {
     checkAuthStatus();
   }, []);
 
+  // Listen for global requests to open the Change Password modal (from My Account page)
+  useEffect(() => {
+    const openHandler = () => handleChangePwOpen();
+    window.addEventListener('openChangePassword', openHandler);
+    return () => window.removeEventListener('openChangePassword', openHandler);
+  }, []);
+
   const checkAuthStatus = async () => {
     try {
       const token = localStorage.getItem('accessToken');
@@ -61,7 +68,7 @@ export default function UniversalHeader() {
         setUser(userData);
         setEmail(userData.email || '');
       }
-    } catch (error) {
+    } catch {
       console.log('User not authenticated');
     } finally {
       setLoading(false);

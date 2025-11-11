@@ -20,8 +20,6 @@ export default function ManageQuestions() {
   const [editData, setEditData] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
-  const [error, setError] = useState(null);
-  const [symptomError, setSymptomError] = useState(null);
 
   useEffect(() => {
     const loadDiseases = async () => {
@@ -45,7 +43,6 @@ export default function ManageQuestions() {
     if (selectedDisease) {
       console.log('Selected disease ID (questions):', selectedDisease);
       setSymptomLoading(true);
-      setSymptomError(null);
       fetchSymptomsByDisease(selectedDisease)
         .then(data => {
           console.log('Symptoms fetched (questions):', data);
@@ -58,14 +55,12 @@ export default function ManageQuestions() {
         })
         .catch(err => {
           console.error('Error fetching symptoms (questions):', err);
-          setSymptomError('Failed to fetch symptoms.');
           setSymptoms([]);
           setSymptomLoading(false);
         });
     } else {
       setSymptoms([]);
       setSelectedSymptom('');
-      setSymptomError(null);
     }
   }, [selectedDisease]);
 
@@ -124,22 +119,29 @@ export default function ManageQuestions() {
   };
 
   return (
-    <Box p={3}>
-      <Paper elevation={3} sx={{ p: 4, mb: 2, borderRadius: 4, boxShadow: '0 4px 24px 0 rgba(25, 118, 210, 0.08)', background: '#101624', color: '#fff' }}>
-        <Typography variant="h5" fontWeight="bold" gutterBottom color="#fff">
+    <Box>
+      {/* Header */}
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h5" fontWeight={700} gutterBottom>
           Manage Questions
         </Typography>
-        <FormControl fullWidth sx={{ mb: 2 }}>
-          <InputLabel sx={{ color: '#fff' }}>Select Disease</InputLabel>
+        <Typography variant="body2" color="text.secondary">
+          Add, edit, or remove questions for symptoms
+        </Typography>
+      </Box>
+
+      {/* Disease Selection */}
+      <Box sx={{ mb: 2 }}>
+        <FormControl fullWidth>
+          <InputLabel>Select Disease</InputLabel>
           <Select
             label="Select Disease"
             value={diseases.map(d=>d._id).includes(selectedDisease) ? selectedDisease : (diseases[0]?._id || '')}
             onChange={e => setSelectedDisease(e.target.value)}
             disabled={loading || diseases.length === 0}
-            sx={{ color: '#fff', '.MuiSelect-icon': { color: '#fff' } }}
           >
             {loading ? (
-              <MenuItem value=""><CircularProgress size={20} sx={{ color: '#fff' }} /></MenuItem>
+              <MenuItem value=""><CircularProgress size={20} /></MenuItem>
             ) : diseases.length === 0 ? (
               <MenuItem value="" disabled>No diseases found</MenuItem>
             ) : (
@@ -149,17 +151,20 @@ export default function ManageQuestions() {
             )}
           </Select>
         </FormControl>
-        <FormControl fullWidth sx={{ mb: 2 }} disabled={!selectedDisease}>
-          <InputLabel sx={{ color: '#fff' }}>Select Symptom</InputLabel>
+      </Box>
+
+      {/* Symptom Selection */}
+      <Box sx={{ mb: 3 }}>
+        <FormControl fullWidth disabled={!selectedDisease}>
+          <InputLabel>Select Symptom</InputLabel>
           <Select
             label="Select Symptom"
             value={symptoms.map(s=>s._id).includes(selectedSymptom) ? selectedSymptom : (symptoms[0]?._id || '')}
             onChange={e => setSelectedSymptom(e.target.value)}
             disabled={symptomLoading || !selectedDisease || symptoms.length === 0}
-            sx={{ color: '#fff', '.MuiSelect-icon': { color: '#fff' } }}
           >
             {symptomLoading ? (
-              <MenuItem value=""><CircularProgress size={20} sx={{ color: '#fff' }} /></MenuItem>
+              <MenuItem value=""><CircularProgress size={20} /></MenuItem>
             ) : symptoms.length === 0 ? (
               <MenuItem value="" disabled>No symptoms found</MenuItem>
             ) : (
@@ -169,44 +174,116 @@ export default function ManageQuestions() {
             )}
           </Select>
         </FormControl>
-        {selectedSymptom && (
-          <>
-            {questionLoading ? (
-              <Box display="flex" justifyContent="center" alignItems="center" minHeight={80}>
-                <CircularProgress sx={{ color: '#fff' }} />
-              </Box>
-            ) : (
-              <Box>
-                {questions.map((question, idx) => (
-                  <Box key={question._id} display="flex" alignItems="center" justifyContent="space-between" py={2} borderBottom={idx !== questions.length - 1 ? '1px solid #263445' : 'none'}>
-                    <Box>
-                      <Typography variant="subtitle1" fontWeight={700} color="#fff">{question.question_text}</Typography>
-                      <Typography variant="body2" color="#fff">
-                        {question.question_type === 'text'
-                          ? 'Text Field'
-                          : `${question.question_type.charAt(0).toUpperCase() + question.question_type.slice(1)}: ${question.options?.join(', ')}`}
-                      </Typography>
-                    </Box>
-                    <Box>
-                      <IconButton edge="end" color="primary" onClick={() => handleEdit(question)}>
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton edge="end" color="error" onClick={() => handleDelete(question._id)}>
-                        <DeleteIcon />
-                      </IconButton>
-                    </Box>
-                  </Box>
-                ))}
-              </Box>
-            )}
-            <Box display="flex" justifyContent="flex-end" mt={2}>
-              <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleAdd}>
+      </Box>
+
+      {/* Action Button */}
+      {selectedSymptom && (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
+          <Button 
+            variant="contained" 
+            color="primary" 
+            startIcon={<AddIcon />} 
+            onClick={handleAdd}
+            sx={{ 
+              fontWeight: 600,
+              px: 3,
+              py: 1,
+            }}
+          >
+            Add Question
+          </Button>
+        </Box>
+      )}
+
+      {/* Content */}
+      {selectedSymptom && (
+        <>
+          {questionLoading ? (
+            <Box display="flex" justifyContent="center" alignItems="center" minHeight={200}>
+              <CircularProgress />
+            </Box>
+          ) : questions.length === 0 ? (
+            <Paper 
+              sx={{ 
+                p: 6, 
+                textAlign: 'center',
+                bgcolor: (t) => t.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+                border: (t) => `1px dashed ${t.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+              }}
+            >
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                No questions found
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                Add questions for this symptom
+              </Typography>
+              <Button variant="contained" startIcon={<AddIcon />} onClick={handleAdd}>
                 Add Question
               </Button>
+            </Paper>
+          ) : (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              {questions.map((question) => (
+                <Paper 
+                  key={question._id}
+                  sx={{ 
+                    p: 2.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      boxShadow: (t) => t.palette.mode === 'dark' 
+                        ? '0 4px 12px rgba(0,0,0,0.3)' 
+                        : '0 4px 12px rgba(0,0,0,0.08)',
+                    }
+                  }}
+                >
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                      {question.question_text}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {question.question_type === 'text'
+                        ? 'Text Field'
+                        : `${question.question_type.charAt(0).toUpperCase() + question.question_type.slice(1)}: ${question.options?.join(', ')}`}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 1, ml: 2 }}>
+                    <IconButton 
+                      color="primary" 
+                      onClick={() => handleEdit(question)}
+                      sx={{ 
+                        '&:hover': { 
+                          bgcolor: (t) => t.palette.mode === 'dark' 
+                            ? 'rgba(144, 202, 249, 0.08)' 
+                            : 'rgba(25, 118, 210, 0.08)' 
+                        }
+                      }}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton 
+                      color="error" 
+                      onClick={() => handleDelete(question._id)}
+                      sx={{ 
+                        '&:hover': { 
+                          bgcolor: (t) => t.palette.mode === 'dark' 
+                            ? 'rgba(244, 67, 54, 0.08)' 
+                            : 'rgba(211, 47, 47, 0.08)' 
+                        }
+                      }}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Box>
+                </Paper>
+              ))}
             </Box>
-          </>
-        )}
-      </Paper>
+          )}
+        </>
+      )}
+
       <QuestionForm
         open={formOpen}
         onClose={() => setFormOpen(false)}

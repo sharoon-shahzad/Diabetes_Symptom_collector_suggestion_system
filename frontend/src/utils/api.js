@@ -181,3 +181,18 @@ export async function fetchRelatedContent(id) {
   const res = await axiosInstance.get(`/content/${id}/related`);
   return res.data.data;
 }
+
+// Account: change password (current + new)
+export async function changePassword(currentPassword, newPassword) {
+  const res = await axiosInstance.post(`/auth/change-password`, {
+    currentPassword,
+    newPassword,
+  }, { withCredentials: true });
+  return res.data;
+}
+
+// Optional: update own profile via admin endpoint when permitted
+export async function updateUserProfile(userId, payload) {
+  const res = await axiosInstance.put(`/users/updateUser/${userId}`, payload);
+  return res.data;
+}

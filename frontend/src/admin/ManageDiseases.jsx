@@ -64,45 +64,127 @@ export default function ManageDiseases() {
   };
 
   return (
-    <Box p={3}>
-      <Paper elevation={3} sx={{ p: 4, mb: 2, borderRadius: 4, boxShadow: '0 4px 24px 0 rgba(25, 118, 210, 0.08)', background: '#101624', color: '#fff' }}>
-        <Typography variant="h5" fontWeight="bold" gutterBottom color="#fff">
+    <Box>
+      {/* Header */}
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h5" fontWeight={700} gutterBottom>
           Manage Diseases
         </Typography>
-        {loading ? (
-          <Box display="flex" justifyContent="center" alignItems="center" minHeight={120}>
-            <CircularProgress sx={{ color: '#fff' }} />
-          </Box>
-        ) : (
-          <Box>
-            {diseases.length === 0 ? (
-              <Typography color="#fff" sx={{ my: 2 }}>No diseases found.</Typography>
-            ) : (
-              diseases.map((disease, idx) => (
-                <Box key={disease._id} display="flex" alignItems="center" justifyContent="space-between" py={2} borderBottom={idx !== diseases.length - 1 ? '1px solid #263445' : 'none'}>
-                  <Box>
-                    <Typography variant="subtitle1" fontWeight={700} color="#fff">{disease.name}</Typography>
-                    <Typography variant="body2" color="#fff">{disease.description}</Typography>
-                  </Box>
-                  <Box>
-                    <IconButton edge="end" color="primary" onClick={() => handleEdit(disease)}>
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton edge="end" color="error" onClick={() => handleDelete(disease._id)}>
-                      <DeleteIcon />
-                    </IconButton>
-                  </Box>
-                </Box>
-              ))
-            )}
-          </Box>
-        )}
-        <Box display="flex" justifyContent="flex-end" mt={2}>
-          <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleAdd}>
+        <Typography variant="body2" color="text.secondary">
+          Add, edit, or remove diseases from the system
+        </Typography>
+      </Box>
+
+      {/* Action Button */}
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
+        <Button 
+          variant="contained" 
+          color="primary" 
+          startIcon={<AddIcon />} 
+          onClick={handleAdd}
+          sx={{ 
+            fontWeight: 600,
+            px: 3,
+            py: 1,
+          }}
+        >
+          Add Disease
+        </Button>
+      </Box>
+
+      {/* Content */}
+      {loading ? (
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight={200}>
+          <CircularProgress />
+        </Box>
+      ) : diseases.length === 0 ? (
+        <Paper 
+          sx={{ 
+            p: 6, 
+            textAlign: 'center',
+            bgcolor: (t) => t.palette.mode === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+            border: (t) => `1px dashed ${t.palette.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+          }}
+        >
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            No diseases found
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Get started by adding your first disease
+          </Typography>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={handleAdd}>
             Add Disease
           </Button>
+        </Paper>
+      ) : (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          {diseases.map((disease) => (
+            <Paper 
+              key={disease._id}
+              sx={{ 
+                p: 2.5,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  boxShadow: (t) => t.palette.mode === 'dark' 
+                    ? '0 4px 12px rgba(0,0,0,0.3)' 
+                    : '0 4px 12px rgba(0,0,0,0.08)',
+                }
+              }}
+            >
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                  {disease.name}
+                </Typography>
+                <Typography 
+                  variant="body2" 
+                  color="text.secondary"
+                  sx={{
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                  }}
+                >
+                  {disease.description}
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', gap: 1, ml: 2 }}>
+                <IconButton 
+                  color="primary" 
+                  onClick={() => handleEdit(disease)}
+                  sx={{ 
+                    '&:hover': { 
+                      bgcolor: (t) => t.palette.mode === 'dark' 
+                        ? 'rgba(144, 202, 249, 0.08)' 
+                        : 'rgba(25, 118, 210, 0.08)' 
+                    }
+                  }}
+                >
+                  <EditIcon />
+                </IconButton>
+                <IconButton 
+                  color="error" 
+                  onClick={() => handleDelete(disease._id)}
+                  sx={{ 
+                    '&:hover': { 
+                      bgcolor: (t) => t.palette.mode === 'dark' 
+                        ? 'rgba(244, 67, 54, 0.08)' 
+                        : 'rgba(211, 47, 47, 0.08)' 
+                    }
+                  }}
+                >
+                  <DeleteIcon />
+                </IconButton>
+              </Box>
+            </Paper>
+          ))}
         </Box>
-      </Paper>
+      )}
+
       <DiseaseForm
         open={formOpen}
         onClose={() => setFormOpen(false)}

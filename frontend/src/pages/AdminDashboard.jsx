@@ -96,106 +96,197 @@ export default function AdminDashboard() {
     <Box sx={{ display: 'flex', minHeight: '100vh', bgcolor: 'background.default' }}>
       <CssBaseline />
       <GlobalStyles styles={{ body: { fontFamily }, '*': { fontFamily } }} />
-      {/* Sidebar */}
+      
+      {/* Sidebar - Clean & Minimal */}
       <Drawer
         variant="permanent"
         sx={{
           width: drawerWidth,
           flexShrink: 0,
-          [`& .MuiDrawer-paper`]: {
+          '& .MuiDrawer-paper': {
             width: drawerWidth,
-            bgcolor: 'background.sidebar',
-            color: 'text.primary',
-            borderTopRightRadius: 0,
-            borderBottomRightRadius: 0,
-            boxShadow: '4px 0 24px 0 rgba(0,0,0,0.12)',
-            border: 'none',
-            pt: 0,
-            px: 0,
+            boxSizing: 'border-box',
+            py: 3,
+            px: 2,
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
+            background: (t) => t.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff',
+            borderRight: (t) => `1px solid ${t.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)'}`,
           },
         }}
       >
         <Box>
-          {/* User Info */}
-          <Box display="flex" flexDirection="column" alignItems="center" py={2}>
-            <Avatar sx={{ bgcolor: 'primary.main', width: 40, height: 40, mb: 1, fontSize: 20 }}>
-              {user?.fullName?.[0] || 'A'}
+          {/* User Profile Header - Clean & Minimal */}
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 1.5, 
+              px: 1.5,
+              py: 2,
+              mb: 3,
+            }}
+          >
+            <Avatar 
+              sx={{ 
+                width: 40,
+                height: 40,
+                background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
+                fontWeight: 700,
+                fontSize: '1.1rem',
+              }}
+            >
+              {user?.fullName?.[0]?.toUpperCase() || 'A'}
             </Avatar>
-            <Typography fontWeight={700} fontSize={16}>{user?.fullName}</Typography>
-            <Typography fontSize={12} color="text.secondary" textAlign="center">
-              {userRoles.includes('super_admin') ? 'Super Admin' : 
-               userRoles.includes('admin') ? 'Admin' : 'User'}
-            </Typography>
-          </Box>
-          <Divider sx={{ my: 1, bgcolor: 'divider' }} />
-          {/* Navigation */}
-          <List>
-            {sections.map((section, idx) => (
-              <ListItem
-                key={section.label}
-                selected={selectedIndex === idx}
-                onClick={() => setSelectedIndex(idx)}
-                sx={{
-                  borderRadius: 2,
-                  mx: 1,
-                  my: 0.5,
-                  '&.Mui-selected': {
-                    bgcolor: 'action.selected',
-                  },
-                  transition: 'background 0.2s',
-                  cursor: 'pointer',
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography 
+                variant="body2" 
+                fontWeight={700}
+                sx={{ 
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  mb: 0.25,
                 }}
               >
-                <ListItemIcon sx={{ color: 'primary.main', minWidth: 36 }}>{section.icon}</ListItemIcon>
-                <ListItemText primary={<Typography fontWeight={600}>{section.label}</Typography>} />
+                {user?.fullName || 'Admin'}
+              </Typography>
+              <Typography 
+                variant="caption" 
+                sx={{ 
+                  color: 'text.secondary',
+                  fontWeight: 500,
+                }}
+              >
+                {userRoles.includes('super_admin') ? 'Super Admin' : 
+                 userRoles.includes('admin') ? 'Admin' : 'User'}
+              </Typography>
+            </Box>
+          </Box>
+          
+          {/* Navigation Menu - Clean List */}
+          <List sx={{ px: 0 }}>
+            {sections.map((sec, index) => (
+              <ListItem 
+                button 
+                key={sec.label} 
+                selected={selectedIndex === index} 
+                onClick={() => setSelectedIndex(index)} 
+                sx={{ 
+                  borderRadius: 1.5,
+                  mb: 0.5,
+                  px: 1.5,
+                  py: 1.25,
+                  transition: 'all 0.2s ease',
+                  position: 'relative',
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    left: 0,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: '3px',
+                    height: '60%',
+                    borderRadius: '0 4px 4px 0',
+                    background: (t) => `linear-gradient(180deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
+                    opacity: 0,
+                    transition: 'opacity 0.2s ease',
+                  },
+                  '&.Mui-selected': {
+                    bgcolor: (t) => t.palette.mode === 'dark' 
+                      ? 'rgba(255,255,255,0.08)' 
+                      : 'rgba(0,0,0,0.04)',
+                    '&::before': {
+                      opacity: 1,
+                    },
+                    '& .MuiListItemIcon-root': {
+                      color: 'primary.main',
+                    },
+                    '& .MuiListItemText-primary': {
+                      color: 'text.primary',
+                      fontWeight: 700,
+                    },
+                  },
+                  '&:hover': {
+                    bgcolor: (t) => t.palette.mode === 'dark' 
+                      ? 'rgba(255,255,255,0.05)' 
+                      : 'rgba(0,0,0,0.03)',
+                  }
+                }}
+              >
+                <ListItemIcon 
+                  sx={{ 
+                    minWidth: 36,
+                    color: 'text.secondary',
+                    transition: 'color 0.2s ease',
+                  }}
+                >
+                  {sec.icon}
+                </ListItemIcon>
+                <ListItemText 
+                  primary={sec.label}
+                  primaryTypographyProps={{
+                    fontWeight: 600,
+                    fontSize: '0.9rem',
+                    color: 'text.secondary',
+                  }}
+                />
               </ListItem>
             ))}
           </List>
         </Box>
-        <Box pb={2} px={2}>
-          <Divider sx={{ mb: 1, bgcolor: 'divider' }} />
-          <Box display="flex" justifyContent="center" mb={1}>
-            <ThemeToggle size="small" />
+        
+        {/* Bottom Section - Minimal */}
+        <Box sx={{ px: 0.5 }}>
+          {/* Theme Toggle - Integrated */}
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              py: 2,
+              mb: 1,
+            }}
+          >
+            <ThemeToggle size="medium" />
           </Box>
+          
+          {/* Logout Button - Subtle */}
           <Button
             fullWidth
-            variant="outlined"
+            variant="text"
             color="error"
             onClick={handleLogout}
-            sx={{ borderRadius: 2, fontWeight: 700 }}
+            sx={{ 
+              borderRadius: 1.5, 
+              fontWeight: 600,
+              py: 1.25,
+              px: 1.5,
+              justifyContent: 'flex-start',
+              color: 'text.secondary',
+              '&:hover': {
+                bgcolor: (t) => `rgba(${t.palette.mode === 'dark' ? '244, 67, 54' : '211, 47, 47'}, 0.08)`,
+                color: 'error.main',
+              }
+            }}
           >
             Logout
           </Button>
         </Box>
       </Drawer>
-      {/* Main Content */}
+      
+      {/* Main Content - No Card Wrapper */}
       <Box component="main" sx={{
         flexGrow: 1,
-        p: { xs: 2, md: 6 },
+        p: { xs: 3, md: 4 },
         ml: 0,
         mt: 0,
         minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        background: 'background.default',
+        bgcolor: 'background.default',
       }}>
-        <Paper elevation={6} sx={{
-          width: '100%',
-          maxWidth: 1000,
-          minHeight: 480,
-          borderRadius: 6,
-          p: { xs: 2, md: 5 },
-          mt: 2,
-          boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.10)',
-          background: 'background.paper',
-          color: 'text.primary',
-        }}>
+        <Box sx={{ maxWidth: 1400, mx: 'auto' }}>
           {sections[selectedIndex]?.component}
-        </Paper>
+        </Box>
       </Box>
     </Box>
   );

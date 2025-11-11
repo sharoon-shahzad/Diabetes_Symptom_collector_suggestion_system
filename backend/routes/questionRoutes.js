@@ -8,6 +8,7 @@ import {
   updateQuestion,
   deleteQuestion,
   saveUserAnswer
+  , completeOnboarding
 } from '../controllers/questionController.js';
 
 const router = express.Router();
@@ -32,5 +33,9 @@ router.delete('/questions/:id', verifyAccessTokenMiddleware, requirePermission('
 
 // Save user's answer for onboarding - requires authentication and submit permission
 router.post('/answer', verifyAccessTokenMiddleware, requirePermission('answer:submit:own'), saveUserAnswer);
+
+// Endpoint to mark onboarding as complete (used by frontend when user finishes review)
+// Matches frontend POST to /api/v1/questions/complete-onboarding
+router.post('/complete-onboarding', verifyAccessTokenMiddleware, requirePermission('onboarding:complete:own'), completeOnboarding);
 
 export default router; 

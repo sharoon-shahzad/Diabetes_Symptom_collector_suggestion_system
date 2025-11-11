@@ -244,3 +244,98 @@ export const saveUserAnswer = async (req, res) => {
     res.status(500).json({ success: false, message: 'Error saving answer', error: err.message });
   }
 }; 
+
+// Complete onboarding without submitting a new answer (frontend action)
+export const completeOnboarding = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) return res.status(401).json({ message: 'Not authenticated' });
+
+    const UserModel = (await import('../models/User.js')).User;
+    const user = await UserModel.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    if (user.onboardingCompleted) {
+      return res.status(200).json({ success: true, message: 'Onboarding already completed' });
+    }
+
+    // Determine disease by looking at user's latest answered questions if any
+    const userAnswers = await UsersAnswers.find({ user_id: userId, deleted_at: null })
+      .populate({ path: 'question_id', populate: { path: 'symptom_id', model: 'Symptom' }, model: 'Question' });
+
+    if (!userAnswers || userAnswers.length === 0) {
+      return res.status(400).json({ success: false, message: 'No answers found for user' });
+    }
+
+    // Infer disease from the first populated answer's symptom
+    const disease = userAnswers[0]?.question_id?.symptom_id?.disease_id;
+    if (!disease) {
+      return res.status(400).json({ success: false, message: 'Unable to determine disease for completion' });
+    }
+
+    // Count total questions for this disease
+    const allSymptoms = await Symptom.find({ disease_id: disease._id, deleted_at: null });
+    const symptomIds = allSymptoms.map(s => s._id);
+    const totalQuestions = await Question.countDocuments({ symptom_id: { $in: symptomIds }, deleted_at: null });
+
+    const answeredQuestions = new Set(userAnswers.map(ua => String(ua.question_id._id))).size;
+
+    if (totalQuestions === 0) {
+      return res.status(400).json({ success: false, message: 'No questions defined for disease' });
+    }
+
+    if (answeredQuestions !== totalQuestions) {
+      return res.status(400).json({ success: false, message: 'User has not answered all questions', totalQuestions, answeredQuestions });
+    }
+
+    // Update user atomically
+    const updatedUser = await UserModel.findOneAndUpdate(
+      { _id: userId, onboardingCompleted: { $ne: true } },
+      {
+        $set: {
+          onboardingCompleted: true,
+          onboardingCompletedAt: new Date(),
+          diseaseDataSubmittedAt: new Date(),
+          diseaseDataEditingExpiresAt: new Date(Date.now() + (7 * 24 * 60 * 60 * 1000)),
+          diseaseDataStatus: 'draft'
+        }
+      },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(200).json({ success: true, message: 'Onboarding already completed' });
+    }
+
+    // Prepare symptom map for email
+    const detailedAnswers = await UsersAnswers.find({ user_id: userId, deleted_at: null })
+      .populate({ path: 'question_id', populate: { path: 'symptom_id', model: 'Symptom' }, model: 'Question' })
+      .populate({ path: 'answer_id', model: 'Answer' });
+
+    const symptomMap = {};
+    detailedAnswers.forEach(ua => {
+      const symptom = ua.question_id?.symptom_id;
+      if (!symptom) return;
+      const symptomName = symptom.name || 'Unknown Symptom';
+      if (!symptomMap[symptomName]) symptomMap[symptomName] = [];
+      symptomMap[symptomName].push({ question: ua.question_id?.question_text || 'Unknown', answer: ua.answer_id?.answer_text || 'N/A' });
+    });
+
+    // Send onboarding completion email if allowed
+    try {
+      const { canSendOnboardingEmail } = await import('../utils/emailUtils.js');
+      const canSend = await canSendOnboardingEmail(userId, user.email);
+      if (canSend) {
+        const { sendOnboardingCompletionEmail } = await import('../services/emailService.js');
+        await sendOnboardingCompletionEmail(user.email, user.fullName, disease.name, symptomMap);
+      }
+    } catch (emailErr) {
+      console.error('Email send failed during completeOnboarding:', emailErr);
+    }
+
+    return res.status(200).json({ success: true, message: 'Onboarding completed' });
+  } catch (err) {
+    console.error('Error in completeOnboarding:', err);
+    return res.status(500).json({ success: false, message: 'Error completing onboarding', error: err.message });
+  }
+};
