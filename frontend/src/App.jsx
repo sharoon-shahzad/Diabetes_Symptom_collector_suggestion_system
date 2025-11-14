@@ -2,7 +2,8 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Box } from '@mui/material';
-import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { useTheme } from './contexts/useThemeContext';
 import LandingPage from './pages/LandingPage';
 import SignInSide from './pages/SignInSide';
 import SignUpSide from './pages/SignUpSide';

@@ -236,12 +236,8 @@ export default function UniversalHeader() {
 
             {/* User Menu */}
             <Box display="flex" alignItems="center" gap={1}>
-              <ThemeToggle size="small" />
               {user ? (
                 <>
-                  <Typography variant="body2" color="text.secondary" mr={2}>
-                    Welcome, {user.fullName}
-                  </Typography>
                   <IconButton onClick={handleAvatarClick} size="large">
                     <Avatar sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}>
                       {user.fullName?.[0] || <AccountCircleIcon />}
@@ -288,6 +284,11 @@ export default function UniversalHeader() {
               Account status: <b style={{ color: user?.isActivated ? 'green' : 'orange' }}>{user?.isActivated ? 'Active' : 'Inactive'}</b>
             </Typography>
           </Box>
+          <Divider />
+          <MenuItem sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <ThemeToggle size="small" showTooltip={false} />
+            <Typography>Theme</Typography>
+          </MenuItem>
           <Divider />
           <MenuItem onClick={handleChangePwOpen} sx={{ color: '#1976d2', fontWeight: 'bold' }}>
             Change Password

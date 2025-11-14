@@ -21,8 +21,7 @@ import { motion } from 'framer-motion';
 const BlogCard = ({ 
   article, 
   onReadMore, 
-  index = 0,
-  variant = 'default' // 'default', 'featured', 'compact'
+  index = 0
 }) => {
   const theme = useTheme();
 
@@ -69,17 +68,15 @@ const BlogCard = ({
     }
   };
 
-  const isCompact = variant === 'compact';
-  const isFeatured = variant === 'featured';
+  // Variants could be used for future layout adjustments
 
   return (
     <motion.div
-      variants={cardVariants}
+      variants={{ ...cardVariants, ...hoverVariants }}
       initial="hidden"
       whileInView="visible"
       viewport={{ once: true, margin: "-50px" }}
       whileHover="hover"
-      variants={{ ...cardVariants, ...hoverVariants }}
     >
       <Card
         sx={{

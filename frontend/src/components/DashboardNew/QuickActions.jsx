@@ -9,28 +9,41 @@ const QuickActions = () => {
     <Box display="flex" flexWrap="wrap" gap={1.5}>
       <Button
         variant="contained"
-        color="primary"
         startIcon={<Assignment />}
         onClick={() => navigate('/onboarding')}
-        sx={{ borderRadius: 2, fontWeight: 800 }}
+        sx={{ 
+          borderRadius: 2, 
+          fontWeight: 700,
+          textTransform: 'none',
+          boxShadow: 'none',
+          '&:hover': {
+            boxShadow: 2,
+          }
+        }}
       >
         Complete Details
       </Button>
       <Button
         variant="outlined"
-        color="secondary"
         startIcon={<HealthAndSafety />}
         onClick={() => navigate('/assessment')}
-        sx={{ borderRadius: 2, fontWeight: 800 }}
+        sx={{ 
+          borderRadius: 2, 
+          fontWeight: 700,
+          textTransform: 'none',
+        }}
       >
         View Assessment
       </Button>
       <Button
         variant="text"
-        color="primary"
         startIcon={<Article />}
         onClick={() => navigate('/content')}
-        sx={{ borderRadius: 2, fontWeight: 800 }}
+        sx={{ 
+          borderRadius: 2, 
+          fontWeight: 700,
+          textTransform: 'none',
+        }}
       >
         Learn & Articles
       </Button>

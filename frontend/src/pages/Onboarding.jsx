@@ -1,45 +1,7 @@
-<<<<<<< Updated upstream
-import React from 'react';
-import { Box, Container, Typography } from '@mui/material';
-import DiseaseSymptomExplorer from '../components/Onboarding/DiseaseSymptomExplorer';
-
-
-const Onboarding = () => {
-=======
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import {
-  Box,
-  Container,
-  Typography,
-  Button,
-  Paper,
-  useTheme,
-  useMediaQuery,
-  Chip,
-  IconButton,
-  alpha,
-  LinearProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Alert,
-} from '@mui/material';
-import {
-  HealthAndSafety,
-  Assessment,
-  Psychology,
-  TrendingUp,
-  ArrowForward,
-  ArrowBack,
-  CheckCircle,
-  Close,
-  MedicalServices,
-  Login,
-} from '@mui/icons-material';
-import { motion as _motion } from 'framer-motion';
-import ThemeToggle from '../components/Common/ThemeToggle';
+import { Box, Container, Typography, Button, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Alert } from '@mui/material';
+import { Close, Login } from '@mui/icons-material';
 import { getCurrentUser } from '../utils/auth';
 import WelcomeStep from '../components/Onboarding/WelcomeStep';
 import QuestionFlowStep from '../components/Onboarding/QuestionFlowStep';
@@ -48,10 +10,7 @@ import AssessmentSummaryStep from '../components/Onboarding/AssessmentSummarySte
 const Onboarding = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [activeStep, setActiveStep] = useState(0);
-  const [completedSteps, setCompletedSteps] = useState(new Set());
   const [selectedSymptoms, setSelectedSymptoms] = useState([]);
   const [answers, setAnswers] = useState({});
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -111,110 +70,90 @@ const Onboarding = () => {
   }, [location.search, navigate]); // Only depend on location.search and navigate to avoid infinite loops
 
   const steps = [
-    {
-      label: 'Welcome',
-      description: 'Get started with your health assessment',
-      icon: <HealthAndSafety />,
-      component: WelcomeStep,
-    },
-    {
-      label: 'Answer Questions',
-      description: 'Provide detailed information about your symptoms',
-      icon: <Assessment />,
-      component: QuestionFlowStep,
-    },
-    {
-      label: 'Review & Complete',
-      description: 'Review your assessment and get results',
-      icon: <TrendingUp />,
-      component: AssessmentSummaryStep,
-    },
+    { label: 'Welcome', component: WelcomeStep },
+    { label: 'Answer Questions', component: QuestionFlowStep },
+    { label: 'Review & Complete', component: AssessmentSummaryStep },
   ];
 
-  const handleNext = useCallback(async () => {
-      console.log('handleNext called');
-    // Validate current user immediately when user clicks next.
-    // This avoids relying on possibly-stale `isLoggedIn` state.
-    
-      setActiveStep((currentStep) => {
-        const nextStep = Math.min(currentStep + 1, steps.length - 1);
-        console.log('Current step:', currentStep, 'Next step will be:', nextStep);
-      
-        // Don't exceed max steps
-        if (currentStep >= steps.length - 1) {
-          console.log('Already at last step, not moving forward');
-          return currentStep;
-        }
-      
-        // Mark current step as completed
-        setCompletedSteps((prev) => new Set([...prev, currentStep]));
-      
-        console.log('Moving to next step:', nextStep);
-        return nextStep;
-      });
-    }, [steps.length]);
+  const handleNext = useCallback(() => {
+    setActiveStep((currentStep) => Math.min(currentStep + 1, steps.length - 1));
+  }, [steps.length]);
 
   const handleBack = useCallback(() => {
-      setActiveStep((currentStep) => {
-        if (currentStep > 0) {
-          return currentStep - 1;
-        }
-        return currentStep;
-      });
-    }, []);
+    setActiveStep((currentStep) => (currentStep > 0 ? currentStep - 1 : currentStep));
+  }, []);
 
   const handleAnswersSubmit = useCallback((answersData) => {
-      console.log('handleAnswersSubmit called with data:', answersData);
-      console.log('Current isLoggedIn:', isLoggedIn);
-    // Check if user is logged in before submitting answers
     if (!isLoggedIn) {
-        console.log('User not logged in, showing login dialog');
-        setLoginRedirectStep(activeStepRef.current);
+      setLoginRedirectStep(activeStepRef.current);
       setShowLoginDialog(true);
-      // Save answers temporarily
       setAnswers(answersData);
       return;
     }
-    
-      console.log('Saving answers and moving to next step');
     setAnswers(answersData);
     handleNext();
-    }, [isLoggedIn, handleNext]);
+  }, [isLoggedIn, handleNext]);
 
   const handleComplete = useCallback(() => {
-    // Navigate to dashboard or results page
     navigate('/dashboard');
   }, [navigate]);
-  
+
   const handleLoginRedirect = useCallback(() => {
-    // Save intended step and redirect to sign-in; return back to onboarding
-      const targetStep = loginRedirectStep ?? activeStepRef.current;
-      const lastSymptomId = selectedSymptomsRef.current.length ? selectedSymptomsRef.current[selectedSymptomsRef.current.length - 1] : null;
+    const targetStep = loginRedirectStep ?? activeStepRef.current;
+    const lastSymptomId = selectedSymptomsRef.current.length ? selectedSymptomsRef.current[selectedSymptomsRef.current.length - 1] : null;
     navigate(`/signin?returnTo=onboarding&returnToStep=${targetStep}${lastSymptomId ? `&symptomId=${lastSymptomId}` : ''}`);
     setShowLoginDialog(false);
-    }, [loginRedirectStep, navigate]);
-  
+  }, [loginRedirectStep, navigate]);
+
   const handleCloseLoginDialog = useCallback(() => {
     setShowLoginDialog(false);
   }, []);
 
   const CurrentStepComponent = steps[activeStep].component;
 
->>>>>>> Stashed changes
   return (
     <Box minHeight="100vh" bgcolor="background.default" display="flex" alignItems="center" justifyContent="center">
-        <Container maxWidth="lg" sx={{ py: 6 }}>
-          <Typography variant="h4" align="center" gutterBottom fontWeight={700} color="text.primary">
-            Symptom Checker
-          </Typography>
-          <Typography variant="subtitle1" align="center" color="text.secondary" gutterBottom>
-            Select a symptom to see related questions.
-          </Typography>
-          <Box mt={4}>
-            <DiseaseSymptomExplorer />
+      <Container maxWidth="lg" sx={{ py: 6 }}>
+        <Typography variant="h4" align="center" gutterBottom fontWeight={700} color="text.primary">
+          Symptom Checker
+        </Typography>
+        <Typography variant="subtitle1" align="center" color="text.secondary" gutterBottom>
+          Follow the steps to complete your assessment.
+        </Typography>
+        <Box mt={4}>
+          <CurrentStepComponent
+            onNext={handleNext}
+            onBack={handleBack}
+            onAnswersSubmit={handleAnswersSubmit}
+            onComplete={handleComplete}
+            answers={answers}
+            isLoggedIn={isLoggedIn}
+          />
+        </Box>
+      </Container>
+
+      <Dialog open={showLoginDialog} onClose={handleCloseLoginDialog}>
+        <DialogTitle>
+          <Box display="flex" alignItems="center" justifyContent="space-between">
+            <Typography variant="h6">Sign In Required</Typography>
+            <IconButton onClick={handleCloseLoginDialog} size="small">
+              <Close />
+            </IconButton>
           </Box>
-        </Container>
-      </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Please sign in to continue with the assessment and save your progress.
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseLoginDialog}>Cancel</Button>
+          <Button variant="contained" startIcon={<Login />} onClick={handleLoginRedirect}>
+            Sign In
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 };
 

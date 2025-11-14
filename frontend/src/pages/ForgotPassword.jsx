@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Stack, Typography } from '@mui/material';
 import ForgotPasswordForm from '../components/SignIn/ForgotPasswordForm';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../contexts/useThemeContext';
 
 export default function ForgotPassword() {
   const [success, setSuccess] = useState('');

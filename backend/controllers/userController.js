@@ -6,6 +6,7 @@ import { Symptom } from '../models/Symptom.js';
 import { Disease } from '../models/Disease.js';
 import { Answer } from '../models/Answer.js';
 import { QuestionsAnswers } from '../models/Questions_Answers.js';
+import { Role } from '../models/Role.js';
 
 
 // Get current user controller
@@ -490,32 +491,38 @@ export const submitDiseaseData = async (req, res) => {
 export const getAllAdmins = async (req, res) => {
     try {
         // Get admin and super_admin role IDs
-        const { Role } = await import('../models/Role.js');
         const adminRole = await Role.findOne({ role_name: 'admin' });
         const superAdminRole = await Role.findOne({ role_name: 'super_admin' });
         
-        if (!adminRole || !superAdminRole) {
+        if (!adminRole && !superAdminRole) {
             return res.status(500).json({
                 success: false,
                 message: 'Admin roles not found'
             });
         }
 
+        // Build role filter
+        const roleIds = [];
+        if (adminRole) roleIds.push(adminRole._id);
+        if (superAdminRole) roleIds.push(superAdminRole._id);
+
         // Find users with admin or super_admin roles
         const adminUsers = await UsersRoles.find({
-            role_id: { $in: [adminRole._id, superAdminRole._id] }
+            role_id: { $in: roleIds }
         }).populate('user_id').populate('role_id');
 
         // Format the response
-        const admins = adminUsers.map(ur => {
-            const user = ur.user_id;
-            const role = ur.role_id;
-            const { password, refreshToken, activationToken, resetPasswordToken, ...safeUser } = user.toObject();
-            return {
-                ...safeUser,
-                roles: [role.role_name]
-            };
-        });
+        const admins = adminUsers
+            .filter(ur => ur.user_id) // Filter out any null user_ids
+            .map(ur => {
+                const user = ur.user_id;
+                const role = ur.role_id;
+                const { password, refreshToken, activationToken, resetPasswordToken, ...safeUser } = user.toObject();
+                return {
+                    ...safeUser,
+                    roles: [role.role_name]
+                };
+            });
 
         return res.status(200).json({
             success: true,
@@ -523,9 +530,11 @@ export const getAllAdmins = async (req, res) => {
         });
     } catch (error) {
         console.error('Get all admins error:', error);
+        console.error('Error details:', error.stack);
         return res.status(500).json({
             success: false,
-            message: 'Error fetching admins'
+            message: 'Error fetching admins',
+            error: error.message
         });
     }
 };
@@ -564,7 +573,6 @@ export const updateUserRole = async (req, res) => {
         }
 
         // Find the role
-        const { Role } = await import('../models/Role.js');
         const targetRole = await Role.findOne({ role_name: role });
         if (!targetRole) {
             return res.status(400).json({

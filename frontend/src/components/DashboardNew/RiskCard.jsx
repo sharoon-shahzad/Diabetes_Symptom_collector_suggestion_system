@@ -7,67 +7,47 @@ const RiskCard = ({ onAssess, lastAssessedAt }) => {
     <Paper
       elevation={0}
       sx={{
-        p: 6,
-        borderRadius: 5,
-        background: (t) => `linear-gradient(120deg, ${t.palette.primary.main} 0%, ${t.palette.secondary.main} 100%)`,
-        border: (t) => `2px solid ${alpha(t.palette.common.white, 0.15)}`,
+        p: 4,
+        borderRadius: 3,
+        // Clean, professional solid background with subtle accent
+        background: (t) => t.palette.mode === 'dark' 
+          ? `linear-gradient(135deg, ${alpha(t.palette.primary.main, 0.15)} 0%, ${alpha(t.palette.primary.dark, 0.05)} 100%)`
+          : `linear-gradient(135deg, ${alpha(t.palette.primary.main, 0.08)} 0%, ${alpha(t.palette.primary.light, 0.04)} 100%)`,
+        border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.2)}`,
         position: 'relative',
         overflow: 'hidden',
-        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: 'all 0.2s ease',
         '&:hover': {
-          transform: 'translateY(-6px)',
-          boxShadow: (t) => `0 20px 60px ${alpha(t.palette.primary.main, 0.5)}`,
+          borderColor: (t) => t.palette.primary.main,
+          boxShadow: (t) => `0 8px 20px ${alpha(t.palette.primary.main, 0.15)}`,
         },
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          top: -120,
-          right: -120,
-          width: 300,
-          height: 300,
-          borderRadius: '50%',
-          background: (t) => alpha(t.palette.common.white, 0.08),
-        },
-        '&::after': {
-          content: '""',
-          position: 'absolute',
-          bottom: -80,
-          left: -80,
-          width: 200,
-          height: 200,
-          borderRadius: '50%',
-          background: (t) => alpha(t.palette.common.white, 0.06),
-        }
       }}
     >
-      <Box sx={{ position: 'relative', zIndex: 1 }}>
-        <Grid container spacing={4} alignItems="center">
+      <Box>
+        <Grid container spacing={3} alignItems="center">
           <Grid item xs={12} md={8}>
-            <Box display="flex" alignItems="center" gap={2} sx={{ mb: 3 }}>
-              <Box 
-                sx={{ 
-                  width: 64,
-                  height: 64,
-                  borderRadius: 3,
-                  background: (t) => alpha(t.palette.common.white, 0.2),
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backdropFilter: 'blur(10px)',
-                  boxShadow: `0 8px 32px ${alpha('#000', 0.1)}`,
-                }}
-              >
-                <Assessment sx={{ fontSize: 36, color: 'white' }} />
+            <Box display="flex" alignItems="center" gap={2} sx={{ mb: 2 }}>
+              <Box sx={{ 
+                width: 44, 
+                height: 44, 
+                borderRadius: 2, 
+                background: (t) => alpha(t.palette.primary.main, 0.12), 
+                border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.25)}`,
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center' 
+              }}>
+                <Assessment sx={{ fontSize: 24, color: 'primary.main' }} />
               </Box>
-              <Typography variant="h3" fontWeight={900} sx={{ color: 'white' }}>
+              <Typography variant="h5" fontWeight={700} color="text.primary">
                 Risk Assessment
               </Typography>
             </Box>
-            <Typography variant="h6" sx={{ color: alpha('#fff', 0.95), mb: 2, lineHeight: 1.7, fontWeight: 500 }}>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 1.5, lineHeight: 1.7, fontWeight: 500 }}>
               Get your personalized diabetes risk score with AI-powered insights and actionable health recommendations.
             </Typography>
             {lastAssessedAt && (
-              <Typography variant="body2" sx={{ color: alpha('#fff', 0.75), fontWeight: 600 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
                 Last assessed: {new Date(lastAssessedAt).toLocaleString()}
               </Typography>
             )}
@@ -78,22 +58,16 @@ const RiskCard = ({ onAssess, lastAssessedAt }) => {
               size="large"
               fullWidth
               onClick={onAssess}
-              endIcon={<TrendingUp sx={{ fontSize: '1.5rem' }} />}
+              endIcon={<TrendingUp />}
               sx={{ 
-                borderRadius: 3,
-                py: 2.5,
-                fontWeight: 900,
-                fontSize: '1.1rem',
+                borderRadius: 2, 
+                py: 1.5, 
+                fontWeight: 700, 
                 textTransform: 'none',
-                background: 'white',
-                color: 'primary.main',
-                boxShadow: `0 12px 32px ${alpha('#000', 0.2)}`,
+                boxShadow: 'none',
                 '&:hover': {
-                  background: alpha('#fff', 0.95),
-                  transform: 'scale(1.05)',
-                  boxShadow: `0 16px 40px ${alpha('#000', 0.25)}`,
-                },
-                transition: 'all 0.3s ease',
+                  boxShadow: (t) => `0 4px 12px ${alpha(t.palette.primary.main, 0.25)}`,
+                }
               }}
             >
               Start Assessment

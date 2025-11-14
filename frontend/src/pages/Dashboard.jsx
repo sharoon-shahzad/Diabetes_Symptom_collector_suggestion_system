@@ -149,10 +149,11 @@ export default function Dashboard() {
     <Box sx={{ 
       display: 'flex', 
       minHeight: '100vh', 
-      background: (t) => t.palette.background.gradient 
+      // Use a clean, flat surface to avoid heavy radial/oval backgrounds
+      background: (t) => t.palette.background.default
     }}>
   <CssBaseline />
-      {/* Sidebar */}
+      {/* Sidebar - Enhanced Professional Design */}
       <Drawer
         variant="permanent"
         sx={{
@@ -166,30 +167,51 @@ export default function Dashboard() {
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
-            background: (t) => t.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff',
-            borderRight: (t) => `1px solid ${t.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)'}`,
+            background: (t) => t.palette.mode === 'dark' 
+              ? 'linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%)' 
+              : 'linear-gradient(180deg, #ffffff 0%, #fafbfc 100%)',
+            borderRight: (t) => `1px solid ${t.palette.divider}`,
+            boxShadow: (t) => t.palette.mode === 'dark'
+              ? '2px 0 12px rgba(0,0,0,0.5)'
+              : '2px 0 12px rgba(0,0,0,0.04)',
+            // Hide scrollbar in sidebar but keep it scrollable
+            overflowY: 'auto',
+            scrollbarWidth: 'none', // Firefox
+            '-ms-overflow-style': 'none', // IE/Edge legacy
+            '&::-webkit-scrollbar': { display: 'none' }, // WebKit
           },
         }}
       >
         <Box>
-          {/* User Profile Header - Clean & Minimal */}
+          {/* User Profile Header - Premium Design */}
           <Box 
             sx={{ 
               display: 'flex', 
               alignItems: 'center', 
               gap: 1.5, 
-              px: 1.5,
-              py: 2,
+              px: 2,
+              py: 2.5,
               mb: 3,
+              borderRadius: 2,
+              background: (t) => t.palette.mode === 'dark'
+                ? alpha(t.palette.primary.main, 0.08)
+                : alpha(t.palette.primary.main, 0.04),
+              border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.12)}`,
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                background: (t) => alpha(t.palette.primary.main, 0.12),
+                borderColor: (t) => alpha(t.palette.primary.main, 0.25),
+              }
             }}
           >
             <Avatar 
               sx={{ 
-                width: 40,
-                height: 40,
+                width: 44,
+                height: 44,
                 background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
                 fontWeight: 700,
-                fontSize: '1.1rem',
+                fontSize: '1.2rem',
+                boxShadow: (t) => `0 4px 12px ${alpha(t.palette.primary.main, 0.3)}`,
               }}
             >
               {user?.fullName?.[0]?.toUpperCase() || 'U'}
@@ -199,10 +221,12 @@ export default function Dashboard() {
                 variant="body2" 
                 fontWeight={700}
                 sx={{ 
+                    color: 'text.primary',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
                   mb: 0.25,
+                  fontSize: '0.9rem',
                 }}
               >
                 {user?.fullName || 'User'}
@@ -211,7 +235,10 @@ export default function Dashboard() {
                 variant="caption" 
                 sx={{ 
                   color: 'text.secondary',
-                  fontWeight: 500,
+                  fontWeight: 600,
+                  fontSize: '0.7rem',
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
                 }}
               >
                 Dashboard
@@ -219,7 +246,7 @@ export default function Dashboard() {
             </Box>
           </Box>
           
-          {/* Navigation Menu - Clean List */}
+          {/* Navigation Menu - Premium Design */}
           <List sx={{ px: 0 }}>
             {sections.map((sec, index) => (
               <ListItem 
@@ -228,52 +255,54 @@ export default function Dashboard() {
                 selected={selectedIndex === index} 
                 onClick={() => setSelectedIndex(index)} 
                 sx={{ 
-                  borderRadius: 1.5,
-                  mb: 0.5,
-                  px: 1.5,
-                  py: 1.25,
-                  transition: 'all 0.2s ease',
+                  borderRadius: 2,
+                  mb: 1,
+                  px: 2,
+                  py: 1.5,
+                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                   position: 'relative',
+                  overflow: 'hidden',
                   '&::before': {
                     content: '""',
                     position: 'absolute',
                     left: 0,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    width: '3px',
-                    height: '60%',
-                    borderRadius: '0 4px 4px 0',
+                    top: 0,
+                    bottom: 0,
+                    width: '4px',
                     background: (t) => `linear-gradient(180deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
                     opacity: 0,
                     transition: 'opacity 0.2s ease',
                   },
                   '&.Mui-selected': {
                     bgcolor: (t) => t.palette.mode === 'dark' 
-                      ? 'rgba(255,255,255,0.08)' 
-                      : 'rgba(0,0,0,0.04)',
+                      ? alpha(t.palette.primary.main, 0.12)
+                      : alpha(t.palette.primary.main, 0.08),
+                    border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.2)}`,
                     '&::before': {
                       opacity: 1,
                     },
                     '& .MuiListItemIcon-root': {
                       color: 'primary.main',
+                      transform: 'scale(1.1)',
                     },
                     '& .MuiListItemText-primary': {
-                      color: 'text.primary',
+                      color: 'primary.main',
                       fontWeight: 700,
                     },
                   },
                   '&:hover': {
                     bgcolor: (t) => t.palette.mode === 'dark' 
-                      ? 'rgba(255,255,255,0.05)' 
-                      : 'rgba(0,0,0,0.03)',
+                      ? alpha(t.palette.primary.main, 0.08)
+                      : alpha(t.palette.primary.main, 0.04),
+                    transform: 'translateX(4px)',
                   }
                 }}
               >
                 <ListItemIcon 
                   sx={{ 
-                    minWidth: 36,
+                    minWidth: 40,
                     color: 'text.secondary',
-                    transition: 'color 0.2s ease',
+                    transition: 'all 0.2s ease',
                   }}
                 >
                   {sec.icon}
@@ -284,6 +313,7 @@ export default function Dashboard() {
                     fontWeight: 600,
                     fontSize: '0.9rem',
                     color: 'text.secondary',
+                    transition: 'all 0.2s ease',
                   }}
                 />
               </ListItem>
@@ -305,23 +335,28 @@ export default function Dashboard() {
             <ThemeToggle size="medium" />
           </Box>
           
-          {/* Logout Button - Subtle */}
+          {/* Logout Button - Premium */}
           <Button
             fullWidth
-            variant="text"
+            variant="outlined"
             color="error"
             startIcon={<LogoutIcon />}
             onClick={handleLogout}
             sx={{ 
-              borderRadius: 1.5, 
-              fontWeight: 600,
-              py: 1.25,
-              px: 1.5,
+              borderRadius: 2, 
+              fontWeight: 700,
+              py: 1.5,
+              px: 2,
               justifyContent: 'flex-start',
-              color: 'text.secondary',
+              textTransform: 'none',
+              borderColor: (t) => alpha(t.palette.error.main, 0.3),
+              color: 'error.main',
+              transition: 'all 0.2s ease',
               '&:hover': {
-                bgcolor: (t) => alpha(t.palette.error.main, 0.08),
-                color: 'error.main',
+                bgcolor: (t) => alpha(t.palette.error.main, 0.1),
+                borderColor: 'error.main',
+                transform: 'translateY(-2px)',
+                boxShadow: (t) => `0 4px 12px ${alpha(t.palette.error.main, 0.25)}`,
               }
             }}
           >
@@ -331,29 +366,31 @@ export default function Dashboard() {
       </Drawer>
       {/* Main Content */}
   <Box component="main" sx={{ flexGrow: 1, ml: 0, mt: 0, minHeight: '100vh', background: 'transparent' }}>
-        {/* Hero header */}
+        {/* Hero header - Clean professional design */}
         <Box sx={{
           px: { xs: 2, md: 6 },
-          pt: { xs: 2, md: 4 },
-          pb: 3,
-          background: (t) => t.palette.background.gradient,
+          pt: { xs: 3, md: 5 },
+          pb: 4,
+          background: 'transparent',
         }}>
-          <Paper elevation={8} sx={{
-            p: { xs: 2, md: 3 },
-            borderRadius: 4,
-            background: (t) => alpha(t.palette.background.paper, 0.9),
-            backdropFilter: 'blur(8px)',
-            border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.12)}`,
-            maxWidth: 1200,
-            mx: 'auto',
-          }}>
-            <Box display="flex" alignItems="center" justifyContent="space-between" gap={2}>
+          <Paper
+            elevation={0}
+            sx={{ 
+              maxWidth: 'clamp(1200px, 90vw, 1440px)', 
+              mx: 'auto',
+              p: { xs: 3, md: 4 },
+              borderRadius: 3,
+              background: (t) => t.palette.background.paper,
+              border: (t) => `1px solid ${t.palette.divider}`,
+            }}
+          >
+            <Box display="flex" alignItems="center" justifyContent="space-between" gap={2} flexWrap="wrap">
               <Box>
-                <Typography variant="h5" fontWeight={900}>
-                  Welcome back{user ? `, ${user.fullName.split(' ')[0]}` : ''}
+                <Typography variant="h4" fontWeight={700} sx={{ mb: 0.5 }}>
+                  Your Health Dashboard
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Your personal health dashboard — track progress, update details, and assess your risk.
+                <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
+                  Track progress, update details, and assess your risk.
                 </Typography>
               </Box>
               <QuickActions />
@@ -363,12 +400,17 @@ export default function Dashboard() {
 
         {/* Content container */}
         <Box sx={{ px: { xs: 2, md: 6 }, pb: 6, display: 'flex', justifyContent: 'center' }}>
-          <Box sx={{ width: '100%', maxWidth: selectedIndex === 2 ? 2400 : 1200 }}>
+          <Box sx={{ 
+            width: '100%', 
+            maxWidth: selectedIndex === 2 
+              ? 'clamp(1400px, 95vw, 1920px)' 
+              : 'clamp(1200px, 90vw, 1440px)'
+          }}>
             {selectedIndex === 0 && (
               <Box>
-                {/* Stats Row */}
-                <Grid container spacing={3} sx={{ mb: 4 }}>
-                  <Grid item xs={12} sm={6} lg={3}>
+                {/* Stats Row - Matches width of 2-column grid below */}
+                <Grid container spacing={{ xs: 2, sm: 3, md: 4 }} sx={{ mb: 4 }}>
+                  <Grid item xs={12} sm={6} md={3}>
                     <StatWidget
                       title="Condition"
                       value={diseaseData?.disease || 'Not Set'}
@@ -376,7 +418,7 @@ export default function Dashboard() {
                       color="primary"
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6} lg={3}>
+                  <Grid item xs={12} sm={6} md={3}>
                     <StatWidget
                       title="Questions"
                       value={`${diseaseData?.answeredQuestions ?? 0}/${diseaseData?.totalQuestions ?? 0}`}
@@ -384,7 +426,7 @@ export default function Dashboard() {
                       color="info"
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6} lg={3}>
+                  <Grid item xs={12} sm={6} md={3}>
                     <StatWidget
                       title="Progress"
                       value={`${completionPct}%`}
@@ -392,40 +434,38 @@ export default function Dashboard() {
                       color="success"
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6} lg={3}>
+                  <Grid item xs={12} sm={6} md={3}>
                     <Paper
                       elevation={0}
                       onClick={() => completionPct === 100 ? navigate('/assessment') : navigate('/onboarding')}
-                      sx={{
-                        p: 3.5,
-                        borderRadius: 4,
-                        height: '100%',
+                      sx={{ 
+                        height: '100%', 
                         cursor: 'pointer',
-                        background: (t) => t.palette.mode === 'dark'
-                          ? `linear-gradient(135deg, ${alpha(t.palette.secondary.main, 0.18)} 0%, ${alpha(t.palette.secondary.dark, 0.12)} 100%)`
-                          : `linear-gradient(135deg, ${alpha(t.palette.secondary.main, 0.12)} 0%, ${alpha(t.palette.secondary.dark, 0.08)} 100%)`,
-                        border: (t) => `2px solid ${alpha(t.palette.secondary.main, 0.35)}`,
-                        transition: 'all .25s ease',
+                        p: 2.5,
+                        borderRadius: 3,
+                        background: (t) => t.palette.background.paper,
+                        border: (t) => `1px solid ${t.palette.divider}`,
+                        transition: 'all 0.2s ease',
                         '&:hover': {
-                          transform: 'translateY(-6px)',
-                          boxShadow: (t) => `0 12px 32px ${alpha(t.palette.secondary.main, 0.25)}`,
+                          borderColor: 'primary.main',
+                          boxShadow: (t) => `0 4px 12px ${alpha(t.palette.primary.main, 0.12)}`,
                         }
                       }}
                     >
-                      <Typography variant="overline" sx={{ color: 'secondary.main', fontWeight: 900, letterSpacing: 2 }}>
+                      <Typography variant="overline" sx={{ color: 'text.secondary', fontWeight: 700, letterSpacing: 1.2, fontSize: '0.7rem' }}>
                         Next Action
                       </Typography>
-                      <Typography variant="h5" fontWeight={900} sx={{ mt: 0.5 }}>
+                      <Typography variant="h6" fontWeight={700} sx={{ mt: 0.75 }}>
                         Assessment
                       </Typography>
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontWeight: 500 }}>
                         {completionPct === 100 ? 'Ready to assess' : 'Finish onboarding'}
                       </Typography>
                     </Paper>
                   </Grid>
                 </Grid>
 
-                {/* Main Content: 2-column responsive grid */}
+                {/* Main Content: 2-column responsive grid - spacing matches stats row */}
                 <Box sx={{
                   display: 'grid',
                   gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
@@ -437,43 +477,27 @@ export default function Dashboard() {
                     <Paper
                       elevation={0}
                       sx={{ 
-                        p: 5,
-                        borderRadius: 5,
+                        p: 4,
+                        borderRadius: 3,
                         height: '100%',
-                        background: (t) => `linear-gradient(135deg, ${t.palette.background.paper}, ${alpha(t.palette.primary.main, 0.05)})`,
-                        border: (t) => `2px solid ${alpha(t.palette.primary.main, 0.15)}`,
+                        background: (t) => t.palette.background.paper,
+                        border: (t) => `1px solid ${t.palette.divider}`,
                         display: 'flex',
                         flexDirection: 'column',
                         justifyContent: 'center',
                         alignItems: 'center',
                         textAlign: 'center',
-                        minHeight: 420,
-                        transition: 'all 0.35s ease',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        '&::before': {
-                          content: '""',
-                          position: 'absolute',
-                          inset: 0,
-                          background: (t) => `radial-gradient(circle at 30% 0%, ${alpha(t.palette.primary.main, 0.08)}, transparent 40%)`,
-                          opacity: 0.6,
-                          pointerEvents: 'none'
-                        },
-                        '&:hover': {
-                          transform: 'translateY(-6px)',
-                          boxShadow: (t) => `0 20px 40px ${alpha(t.palette.primary.main, 0.15)}`,
-                          borderColor: (t) => t.palette.primary.main,
-                        }
+                        minHeight: 380,
                       }}
                     >
                       <Typography 
                         variant="overline" 
                         sx={{ 
-                          color: 'primary.main', 
-                          fontWeight: 900, 
-                          letterSpacing: 2,
-                          fontSize: '0.8rem',
-                          mb: 3,
+                          color: 'text.secondary', 
+                          fontWeight: 800, 
+                          letterSpacing: 1.2,
+                          fontSize: '0.75rem',
+                          mb: 2,
                         }}
                       >
                         ONBOARDING PROGRESS
@@ -482,20 +506,13 @@ export default function Dashboard() {
                         <ProgressDonut value={completionPct} label="Complete" size={120} />
                       </Box>
                       <Typography 
-                        variant="h3" 
-                        fontWeight={900} 
-                        sx={{ 
-                          mb: 1.5,
-                          background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
-                          backgroundClip: 'text',
-                          WebkitBackgroundClip: 'text',
-                          color: 'transparent',
-                          WebkitTextFillColor: 'transparent',
-                        }}
+                        variant="h5" 
+                        fontWeight={800}
+                        sx={{ mb: 1 }}
                       >
                         {completionPct}% Complete
                       </Typography>
-                      <Typography variant="h6" color="text.secondary" sx={{ mb: 4, fontWeight: 500 }}>
+                      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
                         {diseaseData?.answeredQuestions || 0} of {diseaseData?.totalQuestions || 0} questions answered
                       </Typography>
                       {completionPct < 100 ? (
@@ -503,22 +520,7 @@ export default function Dashboard() {
                           variant="contained" 
                           size="large"
                           onClick={() => navigate('/onboarding')}
-                          sx={{ 
-                            borderRadius: 3,
-                            fontWeight: 900,
-                            px: 5,
-                            py: 1.8,
-                            fontSize: '1rem',
-                            textTransform: 'none',
-                            background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
-                            boxShadow: (t) => `0 12px 28px ${alpha(t.palette.primary.main, 0.3)}`,
-                            '&:hover': {
-                              transform: 'translateY(-2px)',
-                              background: (t) => `linear-gradient(135deg, ${t.palette.primary.dark}, ${t.palette.secondary.dark})`,
-                              boxShadow: (t) => `0 16px 36px ${alpha(t.palette.primary.main, 0.4)}`,
-                            },
-                            transition: 'all 0.3s ease',
-                          }}
+                          sx={{ borderRadius: 2, fontWeight: 800, px: 4, py: 1.5, textTransform: 'none' }}
                         >
                           Continue Onboarding
                         </Button>
@@ -528,11 +530,11 @@ export default function Dashboard() {
                           label="Onboarding Complete" 
                           color="success" 
                           sx={{ 
-                            fontWeight: 900,
-                            px: 3,
-                            py: 3,
-                            fontSize: '1rem',
-                            '& .MuiChip-icon': { fontSize: '1.3rem' }
+                            fontWeight: 800,
+                            px: 2,
+                            py: 2,
+                            fontSize: '0.95rem',
+                            '& .MuiChip-icon': { fontSize: '1.2rem' }
                           }} 
                         />
                       )}
@@ -545,50 +547,19 @@ export default function Dashboard() {
                       elevation={0}
                       sx={{ 
                         p: 4,
-                        borderRadius: 5,
+                        borderRadius: 3,
                         height: '100%',
-                        background: (t) => `linear-gradient(135deg, ${t.palette.background.paper}, ${alpha(t.palette.info.main, 0.04)})`,
-                        border: (t) => `2px solid ${alpha(t.palette.info.main, 0.15)}`,
-                        minHeight: 420,
-                        transition: 'all 0.35s ease',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        '&::before': {
-                          content: '""',
-                          position: 'absolute',
-                          inset: 0,
-                          background: (t) => `radial-gradient(circle at 70% 0%, ${alpha(t.palette.info.main, 0.08)}, transparent 40%)`,
-                          opacity: 0.6,
-                          pointerEvents: 'none'
-                        },
-                        '&:hover': {
-                          transform: 'translateY(-6px)',
-                          boxShadow: (t) => `0 20px 40px ${alpha(t.palette.info.main, 0.15)}`,
-                          borderColor: (t) => t.palette.info.main,
-                        }
+                        background: (t) => t.palette.background.paper,
+                        border: (t) => `1px solid ${t.palette.divider}`,
+                        minHeight: 360,
                       }}
                     >
                       <Box display="flex" alignItems="center" gap={2} sx={{ mb: 4 }}>
-                        <Box 
-                          sx={{ 
-                            width: 48,
-                            height: 48,
-                            borderRadius: 2.5,
-                            background: (t) => t.palette.mode === 'dark'
-                              ? alpha(t.palette.info.main, 0.2)
-                              : alpha(t.palette.info.main, 0.12),
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          <InsightsIcon sx={{ fontSize: 28, color: 'info.main' }} />
-                        </Box>
-                        <Typography variant="h5" fontWeight={900}>
+                        <Typography variant="h6" fontWeight={800}>
                           Recent Activity
                         </Typography>
                       </Box>
-                      <Divider sx={{ mb: 3 }} />
+                      <Divider sx={{ mb: 2 }} />
                       <ActivityTimeline items={activityItems} />
                     </Paper>
                   </Box>
@@ -605,30 +576,10 @@ export default function Dashboard() {
               <Paper 
                 elevation={0} 
                 sx={{ 
-                  p: { xs: 3, md: 5 }, 
-                  borderRadius: 5,
-                  background: (t) => t.palette.mode === 'dark' 
-                    ? `linear-gradient(135deg, ${alpha(t.palette.background.paper, 0.7)} 0%, ${alpha(t.palette.background.paper, 0.5)} 100%)`
-                    : `linear-gradient(135deg, ${alpha(t.palette.background.paper, 0.95)} 0%, ${alpha(t.palette.background.paper, 0.85)} 100%)`,
-                  backdropFilter: 'blur(24px)',
-                  border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.1)}`,
-                  boxShadow: (t) => `0 20px 60px ${alpha(t.palette.common.black, t.palette.mode === 'dark' ? 0.4 : 0.08)}`,
-                  position: 'relative',
-                  overflow: 'hidden',
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: '4px',
-                    background: (t) => `linear-gradient(90deg, ${t.palette.primary.main}, ${t.palette.secondary.main}, ${t.palette.info.main})`,
-                  },
-                  animation: 'fadeInUp 0.6s ease-out',
-                  '@keyframes fadeInUp': {
-                    from: { opacity: 0, transform: 'translateY(20px)' },
-                    to: { opacity: 1, transform: 'translateY(0)' }
-                  }
+                  p: { xs: 3, md: 4 }, 
+                  borderRadius: 3,
+                  background: (t) => t.palette.background.paper,
+                  border: (t) => `1px solid ${t.palette.divider}`,
                 }}
               >
                 {/* Header */}
@@ -641,80 +592,39 @@ export default function Dashboard() {
                   }
                 }}>
                   <Box display="flex" alignItems="center" gap={3} mb={2}>
-                    <Box sx={{ position: 'relative' }}>
-                      <Avatar 
-                        sx={{ 
-                          width: 80, 
-                          height: 80,
-                          background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
-                          fontSize: '2rem',
-                          fontWeight: 900,
-                          boxShadow: (t) => `0 8px 24px ${alpha(t.palette.primary.main, 0.4)}`,
-                          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                          '&:hover': {
-                            transform: 'scale(1.08) rotate(5deg)',
-                            boxShadow: (t) => `0 12px 32px ${alpha(t.palette.primary.main, 0.5)}`,
-                          }
-                        }}
-                      >
-                        {user?.fullName?.[0]?.toUpperCase() || 'U'}
-                      </Avatar>
-                      <Box sx={{
-                        position: 'absolute',
-                        bottom: 0,
-                        right: 0,
-                        width: 24,
-                        height: 24,
-                        borderRadius: '50%',
-                        bgcolor: 'success.main',
-                        border: (t) => `3px solid ${t.palette.background.paper}`,
-                        animation: 'pulse 2s infinite',
-                        '@keyframes pulse': {
-                          '0%, 100%': { opacity: 1 },
-                          '50%': { opacity: 0.6 }
-                        }
-                      }} />
-                    </Box>
+                    <Avatar 
+                      sx={{ 
+                        width: 72, 
+                        height: 72,
+                        bgcolor: 'primary.main',
+                        fontSize: '1.75rem',
+                        fontWeight: 800,
+                        color: 'primary.contrastText',
+                      }}
+                    >
+                      {user?.fullName?.[0]?.toUpperCase() || 'U'}
+                    </Avatar>
                     <Box flex={1}>
                       <Typography 
-                        variant="h4" 
-                        fontWeight={900} 
-                        sx={{ 
-                          background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
-                          backgroundClip: 'text',
-                          WebkitBackgroundClip: 'text',
-                          color: 'transparent',
-                          WebkitTextFillColor: 'transparent',
-                          mb: 0.5,
-                          transition: 'all 0.3s ease',
-                        }}
+                        variant="h5" 
+                        fontWeight={800}
+                        sx={{ mb: 0.5 }}
                       >
                         {user?.fullName || 'User'}
                       </Typography>
-                      <Typography variant="body1" color="text.secondary" sx={{ mb: 1.5, fontWeight: 500 }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
                         {user?.email}
                       </Typography>
                       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                        {(user?.roles || []).map((r, idx) => (
+                        {(user?.roles || []).map((r) => (
                           <Chip 
                             key={r} 
                             label={r} 
                             size="small" 
                             sx={{ 
-                              fontWeight: 700,
-                              background: (t) => alpha(t.palette.primary.main, 0.12),
-                              border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.3)}`,
-                              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                              animation: `chipFadeIn 0.5s ease-out ${idx * 0.1}s backwards`,
-                              '@keyframes chipFadeIn': {
-                                from: { opacity: 0, transform: 'scale(0.8)' },
-                                to: { opacity: 1, transform: 'scale(1)' }
-                              },
-                              '&:hover': {
-                                background: (t) => alpha(t.palette.primary.main, 0.2),
-                                transform: 'translateY(-2px)',
-                                boxShadow: (t) => `0 4px 12px ${alpha(t.palette.primary.main, 0.3)}`,
-                              }
+                              fontWeight: 600,
+                              background: (t) => alpha(t.palette.primary.main, 0.08),
+                              border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.2)}`,
                             }} 
                           />
                         ))}
@@ -723,56 +633,14 @@ export default function Dashboard() {
                   </Box>
                 </Box>
 
-                <Divider 
-                  sx={{ 
-                    mb: 5, 
-                    borderColor: (t) => alpha(t.palette.divider, 0.08),
-                    position: 'relative',
-                    '&::after': {
-                      content: '""',
-                      position: 'absolute',
-                      left: 0,
-                      top: 0,
-                      height: '100%',
-                      width: '60px',
-                      background: (t) => `linear-gradient(90deg, ${t.palette.primary.main}, transparent)`,
-                      opacity: 0.3,
-                    }
-                  }} 
-                />
+                <Divider sx={{ mb: 4 }} />
 
                 {/* Profile Info Section */}
                 <Box sx={{ 
                   mb: 5,
                   animation: 'fadeInUp 0.8s ease-out 0.2s backwards',
                 }}>
-                  <Typography 
-                    variant="h6" 
-                    fontWeight={900} 
-                    sx={{ 
-                      mb: 3.5, 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: 1.5,
-                      transition: 'all 0.3s ease',
-                      '&:hover .accent-bar': {
-                        width: '6px',
-                        background: (t) => `linear-gradient(180deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
-                      }
-                    }}
-                  >
-                    <Box 
-                      className="accent-bar"
-                      sx={{ 
-                        width: 4, 
-                        height: 28, 
-                        borderRadius: 2,
-                        background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
-                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                      }} 
-                    />
-                    Personal Information
-                  </Typography>
+                  <Typography variant="h6" fontWeight={800} sx={{ mb: 3.5 }}>Personal Information</Typography>
                   
                   {profileError && (
                     <Alert 
@@ -827,27 +695,7 @@ export default function Dashboard() {
                             variant="outlined"
                             sx={{
                               '& .MuiOutlinedInput-root': {
-                                borderRadius: 2.5,
-                                fontWeight: 600,
-                                fontSize: '1.05rem',
-                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                background: (t) => alpha(t.palette.background.paper, 0.6),
-                                '&:hover': {
-                                  background: (t) => alpha(t.palette.background.paper, 0.9),
-                                  '& fieldset': {
-                                    borderColor: 'primary.main',
-                                    borderWidth: '2px',
-                                  }
-                                },
-                                '&.Mui-focused': {
-                                  background: (t) => alpha(t.palette.background.paper, 1),
-                                  transform: 'scale(1.01)',
-                                  boxShadow: (t) => `0 8px 24px ${alpha(t.palette.primary.main, 0.15)}`,
-                                  '& fieldset': {
-                                    borderColor: 'primary.main',
-                                    borderWidth: '2px',
-                                  }
-                                }
+                                borderRadius: 2,
                               }
                             }}
                           />
@@ -967,44 +815,7 @@ export default function Dashboard() {
                         variant="contained" 
                         disabled={savingProfile}
                         size="large"
-                        sx={{
-                          borderRadius: 3,
-                          textTransform: 'none',
-                          fontWeight: 800,
-                          px: 5,
-                          py: 1.8,
-                          fontSize: '1.05rem',
-                          background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
-                          boxShadow: (t) => `0 8px 24px ${alpha(t.palette.primary.main, 0.35)}`,
-                          position: 'relative',
-                          overflow: 'hidden',
-                          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                          '&::before': {
-                            content: '""',
-                            position: 'absolute',
-                            top: 0,
-                            left: '-100%',
-                            width: '100%',
-                            height: '100%',
-                            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
-                            transition: 'left 0.5s ease',
-                          },
-                          '&:hover': {
-                            transform: 'translateY(-3px) scale(1.02)',
-                            background: (t) => `linear-gradient(135deg, ${t.palette.primary.dark}, ${t.palette.secondary.dark})`,
-                            boxShadow: (t) => `0 16px 40px ${alpha(t.palette.primary.main, 0.45)}`,
-                            '&::before': {
-                              left: '100%',
-                            }
-                          },
-                          '&:active': {
-                            transform: 'translateY(-1px) scale(0.98)',
-                          },
-                          '&:disabled': {
-                            background: (t) => t.palette.action.disabledBackground,
-                            transform: 'none',
-                          }
-                        }}
+                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 800, px: 4, py: 1.5 }}
                       >
                         {savingProfile ? (
                           <Box display="flex" alignItems="center" gap={1}>
@@ -1033,23 +844,7 @@ export default function Dashboard() {
                   </Box>
                 </Box>
 
-                <Divider 
-                  sx={{ 
-                    mb: 5, 
-                    borderColor: (t) => alpha(t.palette.divider, 0.08),
-                    position: 'relative',
-                    '&::after': {
-                      content: '""',
-                      position: 'absolute',
-                      right: 0,
-                      top: 0,
-                      height: '100%',
-                      width: '60px',
-                      background: (t) => `linear-gradient(90deg, transparent, ${t.palette.secondary.main})`,
-                      opacity: 0.3,
-                    }
-                  }} 
-                />
+                <Divider sx={{ mb: 4 }} />
 
                 {/* Security & Preferences Section */}
                 <Box sx={{
@@ -1090,59 +885,29 @@ export default function Dashboard() {
                   }}>
                     {/* Password */}
                     <Box sx={{ 
-                        p: 4, 
-                        borderRadius: 4,
-                        border: (t) => `1px solid ${alpha(t.palette.warning.main, 0.2)}`,
-                        background: (t) => `linear-gradient(135deg, ${alpha(t.palette.warning.main, 0.04)} 0%, ${alpha(t.palette.warning.main, 0.02)} 100%)`,
+                        p: 3.5, 
+                        borderRadius: 3,
+                        border: (t) => `1px solid ${t.palette.divider}`,
+                        background: (t) => t.palette.background.paper,
                         display: 'flex',
                         flexDirection: 'column',
                         height: '100%',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                        '&::before': {
-                          content: '""',
-                          position: 'absolute',
-                          top: '-50%',
-                          right: '-50%',
-                          width: '200%',
-                          height: '200%',
-                          background: (t) => `radial-gradient(circle, ${alpha(t.palette.warning.main, 0.1)} 0%, transparent 70%)`,
-                          opacity: 0,
-                          transition: 'opacity 0.4s ease',
-                        },
-                        '&:hover': {
-                          borderColor: (t) => alpha(t.palette.warning.main, 0.4),
-                          background: (t) => `linear-gradient(135deg, ${alpha(t.palette.warning.main, 0.08)} 0%, ${alpha(t.palette.warning.main, 0.04)} 100%)`,
-                          transform: 'translateY(-4px)',
-                          boxShadow: (t) => `0 12px 32px ${alpha(t.palette.warning.main, 0.2)}`,
-                          '&::before': {
-                            opacity: 1,
-                          }
-                        }
                       }}>
-                        <Box display="flex" alignItems="center" gap={2} mb={3}>
+                        <Box display="flex" alignItems="center" gap={2} mb={2}>
                           <Box sx={{ 
-                            width: 52, 
-                            height: 52, 
-                            borderRadius: 3, 
-                            bgcolor: (t) => alpha(t.palette.warning.main, 0.15), 
+                            width: 44, 
+                            height: 44, 
+                            borderRadius: '50%', 
+                            bgcolor: (t) => alpha(t.palette.warning.main, 0.12), 
                             display:'flex', 
                             alignItems:'center', 
                             justifyContent:'center',
-                            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                            '&:hover': {
-                              transform: 'rotate(15deg) scale(1.1)',
-                              bgcolor: (t) => alpha(t.palette.warning.main, 0.25),
-                            }
                           }}>
-                            <LockIcon sx={{ color: 'warning.main', fontSize: 28 }} />
+                            <LockIcon sx={{ color: 'warning.main', fontSize: 24 }} />
                           </Box>
                           <Box>
-                            <Typography variant="h6" fontWeight={900}>Password</Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
-                              Secure your account
-                            </Typography>
+                            <Typography variant="subtitle1" fontWeight={800}>Password</Typography>
+                            <Typography variant="caption" color="text.secondary">Secure your account</Typography>
                           </Box>
                         </Box>
                         
@@ -1155,25 +920,9 @@ export default function Dashboard() {
                         <Button
                           variant="contained"
                           fullWidth
+                          color="warning"
                           onClick={() => window.dispatchEvent(new Event('openChangePassword'))}
-                          sx={{
-                            borderRadius: 2.5,
-                            textTransform: 'none',
-                            fontWeight: 800,
-                            py: 1.5,
-                            fontSize: '1rem',
-                            background: (t) => `linear-gradient(135deg, ${t.palette.warning.main}, ${t.palette.warning.dark})`,
-                            boxShadow: (t) => `0 6px 20px ${alpha(t.palette.warning.main, 0.3)}`,
-                            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                            '&:hover': {
-                              background: (t) => `linear-gradient(135deg, ${t.palette.warning.dark}, ${t.palette.warning.main})`,
-                              transform: 'translateY(-2px)',
-                              boxShadow: (t) => `0 10px 28px ${alpha(t.palette.warning.main, 0.4)}`,
-                            },
-                            '&:active': {
-                              transform: 'translateY(0)',
-                            }
-                          }}
+                          sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 800, py: 1.2 }}
                         >
                           Change Password
                         </Button>
@@ -1181,68 +930,29 @@ export default function Dashboard() {
 
                     {/* Preferences */}
                     <Box sx={{ 
-                        p: 4, 
-                        borderRadius: 4,
-                        border: (t) => `1px solid ${alpha(t.palette.info.main, 0.2)}`,
-                        background: (t) => `linear-gradient(135deg, ${alpha(t.palette.info.main, 0.04)} 0%, ${alpha(t.palette.info.main, 0.02)} 100%)`,
+                        p: 3.5, 
+                        borderRadius: 3,
+                        border: (t) => `1px solid ${t.palette.divider}`,
+                        background: (t) => t.palette.background.paper,
                         display: 'flex',
                         flexDirection: 'column',
                         height: '100%',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                        '&::before': {
-                          content: '""',
-                          position: 'absolute',
-                          top: '-50%',
-                          left: '-50%',
-                          width: '200%',
-                          height: '200%',
-                          background: (t) => `radial-gradient(circle, ${alpha(t.palette.info.main, 0.1)} 0%, transparent 70%)`,
-                          opacity: 0,
-                          transition: 'opacity 0.4s ease',
-                        },
-                        '&:hover': {
-                          borderColor: (t) => alpha(t.palette.info.main, 0.4),
-                          background: (t) => `linear-gradient(135deg, ${alpha(t.palette.info.main, 0.08)} 0%, ${alpha(t.palette.info.main, 0.04)} 100%)`,
-                          transform: 'translateY(-4px)',
-                          boxShadow: (t) => `0 12px 32px ${alpha(t.palette.info.main, 0.2)}`,
-                          '&::before': {
-                            opacity: 1,
-                          }
-                        }
                       }}>
-                        <Box display="flex" alignItems="center" gap={2} mb={3}>
+                        <Box display="flex" alignItems="center" gap={2} mb={2}>
                           <Box sx={{ 
-                            width: 52, 
-                            height: 52, 
-                            borderRadius: 3, 
-                            bgcolor: (t) => alpha(t.palette.info.main, 0.15), 
+                            width: 44, 
+                            height: 44, 
+                            borderRadius: '50%', 
+                            bgcolor: (t) => alpha(t.palette.info.main, 0.12), 
                             display:'flex', 
                             alignItems:'center', 
                             justifyContent:'center',
-                            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                            '&:hover': {
-                              transform: 'rotate(15deg) scale(1.1)',
-                              bgcolor: (t) => alpha(t.palette.info.main, 0.25),
-                            }
                           }}>
-                            <Box 
-                              component="span" 
-                              sx={{ 
-                                fontSize: 28,
-                                transition: 'transform 0.4s ease',
-                                display: 'inline-block',
-                              }}
-                            >
-                              🎨
-                            </Box>
+                            <Box component="span" sx={{ fontSize: 22 }}>🎨</Box>
                           </Box>
                           <Box>
-                            <Typography variant="h6" fontWeight={900}>Preferences</Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
-                              Customize your experience
-                            </Typography>
+                            <Typography variant="subtitle1" fontWeight={800}>Preferences</Typography>
+                            <Typography variant="caption" color="text.secondary">Customize your experience</Typography>
                           </Box>
                         </Box>
                         
@@ -1268,9 +978,7 @@ export default function Dashboard() {
                         }}>
                           <Box>
                             <Typography variant="body1" fontWeight={700}>Theme</Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
-                              Choose your display mode
-                            </Typography>
+                            <Typography variant="caption" color="text.secondary">Choose your display mode</Typography>
                           </Box>
                           <Box sx={{ 
                             transition: 'transform 0.3s ease',
@@ -1299,11 +1007,11 @@ export default function Dashboard() {
                   <Paper 
                     elevation={0}
                     sx={{ 
-                      p: 6, 
-                      borderRadius: 5,
+                      p: 5, 
+                      borderRadius: 3,
                       textAlign: 'center',
-                      background: (t) => `linear-gradient(135deg, ${alpha(t.palette.primary.main, 0.08)} 0%, ${alpha(t.palette.secondary.main, 0.08)} 100%)`,
-                      border: (t) => `2px dashed ${alpha(t.palette.primary.main, 0.3)}`,
+                      background: (t) => t.palette.background.paper,
+                      border: (t) => `1px dashed ${t.palette.divider}`,
                     }}
                   >
                     <Box sx={{ mb: 3 }}>
@@ -1312,7 +1020,7 @@ export default function Dashboard() {
                           width: 120,
                           height: 120,
                           borderRadius: '50%',
-                          background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
+                          background: (t) => alpha(t.palette.primary.main, 0.1),
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -1323,7 +1031,7 @@ export default function Dashboard() {
                       >
                         📋
                       </Box>
-                      <Typography variant="h4" fontWeight={900} sx={{ mb: 2 }}>
+                      <Typography variant="h5" fontWeight={800} sx={{ mb: 1.5 }}>
                         No Disease Data Yet
                       </Typography>
                       <Typography variant="body1" color="text.secondary" sx={{ mb: 4, maxWidth: 500, mx: 'auto' }}>
@@ -1334,12 +1042,10 @@ export default function Dashboard() {
                         size="large"
                         onClick={() => navigate('/onboarding')} 
                         sx={{ 
-                          borderRadius: 3, 
+                          borderRadius: 2, 
                           fontWeight: 800,
-                          px: 5,
-                          py: 1.8,
-                          background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
-                          fontSize: '1.1rem',
+                          px: 4,
+                          py: 1.4,
                         }}
                       >
                         Start Onboarding
@@ -1353,16 +1059,14 @@ export default function Dashboard() {
                       elevation={0}
                       sx={{ 
                         p: 4, 
-                        borderRadius: 5,
-                        background: (t) => t.palette.mode === 'dark' 
-                          ? alpha(t.palette.background.paper, 0.6)
-                          : alpha(t.palette.background.paper, 0.9),
-                        border: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`,
+                        borderRadius: 3,
+                        background: (t) => t.palette.background.paper,
+                        border: (t) => `1px solid ${t.palette.divider}`,
                         mb: 3,
                       }}
                     >
                       <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
-                        <Typography variant="h5" fontWeight={900}>
+                        <Typography variant="h6" fontWeight={800}>
                           Health Profile
                         </Typography>
                         {diseaseData?.disease && (
@@ -1371,9 +1075,8 @@ export default function Dashboard() {
                             startIcon={<EditIcon />} 
                             onClick={handleEditDiseaseData} 
                             sx={{ 
-                              borderRadius: 2.5, 
+                              borderRadius: 2, 
                               fontWeight: 800,
-                              background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
                             }}
                           >
                             Edit Data
@@ -1388,7 +1091,7 @@ export default function Dashboard() {
                             mb: 4, 
                             p: 3, 
                             borderRadius: 3,
-                            background: (t) => alpha(t.palette.primary.main, 0.05),
+                            background: (t) => alpha(t.palette.primary.main, 0.04),
                           }}
                         >
                           <Box display="flex" alignItems="center" justifyContent="space-between" mb={1.5}>
@@ -1413,7 +1116,7 @@ export default function Dashboard() {
                                   background: (t) => alpha(t.palette.primary.main, 0.1),
                                   '& .MuiLinearProgress-bar': {
                                     borderRadius: 6,
-                                    background: (t) => `linear-gradient(90deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
+                                    background: (t) => t.palette.primary.main,
                                   }
                                 }}
                               />
@@ -1440,34 +1143,29 @@ export default function Dashboard() {
                                 mb: 3,
                                 p: 3,
                                 borderRadius: 3,
-                                background: (t) => alpha(t.palette.secondary.main, 0.04),
-                                border: (t) => `1px solid ${alpha(t.palette.secondary.main, 0.15)}`,
-                                transition: 'all 0.3s ease',
-                                '&:hover': {
-                                  background: (t) => alpha(t.palette.secondary.main, 0.08),
-                                  borderColor: (t) => alpha(t.palette.secondary.main, 0.3),
-                                }
+                                background: (t) => t.palette.background.paper,
+                                border: (t) => `1px solid ${t.palette.divider}`,
                               }}
                             >
                               {/* Symptom Header */}
                               <Box display="flex" alignItems="center" gap={2} mb={2.5}>
                                 <Box 
                                   sx={{ 
-                                    width: 40,
-                                    height: 40,
-                                    borderRadius: 2,
-                                    background: (t) => `linear-gradient(135deg, ${t.palette.secondary.main}, ${t.palette.secondary.dark})`,
+                                    width: 28,
+                                    height: 28,
+                                    borderRadius: '50%',
+                                    background: (t) => alpha(t.palette.text.primary, 0.08),
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    color: 'white',
-                                    fontWeight: 900,
-                                    fontSize: '1.1rem',
+                                    color: 'text.primary',
+                                    fontWeight: 700,
+                                    fontSize: '0.85rem',
                                   }}
                                 >
                                   {idx + 1}
                                 </Box>
-                                <Typography variant="h6" fontWeight={900} color="secondary.main">
+                                <Typography variant="subtitle1" fontWeight={800}>
                                   {symptom.name}
                                 </Typography>
                                 <Chip 
@@ -1475,8 +1173,8 @@ export default function Dashboard() {
                                   size="small"
                                   sx={{ 
                                     ml: 'auto',
-                                    fontWeight: 700,
-                                    background: (t) => alpha(t.palette.secondary.main, 0.15),
+                                    fontWeight: 600,
+                                    background: (t) => alpha(t.palette.text.primary, 0.06),
                                   }}
                                 />
                               </Box>
@@ -1506,13 +1204,13 @@ export default function Dashboard() {
                                           minWidth: 28,
                                           height: 28,
                                           borderRadius: '50%',
-                                          background: (t) => alpha(t.palette.secondary.main, 0.1),
+                                          background: (t) => alpha(t.palette.text.primary, 0.06),
                                           display: 'flex',
                                           alignItems: 'center',
                                           justifyContent: 'center',
                                           fontSize: '0.75rem',
                                           fontWeight: 700,
-                                          color: 'secondary.main',
+                                          color: 'text.secondary',
                                         }}
                                       >
                                         Q{qIdx + 1}
@@ -1526,15 +1224,7 @@ export default function Dashboard() {
                                       >
                                         {q.question}
                                       </Typography>
-                                      <Chip 
-                                        label={q.answer} 
-                                        color="secondary" 
-                                        size="small"
-                                        sx={{ 
-                                          fontWeight: 700,
-                                          minWidth: 80,
-                                        }}
-                                      />
+                                      <Chip label={q.answer} variant="outlined" size="small" sx={{ fontWeight: 600, minWidth: 80 }} />
                                       <Typography 
                                         variant="caption" 
                                         color="text.secondary"
