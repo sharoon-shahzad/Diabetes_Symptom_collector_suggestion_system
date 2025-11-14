@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Box, Typography, Button, Paper, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Switch, FormControlLabel, MenuItem, CircularProgress, Tooltip, Chip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, FormControl, InputLabel, Select
+  Box, Typography, Button, Paper, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Switch, FormControlLabel, MenuItem, CircularProgress, Tooltip, Chip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, FormControl, InputLabel, Select, alpha
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -60,8 +60,24 @@ function UserFormDialog({ open, onClose, onSubmit, initialData, isSuperAdmin, ro
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{initialData ? 'Edit User' : 'Add User'}</DialogTitle>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="sm" 
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+        }
+      }}
+    >
+      <DialogTitle sx={{ 
+        pb: 1, 
+        fontWeight: 700,
+        fontSize: '1.25rem'
+      }}>
+        {initialData ? 'Edit User' : 'Add User'}
+      </DialogTitle>
       <DialogContent>
         <TextField
           label="Full Name"
@@ -70,6 +86,11 @@ function UserFormDialog({ open, onClose, onSubmit, initialData, isSuperAdmin, ro
           onChange={handleChange}
           fullWidth
           margin="normal"
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 2,
+            }
+          }}
         />
         <TextField
           label="Email"
@@ -79,6 +100,11 @@ function UserFormDialog({ open, onClose, onSubmit, initialData, isSuperAdmin, ro
           fullWidth
           margin="normal"
           type="email"
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 2,
+            }
+          }}
         />
         <TextField
           select
@@ -88,6 +114,11 @@ function UserFormDialog({ open, onClose, onSubmit, initialData, isSuperAdmin, ro
           onChange={handleChange}
           fullWidth
           margin="normal"
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 2,
+            }
+          }}
         >
           {GENDER_OPTIONS.map((opt) => (
             <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
@@ -102,6 +133,11 @@ function UserFormDialog({ open, onClose, onSubmit, initialData, isSuperAdmin, ro
           margin="normal"
           type="date"
           InputLabelProps={{ shrink: true }}
+          sx={{
+            '& .MuiOutlinedInput-root': {
+              borderRadius: 2,
+            }
+          }}
         />
         <FormControlLabel
           control={<Switch checked={form.isActivated} onChange={handleChange} name="isActivated" />}
@@ -136,9 +172,34 @@ function UserFormDialog({ open, onClose, onSubmit, initialData, isSuperAdmin, ro
           </Typography>
         )}
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button onClick={handleSubmit} variant="contained" disabled={loading}>{initialData ? 'Update' : 'Add'}</Button>
+      <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+        <Button 
+          onClick={onClose}
+          variant="outlined"
+          sx={{ 
+            borderRadius: 2,
+            textTransform: 'none',
+            fontWeight: 600,
+          }}
+        >
+          Cancel
+        </Button>
+        <Button 
+          onClick={handleSubmit} 
+          variant="contained" 
+          disabled={loading}
+          sx={{ 
+            borderRadius: 2,
+            textTransform: 'none',
+            fontWeight: 700,
+            boxShadow: 'none',
+            '&:hover': {
+              boxShadow: 2,
+            }
+          }}
+        >
+          {initialData ? 'Update' : 'Add'}
+        </Button>
       </DialogActions>
     </Dialog>
   );
@@ -146,14 +207,57 @@ function UserFormDialog({ open, onClose, onSubmit, initialData, isSuperAdmin, ro
 
 function ConfirmDialog({ open, onClose, onConfirm, title, message }) {
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>{title || 'Confirm'}</DialogTitle>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="xs" 
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: 3,
+        }
+      }}
+    >
+      <DialogTitle sx={{ 
+        pb: 1, 
+        fontWeight: 700,
+        fontSize: '1.25rem'
+      }}>
+        {title || 'Confirm'}
+      </DialogTitle>
       <DialogContent>
-        <Typography>{message || 'Are you sure?'}</Typography>
+        <Typography sx={{ pt: 1, fontWeight: 500 }}>
+          {message || 'Are you sure?'}
+        </Typography>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button onClick={onConfirm} color="error" variant="contained">Delete</Button>
+      <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+        <Button 
+          onClick={onClose}
+          variant="outlined"
+          sx={{ 
+            borderRadius: 2,
+            textTransform: 'none',
+            fontWeight: 600,
+          }}
+        >
+          Cancel
+        </Button>
+        <Button 
+          onClick={onConfirm} 
+          color="error" 
+          variant="contained"
+          sx={{ 
+            borderRadius: 2,
+            textTransform: 'none',
+            fontWeight: 700,
+            boxShadow: 'none',
+            '&:hover': {
+              boxShadow: 2,
+            }
+          }}
+        >
+          Delete
+        </Button>
       </DialogActions>
     </Dialog>
   );
@@ -274,110 +378,237 @@ export default function UserManagement() {
   const isSuperAdmin = currentUserRoles.includes('super_admin');
 
   return (
-    <Box p={3}>
-      <Paper elevation={3} sx={{ p: 4, mb: 2, borderRadius: 4, boxShadow: '0 4px 24px 0 rgba(25, 118, 210, 0.08)', background: '#101624', color: '#fff' }}>
-        <Typography variant="h5" fontWeight="bold" gutterBottom color="#fff">
-          User Management
-        </Typography>
-        {isSuperAdmin ? (
-          <Typography variant="body2" color="#90caf9" mb={2}>
-            Super Admin Mode: You can edit user roles and permissions
-          </Typography>
-        ) : (
-          <Typography variant="body2" color="#b0bec5" mb={2}>
-            Admin Mode: You can edit user details but cannot change roles
-          </Typography>
-        )}
+    <Box p={{ xs: 2, md: 4 }}>
+      <Paper 
+        elevation={0} 
+        sx={{ 
+          p: { xs: 3, md: 4 }, 
+          mb: 3, 
+          borderRadius: 3, 
+          background: (t) => t.palette.background.paper,
+          border: (t) => `1px solid ${t.palette.divider}`,
+        }}
+      >
+        <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2} mb={3}>
+          <Box>
+            <Typography variant="h5" fontWeight={700} gutterBottom>
+              User Management
+            </Typography>
+            {isSuperAdmin ? (
+              <Chip 
+                label="Super Admin Mode: Full Access"
+                size="small"
+                color="error"
+                sx={{ fontWeight: 600 }}
+              />
+            ) : (
+              <Chip 
+                label="Admin Mode: Limited Access"
+                size="small"
+                color="warning"
+                sx={{ fontWeight: 600 }}
+              />
+            )}
+          </Box>
+          <Button 
+            variant="contained" 
+            startIcon={<AddIcon />} 
+            onClick={handleAdd} 
+            sx={{ 
+              borderRadius: 2, 
+              fontWeight: 700,
+              textTransform: 'none',
+              boxShadow: 'none',
+              '&:hover': {
+                boxShadow: 2,
+              }
+            }}
+          >
+            Add User
+          </Button>
+        </Box>
         {loading ? (
-          <Box display="flex" justifyContent="center" alignItems="center" minHeight={120}>
-            <CircularProgress sx={{ color: '#fff' }} />
+          <Box display="flex" justifyContent="center" alignItems="center" minHeight={300}>
+            <CircularProgress />
           </Box>
         ) : (
-          <TableContainer component={Paper} sx={{ background: '#101624', borderRadius: 3, boxShadow: '0 2px 8px 0 rgba(25, 118, 210, 0.04)', color: '#fff' }}>
-            <Table sx={{ background: '#101624', color: '#fff' }}>
+          <TableContainer 
+            component={Paper} 
+            elevation={0}
+            sx={{ 
+              borderRadius: 2,
+              border: (t) => `1px solid ${t.palette.divider}`,
+            }}
+          >
+            <Table sx={{ minWidth: 650 }}>
               <TableHead>
-                <TableRow>
-                  <TableCell sx={{ color: '#fff' }}>Full Name</TableCell>
-                  <TableCell sx={{ color: '#fff' }}>Email</TableCell>
-                  <TableCell sx={{ color: '#fff' }}>Gender</TableCell>
-                  <TableCell sx={{ color: '#fff' }}>Date of Birth</TableCell>
-                  <TableCell sx={{ color: '#fff' }}>Active</TableCell>
-                  <TableCell sx={{ color: '#fff' }}>
-                    Roles
-                    {isSuperAdmin ? (
-                      <Typography variant="caption" display="block" sx={{ color: '#90caf9', fontWeight: 'normal' }}>
-                        (Editable)
-                      </Typography>
-                    ) : (
-                      <Typography variant="caption" display="block" sx={{ color: '#b0bec5', fontWeight: 'normal' }}>
-                        (View only)
-                      </Typography>
-                    )}
+                <TableRow sx={{ 
+                  background: (t) => t.palette.mode === 'dark' 
+                    ? alpha(t.palette.primary.main, 0.08)
+                    : alpha(t.palette.primary.main, 0.04),
+                }}>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.85rem' }}>Full Name</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.85rem' }}>Email</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.85rem' }}>Gender</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.85rem' }}>
+                    <Box display="flex" flexDirection="column">
+                      Date of Birth
+                    </Box>
                   </TableCell>
-                  <TableCell align="right" sx={{ color: '#fff' }}>
-                    Actions
-                    {isSuperAdmin ? (
-                      <Typography variant="caption" display="block" sx={{ color: '#90caf9', fontWeight: 'normal' }}>
-                        (Full access)
-                      </Typography>
-                    ) : (
-                      <Typography variant="caption" display="block" sx={{ color: '#b0bec5', fontWeight: 'normal' }}>
-                        (Limited access)
-                      </Typography>
-                    )}
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.85rem' }}>Active</TableCell>
+                  <TableCell sx={{ fontWeight: 700, fontSize: '0.85rem' }}>
+                    <Box display="flex" flexDirection="column">
+                      <span>Roles</span>
+                      {isSuperAdmin ? (
+                        <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 600, fontSize: '0.7rem' }}>
+                          (Editable)
+                        </Typography>
+                      ) : (
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, fontSize: '0.7rem' }}>
+                          (View only)
+                        </Typography>
+                      )}
+                    </Box>
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.85rem' }}>
+                    <Box display="flex" flexDirection="column" alignItems="flex-end">
+                      <span>Actions</span>
+                      {isSuperAdmin ? (
+                        <Typography variant="caption" sx={{ color: 'success.main', fontWeight: 600, fontSize: '0.7rem' }}>
+                          (Full access)
+                        </Typography>
+                      ) : (
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500, fontSize: '0.7rem' }}>
+                          (Limited access)
+                        </Typography>
+                      )}
+                    </Box>
                   </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {users.map((user) => (
-                  <TableRow key={user._id} sx={{ background: '#101624', color: '#fff' }}>
-                    <TableCell sx={{ color: '#fff' }}>{user.fullName}</TableCell>
-                    <TableCell sx={{ color: '#fff' }}>{user.email}</TableCell>
-                    <TableCell sx={{ color: '#fff' }}>{user.gender}</TableCell>
-                    <TableCell sx={{ color: '#fff' }}>{user.date_of_birth ? user.date_of_birth.slice(0, 10) : ''}</TableCell>
-                    <TableCell sx={{ color: '#fff' }}>
+                  <TableRow 
+                    key={user._id} 
+                    sx={{ 
+                      '&:hover': {
+                        bgcolor: (t) => t.palette.mode === 'dark' 
+                          ? alpha(t.palette.primary.main, 0.05)
+                          : alpha(t.palette.primary.main, 0.02),
+                      },
+                      borderBottom: (t) => `1px solid ${t.palette.divider}`,
+                    }}
+                  >
+                    <TableCell sx={{ fontWeight: 600 }}>{user.fullName}</TableCell>
+                    <TableCell sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem' }}>{user.email}</TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={user.gender} 
+                        size="small"
+                        variant="outlined"
+                        sx={{ 
+                          textTransform: 'capitalize',
+                          fontWeight: 600,
+                          fontSize: '0.75rem'
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.9rem' }}>
+                      {user.date_of_birth ? user.date_of_birth.slice(0, 10) : '—'}
+                    </TableCell>
+                    <TableCell>
                       {user.isActivated ? (
-                        <Chip label="Active" color="success" size="small" />
+                        <Chip 
+                          label="Active" 
+                          color="success" 
+                          size="small"
+                          sx={{ 
+                            fontWeight: 700,
+                            fontSize: '0.75rem',
+                            borderRadius: 1.5,
+                          }}
+                        />
                       ) : (
-                        <Chip label="Inactive" color="warning" size="small" />
+                        <Chip 
+                          label="Inactive" 
+                          color="warning" 
+                          size="small"
+                          sx={{ 
+                            fontWeight: 700,
+                            fontSize: '0.75rem',
+                            borderRadius: 1.5,
+                          }}
+                        />
                       )}
                     </TableCell>
-                    <TableCell sx={{ color: '#fff' }}>
-                      {Array.isArray(user.roles) && user.roles.map(role => (
-                        <Chip 
-                          key={role} 
-                          label={role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} 
-                          size="small" 
-                          sx={{ 
-                            mr: 0.5, 
-                            color: '#fff', 
-                            bgcolor: role === 'super_admin' ? '#d32f2f' : role === 'admin' ? '#ed6c02' : '#1976d2', 
-                            fontWeight: 600 
-                          }} 
-                        />
-                      ))}
+                    <TableCell>
+                      <Box display="flex" gap={0.5} flexWrap="wrap">
+                        {Array.isArray(user.roles) && user.roles.map(role => (
+                          <Chip 
+                            key={role} 
+                            label={role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())} 
+                            size="small" 
+                            sx={{ 
+                              bgcolor: role === 'super_admin' 
+                                ? 'error.main' 
+                                : role === 'admin' 
+                                ? 'warning.main' 
+                                : 'primary.main',
+                              color: '#fff',
+                              fontWeight: 700,
+                              fontSize: '0.75rem',
+                              borderRadius: 1.5,
+                            }} 
+                          />
+                        ))}
+                      </Box>
                     </TableCell>
-                    <TableCell align="right" sx={{ color: '#fff' }}>
-                      <Tooltip title="Edit">
-                        <IconButton color="primary" onClick={() => handleEdit(user)}><EditIcon /></IconButton>
-                      </Tooltip>
-                      <Tooltip title="Delete">
-                        <IconButton color="error" onClick={() => handleDelete(user._id)}><DeleteIcon /></IconButton>
-                      </Tooltip>
-                      {isSuperAdmin && (
-                        <Tooltip title="Super Admin: Can edit roles">
+                    <TableCell align="right">
+                      <Box display="flex" gap={0.5} justifyContent="flex-end" alignItems="center">
+                        <Tooltip title="Edit User" arrow>
+                          <IconButton 
+                            size="small"
+                            onClick={() => handleEdit(user)}
+                            sx={{ 
+                              color: 'primary.main',
+                              bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
+                              '&:hover': {
+                                bgcolor: (t) => alpha(t.palette.primary.main, 0.15),
+                              }
+                            }}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete User" arrow>
+                          <IconButton 
+                            size="small"
+                            onClick={() => handleDelete(user._id)}
+                            sx={{ 
+                              color: 'error.main',
+                              bgcolor: (t) => alpha(t.palette.error.main, 0.08),
+                              '&:hover': {
+                                bgcolor: (t) => alpha(t.palette.error.main, 0.15),
+                              }
+                            }}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        {isSuperAdmin && (
                           <Chip 
                             label="Role Editable" 
                             size="small" 
+                            color="success"
                             sx={{ 
                               ml: 1, 
-                              color: '#fff', 
-                              bgcolor: '#4caf50', 
-                              fontSize: '0.7rem' 
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              height: 24,
                             }} 
                           />
-                        </Tooltip>
-                      )}
+                        )}
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -385,11 +616,6 @@ export default function UserManagement() {
             </Table>
           </TableContainer>
         )}
-        <Box display="flex" justifyContent="flex-end" mt={2}>
-          <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleAdd} sx={{ color: '#fff', bgcolor: '#1976d2', fontWeight: 600, '&:hover': { bgcolor: '#1565c0' } }}>
-            Add User
-          </Button>
-        </Box>
       </Paper>
       <UserFormDialog
         open={formOpen}

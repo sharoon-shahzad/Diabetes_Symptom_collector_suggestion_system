@@ -135,11 +135,6 @@ export default function ManageRolesPermissions() {
     return grouped;
   };
 
-  const hasPermission = (roleId, permissionId) => {
-    const rolePerms = rolePermissions[roleId] || [];
-    return rolePerms.some(rp => rp.permission_id._id === permissionId);
-  };
-
   const getRoleColor = (roleName) => {
     switch (roleName) {
       case 'super_admin': return 'error';
@@ -167,10 +162,10 @@ export default function ManageRolesPermissions() {
 
   return (
     <Box>
-      <Typography variant="h4" fontWeight="bold" gutterBottom color="#fff">
+        <Typography variant="h4" fontWeight="bold" gutterBottom color="text.primary">
         Manage Roles & Permissions
       </Typography>
-      <Typography variant="body1" color="#b0bec5" mb={4}>
+        <Typography variant="body1" color="text.secondary" mb={4}>
         Assign and manage permissions for different user roles
       </Typography>
 
@@ -180,34 +175,60 @@ export default function ManageRolesPermissions() {
         </Alert>
       )}
 
-      <Paper elevation={3} sx={{ bgcolor: '#1e2a3a', color: '#fff' }}>
+        <Paper 
+          elevation={0} 
+          sx={{ 
+            bgcolor: 'background.paper',
+            border: (t) => `1px solid ${t.palette.divider}`,
+            borderRadius: 3,
+          }}
+        >
         <TableContainer>
           <Table>
             <TableHead>
-              <TableRow sx={{ bgcolor: '#263445' }}>
-                <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>Role</TableCell>
-                <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>Permissions Count</TableCell>
-                <TableCell sx={{ color: '#fff', fontWeight: 'bold' }}>Actions</TableCell>
+                <TableRow 
+                  sx={{ 
+                    bgcolor: (t) => t.palette.mode === 'dark' 
+                      ? 'rgba(255, 255, 255, 0.08)' 
+                      : 'rgba(0, 0, 0, 0.04)',
+                  }}
+                >
+                  <TableCell sx={{ color: 'text.primary', fontWeight: 'bold' }}>Role</TableCell>
+                  <TableCell sx={{ color: 'text.primary', fontWeight: 'bold' }}>Permissions Count</TableCell>
+                  <TableCell sx={{ color: 'text.primary', fontWeight: 'bold' }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {roles.map((role) => (
-                <TableRow key={role._id} sx={{ '&:hover': { bgcolor: '#263445' } }}>
+                  <TableRow 
+                    key={role._id} 
+                    sx={{ 
+                      '&:hover': { 
+                        bgcolor: (t) => t.palette.mode === 'dark' 
+                          ? 'rgba(255, 255, 255, 0.05)' 
+                          : 'rgba(0, 0, 0, 0.02)',
+                      } 
+                    }}
+                  >
                   <TableCell>
                     <Chip
                       label={formatRole(role.role_name)}
                       color={getRoleColor(role.role_name)}
                       size="medium"
+                      sx={{
+                        minWidth: 140,
+                        fontWeight: 600
+                      }}
                     />
                   </TableCell>
-                  <TableCell sx={{ color: '#fff' }}>
+                    <TableCell sx={{ color: 'text.primary' }}>
                     {(rolePermissions[role._id] || []).length} permissions
                   </TableCell>
                   <TableCell>
                     <Tooltip title="Edit Permissions">
                       <IconButton
                         onClick={() => handleEditClick(role)}
-                        sx={{ color: '#90caf9' }}
+                          sx={{ color: 'primary.main' }}
                       >
                         <EditIcon />
                       </IconButton>
@@ -227,7 +248,10 @@ export default function ManageRolesPermissions() {
         maxWidth="md" 
         fullWidth
         PaperProps={{
-          sx: { bgcolor: '#1e2a3a', color: '#fff' }
+            sx: { 
+              bgcolor: 'background.paper',
+              borderRadius: 3,
+            }
         }}
       >
         <DialogTitle>
@@ -236,8 +260,20 @@ export default function ManageRolesPermissions() {
         <DialogContent>
           <Box sx={{ mt: 2 }}>
             {Object.entries(groupPermissionsByCategory()).map(([category, categoryPermissions]) => (
-              <Accordion key={category} sx={{ bgcolor: '#263445', color: '#fff', mb: 1 }}>
-                <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: '#fff' }} />}>
+                <Accordion 
+                  key={category} 
+                  sx={{ 
+                    bgcolor: (t) => t.palette.mode === 'dark' 
+                      ? 'rgba(255, 255, 255, 0.05)' 
+                      : 'rgba(0, 0, 0, 0.02)',
+                    mb: 1,
+                    borderRadius: 2,
+                    '&:before': {
+                      display: 'none',
+                    },
+                  }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: 'text.primary' }} />}>
                   <Typography variant="h6" sx={{ textTransform: 'capitalize' }}>
                     {category.replace('_', ' ')}
                   </Typography>
@@ -252,8 +288,8 @@ export default function ManageRolesPermissions() {
                             checked={selectedPermissions.includes(permission._id)}
                             onChange={() => handlePermissionToggle(permission._id)}
                             sx={{
-                              color: '#90caf9',
-                              '&.Mui-checked': { color: '#90caf9' }
+                                color: 'primary.main',
+                                '&.Mui-checked': { color: 'primary.main' }
                             }}
                           />
                         }
@@ -262,12 +298,11 @@ export default function ManageRolesPermissions() {
                             <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
                               {permission.name}
                             </Typography>
-                            <Typography variant="caption" sx={{ color: '#b0bec5' }}>
+                              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                               {formatPermission(permission)}
                             </Typography>
                           </Box>
                         }
-                        sx={{ color: '#fff' }}
                       />
                     ))}
                   </Box>
@@ -275,19 +310,18 @@ export default function ManageRolesPermissions() {
               </Accordion>
             ))}
           </Box>
-        </DialogContent>
+          </DialogContent>
         <DialogActions>
           <Button
             onClick={() => setEditDialogOpen(false)}
-            sx={{ color: '#b0bec5' }}
+              sx={{ color: 'text.secondary' }}
           >
             Cancel
           </Button>
-          <Button
+            <Button
             onClick={handleSave}
             variant="contained"
             disabled={saveLoading}
-            sx={{ bgcolor: '#90caf9', color: '#1e2a3a' }}
           >
             {saveLoading ? 'Saving...' : 'Save Changes'}
           </Button>

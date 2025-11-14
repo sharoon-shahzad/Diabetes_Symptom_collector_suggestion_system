@@ -1,37 +1,37 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ThemeProvider as MuiThemeProvider, createTheme } from '@mui/material/styles';
-import { CssBaseline } from '@mui/material';
+import { CssBaseline, GlobalStyles } from '@mui/material';
+import ThemeReactContext from './themeReactContext';
 
-// Create theme context
-const ThemeContext = createContext();
+// Create theme context is moved to themeReactContext.js
 
 // Theme configuration
 const lightTheme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#1976d2',
-      light: '#42a5f5',
-      dark: '#1565c0',
+      main: '#2563eb',
+      light: '#60a5fa',
+      dark: '#1e40af',
       contrastText: '#ffffff',
     },
     secondary: {
-      main: '#dc004e',
-      light: '#ff5983',
-      dark: '#9a0036',
+      main: '#64748b',
+      light: '#94a3b8',
+      dark: '#475569',
       contrastText: '#ffffff',
     },
     background: {
-      default: '#f5f5f5',
+      default: '#f7f7fb',
       paper: '#ffffff',
-      gradient: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+      gradient: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)',
       card: '#ffffff',
       sidebar: '#ffffff',
       header: '#ffffff',
     },
     text: {
-      primary: '#1a1a1a',
-      secondary: '#666666',
+      primary: '#0f172a',
+      secondary: '#475569',
       disabled: '#999999',
       hint: '#666666',
     },
@@ -63,33 +63,33 @@ const lightTheme = createTheme({
     fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
     h1: {
       fontWeight: 700,
-      color: '#1a1a1a',
+      color: '#0f172a',
     },
     h2: {
       fontWeight: 600,
-      color: '#1a1a1a',
+      color: '#0f172a',
     },
     h3: {
       fontWeight: 600,
-      color: '#1a1a1a',
+      color: '#0f172a',
     },
     h4: {
       fontWeight: 600,
-      color: '#1a1a1a',
+      color: '#0f172a',
     },
     h5: {
       fontWeight: 600,
-      color: '#1a1a1a',
+      color: '#0f172a',
     },
     h6: {
       fontWeight: 600,
-      color: '#1a1a1a',
+      color: '#0f172a',
     },
     body1: {
-      color: '#1a1a1a',
+      color: '#0f172a',
     },
     body2: {
-      color: '#666666',
+      color: '#475569',
     },
   },
   shape: {
@@ -142,7 +142,8 @@ const darkTheme = createTheme({
     background: {
       default: '#0a0a0a',
       paper: '#1a1a1a',
-      gradient: 'linear-gradient(135deg, #23272f 60%, #0B1120 100%)',
+      // Subtle linear gradient; avoids strong circular/spotlight visuals
+      gradient: 'linear-gradient(180deg, #0b1220 0%, #0a0a0a 100%)',
       card: '#1e1e1e',
       sidebar: '#1a1a1a',
       header: '#1a1a1a',
@@ -290,20 +291,49 @@ export const ThemeProvider = ({ children }) => {
   };
 
   return (
-    <ThemeContext.Provider value={value}>
+    <ThemeReactContext.Provider value={value}>
       <MuiThemeProvider theme={theme}>
         <CssBaseline />
+        <GlobalStyles
+          styles={(t) => ({
+            html: {
+              backgroundColor: t.palette.background.default,
+            },
+            'html, body': {
+              scrollbarWidth: 'thin',
+              scrollbarColor:
+                t.palette.mode === 'dark'
+                  ? 'rgba(255,255,255,0.28) transparent'
+                  : 'rgba(0,0,0,0.28) transparent',
+            },
+            '::-webkit-scrollbar': {
+              width: '10px',
+              height: '10px',
+            },
+            '::-webkit-scrollbar-track': {
+              background: 'transparent',
+            },
+            '::-webkit-scrollbar-thumb': {
+              backgroundColor:
+                t.palette.mode === 'dark'
+                  ? 'rgba(255,255,255,0.22)'
+                  : 'rgba(0,0,0,0.22)',
+              borderRadius: '8px',
+              border:
+                t.palette.mode === 'dark' ? '2px solid #0a0a0a' : '2px solid #ffffff',
+            },
+            '::-webkit-scrollbar-thumb:hover': {
+              backgroundColor:
+                t.palette.mode === 'dark'
+                  ? 'rgba(255,255,255,0.35)'
+                  : 'rgba(0,0,0,0.35)',
+            },
+          })}
+        />
         {children}
       </MuiThemeProvider>
-    </ThemeContext.Provider>
+    </ThemeReactContext.Provider>
   );
 };
 
-// Custom hook to use theme
-export const useTheme = () => {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
-  return context;
-};
+// Note: useTheme hook moved to separate file to avoid fast-refresh warning

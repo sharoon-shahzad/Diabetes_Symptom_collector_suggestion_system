@@ -1,7 +1,7 @@
 import React from 'react';
 import { IconButton, Tooltip, Box } from '@mui/material';
 import { Brightness4, Brightness7 } from '@mui/icons-material';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme } from '../../contexts/useThemeContext';
 
 const ThemeToggle = ({ size = 'medium', showTooltip = true, sx = {} }) => {
   const { isDarkMode, toggleTheme } = useTheme();

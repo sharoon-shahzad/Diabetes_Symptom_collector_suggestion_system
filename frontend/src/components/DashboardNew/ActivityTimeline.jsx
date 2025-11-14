@@ -1,26 +1,17 @@
 import React from 'react';
 import { Box, Typography, List, ListItem, ListItemText, Chip, alpha } from '@mui/material';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import UpdateIcon from '@mui/icons-material/Update';
-import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
-
-const iconMap = {
-  Details: <UpdateIcon />,
-  Disease: <LocalHospitalIcon />,
-  default: <CheckCircleIcon />,
-};
+// Icons removed in favor of a minimal colored dot for a cleaner look
 
 const ActivityTimeline = ({ items = [] }) => {
   if (!items.length) {
     return (
       <Box 
         sx={{ 
-          p: 6,
+          p: 4,
           textAlign: 'center',
-          background: (t) => t.palette.mode === 'dark'
-            ? alpha(t.palette.info.main, 0.08)
-            : alpha(t.palette.info.main, 0.05),
-          borderRadius: 4,
+          background: (t) => t.palette.background.paper,
+          borderRadius: 3,
+          border: (t) => `1px solid ${t.palette.divider}`,
         }}
       >
         <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
@@ -37,41 +28,27 @@ const ActivityTimeline = ({ items = [] }) => {
           sx={{ 
             alignItems: 'flex-start',
             px: 3,
-            py: 3,
-            mb: idx < items.length - 1 ? 2 : 0,
-            borderRadius: 3,
-            background: (t) => t.palette.mode === 'dark'
-              ? alpha(t.palette[it.color] ? t.palette[it.color].main : t.palette.primary.main, 0.12)
-              : alpha(t.palette[it.color] ? t.palette[it.color].main : t.palette.primary.main, 0.06),
-            border: (t) => `2px solid ${alpha(t.palette[it.color] ? t.palette[it.color].main : t.palette.primary.main, 0.25)}`,
-            transition: 'all 0.3s ease',
+            py: 2.5,
+            mb: idx < items.length - 1 ? 1.5 : 0,
+            borderRadius: 2.5,
+            background: (t) => t.palette.background.paper,
+            border: (t) => `1px solid ${t.palette.divider}`,
+            transition: 'background 0.2s ease, transform 0.2s ease',
             '&:hover': {
-              background: (t) => t.palette.mode === 'dark'
-                ? alpha(t.palette[it.color] ? t.palette[it.color].main : t.palette.primary.main, 0.2)
-                : alpha(t.palette[it.color] ? t.palette[it.color].main : t.palette.primary.main, 0.12),
-              transform: 'translateX(4px)',
-              borderColor: (t) => alpha(t.palette[it.color] ? t.palette[it.color].main : t.palette.primary.main, 0.5),
+              background: (t) => alpha(t.palette.text.primary, 0.02),
+              transform: 'translateX(2px)',
             }
           }}
         >
-          <Box 
-            sx={{ 
-              width: 52,
-              height: 52,
-              borderRadius: '50%',
-              background: (t) => t.palette.mode === 'dark'
-                ? alpha(t.palette[it.color] ? t.palette[it.color].main : t.palette.primary.main, 0.25)
-                : alpha(t.palette[it.color] ? t.palette[it.color].main : t.palette.primary.main, 0.18),
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              mr: 2.5,
-              mt: 0.5,
-              color: (t) => t.palette[it.color] ? t.palette[it.color].main : t.palette.primary.main,
-              fontSize: '1.5rem',
-            }}
-          >
-            {iconMap[it.type] || iconMap.default}
+          <Box sx={{ mr: 2.5, mt: 0.75 }}>
+            <Box 
+              sx={{ 
+                width: 12,
+                height: 12,
+                borderRadius: '50%',
+                background: (t) => t.palette[it.color] ? t.palette[it.color].main : t.palette.primary.main,
+              }}
+            />
           </Box>
           <ListItemText
             primary={
@@ -81,12 +58,12 @@ const ActivityTimeline = ({ items = [] }) => {
                 </Typography>
                 <Chip 
                   label={it.type || 'Update'} 
-                  color={it.color || 'info'} 
+                  variant="outlined"
                   size="small" 
                   sx={{ 
-                    height: 24,
-                    fontSize: '0.75rem',
-                    fontWeight: 800,
+                    height: 22,
+                    fontSize: '0.72rem',
+                    fontWeight: 700,
                   }} 
                 />
               </Box>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Stack, Typography } from '@mui/material';
 import ResetPasswordForm from '../components/SignIn/ResetPasswordForm';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../contexts/useThemeContext';
 
 export default function ResetPassword() {
   const { token } = useParams();

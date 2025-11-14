@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Stack, Typography } from '@mui/material';
 import SignUpForm from '../components/SignUp/SignUpForm';
 import DiabetesQuotes from '../components/Common/DiabetesQuotes';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../contexts/useThemeContext';
 
 export default function SignUpSide() {
   const [success, setSuccess] = useState('');
