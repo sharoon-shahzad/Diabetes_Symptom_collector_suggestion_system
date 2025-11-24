@@ -15,6 +15,8 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import SecurityIcon from '@mui/icons-material/Security';
 import ArticleIcon from '@mui/icons-material/Article';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import DocumentUpload from '../admin/DocumentUpload';
 import { getCurrentUser, logout } from '../utils/auth';
 import { useNavigate } from 'react-router-dom';
 import ThemeToggle from '../components/Common/ThemeToggle';
@@ -82,6 +84,7 @@ export default function AdminDashboard() {
     // Add super admin sections if user has super admin role
     if (userRoles.includes('super_admin')) {
       baseSections.push(
+        { label: 'Document Upload', icon: <CloudUploadIcon />, component: <DocumentUpload /> },
         { label: 'Manage Admins', icon: <AdminPanelSettingsIcon />, component: <ManageAdmins /> },
         { label: 'Manage Roles & Permissions', icon: <SecurityIcon />, component: <ManageRolesPermissions /> }
       );
