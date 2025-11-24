@@ -17,6 +17,7 @@ import ResetPassword from './pages/ResetPassword';
 import UniversalHeader from './components/Common/UniversalHeader';
 import CMSManagement from './cms/pages/CMSManagement';
 import PublicCMS from './cms/pages/PublicCMS';
+import DocumentUpload from './admin/DocumentUpload';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -49,6 +50,7 @@ const AppContent = () => {
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/assessment" element={<Assessment />} />
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/upload" element={<DocumentUpload />} />
           <Route path="/cms" element={<CMSManagement />} />
           <Route path="/content" element={<PublicCMS />} />
           <Route path="/content/:slug" element={<PublicCMS />} />

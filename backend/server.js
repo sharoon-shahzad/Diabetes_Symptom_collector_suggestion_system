@@ -15,6 +15,8 @@ import permissionRoutes from './routes/permissionRoutes.js';
 import assessmentRoutes from './routes/assessmentRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
 import contentRoutes from './routes/contentRoutes.js';
+import documentRoutes from './routes/documentRoutes.js';
+import queryRoutes from './routes/queryRoutes.js';
 
 dotenv.config();
 
@@ -63,6 +65,8 @@ app.use('/api/v1/permissions', permissionRoutes);
 app.use('/api/v1/assessment', assessmentRoutes);
 app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/content', contentRoutes);
+app.use('/api/v1/admin/docs', documentRoutes);
+app.use('/api/v1/query', queryRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);

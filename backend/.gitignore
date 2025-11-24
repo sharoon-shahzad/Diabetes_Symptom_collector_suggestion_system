@@ -56,3 +56,9 @@ Thumbs.db
 # Temporary files
 temp/
 *.pdf
+
+# Document Ingestion System
+uploads/
+chroma_db/
+*.txt
+!uploads/README.md
