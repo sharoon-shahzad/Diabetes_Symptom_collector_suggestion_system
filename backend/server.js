@@ -17,6 +17,7 @@ import categoryRoutes from './routes/categoryRoutes.js';
 import contentRoutes from './routes/contentRoutes.js';
 import documentRoutes from './routes/documentRoutes.js';
 import queryRoutes from './routes/queryRoutes.js';
+import feedbackRoutes from './routes/feedbackRoutes.js';
 
 dotenv.config();
 
@@ -67,6 +68,7 @@ app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/content', contentRoutes);
 app.use('/api/v1/admin/docs', documentRoutes);
 app.use('/api/v1/query', queryRoutes);
+app.use('/api/v1/feedback', feedbackRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
