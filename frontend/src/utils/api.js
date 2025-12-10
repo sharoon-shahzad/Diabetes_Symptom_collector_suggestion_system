@@ -196,3 +196,44 @@ export async function updateUserProfile(userId, payload) {
   const res = await axiosInstance.put(`/users/updateUser/${userId}`, payload);
   return res.data;
 }
+
+// Feedback API Functions
+export async function fetchAllFeedback(page = 1, limit = 10) {
+  const res = await axiosInstance.get(`/feedback?page=${page}&limit=${limit}`);
+  return res.data.data;
+}
+
+export async function fetchFeedbackStats() {
+  const res = await axiosInstance.get(`/feedback/stats`);
+  return res.data.data;
+}
+
+export async function fetchMyFeedback() {
+  const res = await axiosInstance.get(`/feedback/my-feedback`);
+  return res.data.data;
+}
+
+export async function submitFeedback(rating, comment, is_anonymous = false, category_ratings = undefined) {
+  const res = await axiosInstance.post(`/feedback`, {
+    rating,
+    comment,
+    is_anonymous,
+    category_ratings,
+  });
+  return res.data;
+}
+
+export async function updateFeedbackById(id, rating, comment, is_anonymous, category_ratings = undefined) {
+  const res = await axiosInstance.put(`/feedback/${id}`, {
+    rating,
+    comment,
+    is_anonymous,
+    category_ratings,
+  });
+  return res.data;
+}
+
+export async function deleteFeedbackById(id) {
+  const res = await axiosInstance.delete(`/feedback/${id}`);
+  return res.data;
+}

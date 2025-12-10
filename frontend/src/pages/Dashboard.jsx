@@ -11,7 +11,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LockIcon from '@mui/icons-material/Lock';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { logout, getCurrentUser } from '../utils/auth';
 import { fetchMyDiseaseData } from '../utils/api';
 import LinearProgress from '@mui/material/LinearProgress';
@@ -27,6 +27,8 @@ import PreferencesCard from '../components/DashboardNew/PreferencesCard';
 import PasswordOptionCard from '../components/DashboardNew/PasswordOptionCard';
 import { updateUserProfile } from '../utils/api';
 import ThemeToggle from '../components/Common/ThemeToggle';
+import UserFeedbackHistory from '../components/Feedback/UserFeedbackHistory';
+import RateReviewIcon from '@mui/icons-material/RateReview';
 
 const drawerWidth = 220;
 
@@ -34,6 +36,7 @@ const sections = [
   { label: 'Insights', icon: <InsightsIcon /> },
   { label: 'My Account', icon: <AccountCircleIcon /> },
   { label: 'My Disease Data', icon: <HealingIcon /> },
+  { label: 'My Feedback', icon: <RateReviewIcon /> },
 ];
 
 export default function Dashboard() {
@@ -44,6 +47,7 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const completionPct = useMemo(() => {
     if (!diseaseData || !diseaseData.totalQuestions) return 0;
@@ -85,6 +89,19 @@ export default function Dashboard() {
     }
     fetchUser();
   }, [navigate]);
+
+  // Check if user came from feedback page to show feedback form
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('showFeedback') === 'true') {
+      // Switch to My Feedback section (index 3)
+      setSelectedIndex(3);
+      setShowFeedbackForm(true);
+      // Remove query param from URL
+      navigate('/dashboard', { replace: true });
+    }
+  }, [location.search, navigate]);
 
   useEffect(() => {
     // Fetch disease data on Insights (0) and My Disease Data (2)
@@ -253,7 +270,13 @@ export default function Dashboard() {
                 button 
                 key={sec.label} 
                 selected={selectedIndex === index} 
-                onClick={() => setSelectedIndex(index)} 
+                onClick={() => {
+                  setSelectedIndex(index);
+                  // Reset feedback form flag when switching sections
+                  if (index !== 3) {
+                    setShowFeedbackForm(false);
+                  }
+                }} 
                 sx={{ 
                   borderRadius: 2,
                   mb: 1,
@@ -995,6 +1018,20 @@ export default function Dashboard() {
               </Paper>
             )}
 
+            {selectedIndex === 3 && (
+              <Paper 
+                elevation={0} 
+                sx={{ 
+                  p: { xs: 3, md: 4 }, 
+                  borderRadius: 3,
+                  background: (t) => t.palette.background.paper,
+                  border: (t) => `1px solid ${t.palette.divider}`,
+                }}
+              >
+                <UserFeedbackHistory showFormOnMount={showFeedbackForm} />
+              </Paper>
+            )}
+
             {selectedIndex === 2 && (
               <Box>
                 {loading ? (
@@ -1256,6 +1293,7 @@ export default function Dashboard() {
                 )}
               </Box>
             )}
+
           </Box>
         </Box>
       </Box>
