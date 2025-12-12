@@ -20,6 +20,15 @@ const feedbackSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    status: {
+        type: String,
+        enum: ['published', 'hidden'],
+        default: 'published',
+    },
+    admin_response: {
+        type: String,
+        default: null,
+    },
     submitted_on: {
         type: Date,
         default: Date.now,
