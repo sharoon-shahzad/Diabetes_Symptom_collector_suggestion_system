@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Box, Drawer, List, ListItem, ListItemIcon, ListItemText, Typography, CssBaseline, Paper, Avatar, Divider, Button, GlobalStyles
+  Box, Drawer, List, ListItem, ListItemIcon, ListItemText, ListItemButton, Typography, CssBaseline, Paper, Avatar, Divider, Button, GlobalStyles
 } from '@mui/material';
 import HealingIcon from '@mui/icons-material/Healing';
 import BugReportIcon from '@mui/icons-material/BugReport';
@@ -17,6 +17,8 @@ import SecurityIcon from '@mui/icons-material/Security';
 import ArticleIcon from '@mui/icons-material/Article';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import DocumentUpload from '../admin/DocumentUpload';
+import ForumIcon from '@mui/icons-material/Forum';
+import AdminFeedback from '../admin/AdminFeedback';
 import { getCurrentUser, logout } from '../utils/auth';
 import { useNavigate } from 'react-router-dom';
 import ThemeToggle from '../components/Common/ThemeToggle';
@@ -77,7 +79,8 @@ export default function AdminDashboard() {
     // Add CMS management for users with content permissions
     if (userRoles.includes('super_admin') || userRoles.includes('admin')) {
       baseSections.push(
-        { label: 'Content Management', icon: <ArticleIcon />, component: <CMSManagement /> }
+        { label: 'Content Management', icon: <ArticleIcon />, component: <CMSManagement /> },
+        { label: 'Feedback (Admin)', icon: <ForumIcon />, component: <AdminFeedback /> }
       );
     }
 
@@ -171,70 +174,71 @@ export default function AdminDashboard() {
           {/* Navigation Menu - Clean List */}
           <List sx={{ px: 0 }}>
             {sections.map((sec, index) => (
-              <ListItem 
-                button 
-                key={sec.label} 
-                selected={selectedIndex === index} 
-                onClick={() => setSelectedIndex(index)} 
-                sx={{ 
-                  borderRadius: 1.5,
-                  mb: 0.5,
-                  px: 1.5,
-                  py: 1.25,
-                  transition: 'all 0.2s ease',
-                  position: 'relative',
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    left: 0,
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    width: '3px',
-                    height: '60%',
-                    borderRadius: '0 4px 4px 0',
-                    background: (t) => `linear-gradient(180deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
-                    opacity: 0,
-                    transition: 'opacity 0.2s ease',
-                  },
-                  '&.Mui-selected': {
-                    bgcolor: (t) => t.palette.mode === 'dark' 
-                      ? 'rgba(255,255,255,0.08)' 
-                      : 'rgba(0,0,0,0.04)',
+              <ListItem disablePadding key={sec.label}>
+                <ListItemButton
+                  selected={selectedIndex === index}
+                  onClick={() => setSelectedIndex(index)}
+                  sx={{
+                    borderRadius: 1.5,
+                    mb: 0.5,
+                    px: 1.5,
+                    py: 1.25,
+                    transition: 'all 0.2s ease',
+                    position: 'relative',
                     '&::before': {
-                      opacity: 1,
+                      content: '""',
+                      position: 'absolute',
+                      left: 0,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      width: '3px',
+                      height: '60%',
+                      borderRadius: '0 4px 4px 0',
+                      background: (t) => `linear-gradient(180deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
+                      opacity: 0,
+                      transition: 'opacity 0.2s ease',
                     },
-                    '& .MuiListItemIcon-root': {
-                      color: 'primary.main',
+                    '&.Mui-selected': {
+                      bgcolor: (t) => t.palette.mode === 'dark' 
+                        ? 'rgba(255,255,255,0.08)' 
+                        : 'rgba(0,0,0,0.04)',
+                      '&::before': {
+                        opacity: 1,
+                      },
+                      '& .MuiListItemIcon-root': {
+                        color: 'primary.main',
+                      },
+                      '& .MuiListItemText-primary': {
+                        color: 'text.primary',
+                        fontWeight: 700,
+                      },
                     },
-                    '& .MuiListItemText-primary': {
-                      color: 'text.primary',
-                      fontWeight: 700,
-                    },
-                  },
-                  '&:hover': {
-                    bgcolor: (t) => t.palette.mode === 'dark' 
-                      ? 'rgba(255,255,255,0.05)' 
-                      : 'rgba(0,0,0,0.03)',
-                  }
-                }}
-              >
-                <ListItemIcon 
-                  sx={{ 
-                    minWidth: 36,
-                    color: 'text.secondary',
-                    transition: 'color 0.2s ease',
+                    '&:hover': {
+                      bgcolor: (t) => t.palette.mode === 'dark' 
+                        ? 'rgba(255,255,255,0.05)' 
+                        : 'rgba(0,0,0,0.03)',
+                    }
                   }}
                 >
-                  {sec.icon}
-                </ListItemIcon>
-                <ListItemText 
-                  primary={sec.label}
-                  primaryTypographyProps={{
-                    fontWeight: 600,
-                    fontSize: '0.9rem',
-                    color: 'text.secondary',
-                  }}
-                />
+                  <ListItemIcon 
+                    sx={{ 
+                      minWidth: 36,
+                      color: 'text.secondary',
+                      transition: 'color 0.2s ease',
+                    }}
+                  >
+                    {sec.icon}
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary={sec.label}
+                    primaryTypographyProps={{
+                      component: 'span',
+                      fontWeight: 600,
+                      fontSize: '0.9rem',
+                      color: 'text.secondary',
+                    }}
+                  />
+                </ListItemButton>
               </ListItem>
             ))}
           </List>

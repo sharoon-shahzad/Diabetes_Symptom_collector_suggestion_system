@@ -237,3 +237,35 @@ export async function deleteFeedbackById(id) {
   const res = await axiosInstance.delete(`/feedback/${id}`);
   return res.data;
 }
+
+// ---------------- Admin Feedback APIs ----------------
+export async function fetchAdminFeedback(params = {}) {
+  const queryParams = new URLSearchParams(params).toString();
+  const res = await axiosInstance.get(`/admin/feedback?${queryParams}`);
+  return res.data.data;
+}
+
+export async function fetchAdminFeedbackStats(days = 30) {
+  const res = await axiosInstance.get(`/admin/feedback/stats?days=${days}`);
+  return res.data.data;
+}
+
+export async function updateAdminFeedbackStatus(id, status) {
+  const res = await axiosInstance.patch(`/admin/feedback/${id}/status`, { status });
+  return res.data.data;
+}
+
+export async function addAdminFeedbackResponse(id, admin_response) {
+  const res = await axiosInstance.patch(`/admin/feedback/${id}/response`, { admin_response });
+  return res.data.data;
+}
+
+export async function adminDeleteFeedback(id) {
+  const res = await axiosInstance.delete(`/admin/feedback/${id}`);
+  return res.data;
+}
+
+export async function adminRestoreFeedback(id) {
+  const res = await axiosInstance.post(`/admin/feedback/${id}/restore`);
+  return res.data;
+}
