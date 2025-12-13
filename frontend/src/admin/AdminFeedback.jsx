@@ -37,7 +37,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import RestoreFromTrashIcon from '@mui/icons-material/RestoreFromTrash';
 import ReplyIcon from '@mui/icons-material/Reply';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import { LineChart, Line, XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
 import {
   fetchAdminFeedback,
   fetchAdminFeedbackStats,
@@ -58,6 +58,27 @@ const sortOptions = [
 ];
 
 const pieColors = ['#2e7d32', '#fbc02d', '#ef6c00', '#d32f2f', '#6d6d6d'];
+
+// Category colors for bar chart
+const categoryColors = ['#1976d2', '#2e7d32', '#fbc02d', '#ef6c00', '#d32f2f', '#9c27b0', '#00acc1'];
+
+// Function to generate abbreviation from category name
+const getCategoryAbbreviation = (categoryName) => {
+  // Handle special cases
+  if (categoryName === 'Content & Resources (CMS)') {
+    return 'C&R';
+  }
+  
+  // Take first letter of each word, ignoring special characters
+  return categoryName
+    .split(/\s+/)
+    .map(word => {
+      // Remove special characters and get first letter
+      const cleanWord = word.replace(/[^a-zA-Z0-9]/g, '');
+      return cleanWord.charAt(0).toUpperCase();
+    })
+    .join('');
+};
 
 export default function AdminFeedback() {
   const [tab, setTab] = useState(0);
@@ -172,7 +193,12 @@ export default function AdminFeedback() {
 
   const categoryBarData = useMemo(() => {
     if (!stats?.categoryAverages) return [];
-    return Object.entries(stats.categoryAverages).map(([k, v]) => ({ name: k, value: v }));
+    return Object.entries(stats.categoryAverages).map(([k, v], index) => ({
+      fullName: k,
+      name: getCategoryAbbreviation(k),
+      value: v,
+      colorIndex: index % categoryColors.length,
+    }));
   }, [stats]);
 
   const timeSeriesData = stats?.timeSeries || [];
@@ -491,8 +517,28 @@ export default function AdminFeedback() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis />
-                  <ReTooltip />
-                  <Bar dataKey="value" fill="#1976d2" />
+                  <ReTooltip 
+                    formatter={(value) => value.toFixed(2)}
+                    labelFormatter={(label, payload) => {
+                      if (payload && payload[0]) {
+                        return payload[0].payload.fullName;
+                      }
+                      return label;
+                    }}
+                  />
+                  <Legend 
+                    payload={categoryBarData.map((item, index) => ({
+                      value: item.fullName,
+                      type: 'rect',
+                      id: item.fullName,
+                      color: categoryColors[item.colorIndex],
+                    }))}
+                  />
+                  <Bar dataKey="value">
+                    {categoryBarData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={categoryColors[entry.colorIndex]} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </Paper>
