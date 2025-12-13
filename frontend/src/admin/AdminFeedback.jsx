@@ -22,10 +22,6 @@ import {
   TableRow,
   TableContainer,
   Pagination,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   CircularProgress,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
@@ -35,14 +31,12 @@ import PublishIcon from '@mui/icons-material/Publish';
 import HideSourceIcon from '@mui/icons-material/HideSource';
 import DeleteIcon from '@mui/icons-material/Delete';
 import RestoreFromTrashIcon from '@mui/icons-material/RestoreFromTrash';
-import ReplyIcon from '@mui/icons-material/Reply';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { LineChart, Line, XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer, CartesianGrid, BarChart, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
 import {
   fetchAdminFeedback,
   fetchAdminFeedbackStats,
   updateAdminFeedbackStatus,
-  addAdminFeedbackResponse,
   adminDeleteFeedback,
   adminRestoreFeedback,
 } from '../utils/api';
@@ -92,8 +86,6 @@ export default function AdminFeedback() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sort, setSort] = useState('newest');
   const [dateRange, setDateRange] = useState('30'); // days for stats/time series
-
-  const [responseDialog, setResponseDialog] = useState({ open: false, id: null, value: '' });
 
   const filters = useMemo(() => {
     const obj = {
@@ -168,18 +160,6 @@ export default function AdminFeedback() {
       loadStats();
     } catch (err) {
       toast.error(err?.response?.data?.message || 'Failed to restore');
-    }
-  };
-
-  const handleSaveResponse = async () => {
-    if (!responseDialog.id) return;
-    try {
-      await addAdminFeedbackResponse(responseDialog.id, responseDialog.value);
-      toast.success('Response saved');
-      setResponseDialog({ open: false, id: null, value: '' });
-      loadList();
-    } catch (err) {
-      toast.error(err?.response?.data?.message || 'Failed to save response');
     }
   };
 
@@ -343,11 +323,6 @@ export default function AdminFeedback() {
                               {fb.comment || '—'}
                             </Typography>
                           </Tooltip>
-                          {fb.admin_response && (
-                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
-                              Admin: {fb.admin_response}
-                            </Typography>
-                          )}
                         </TableCell>
                         <TableCell>
                           <Chip
@@ -366,14 +341,6 @@ export default function AdminFeedback() {
                           <Tooltip title={fb.status === 'published' ? 'Hide' : 'Publish'}>
                             <IconButton onClick={() => handleStatusToggle(fb._id, fb.status)} size="small">
                               {fb.status === 'published' ? <HideSourceIcon /> : <PublishIcon color="success" />}
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Respond">
-                            <IconButton
-                              size="small"
-                              onClick={() => setResponseDialog({ open: true, id: fb._id, value: fb.admin_response || '' })}
-                            >
-                              <ReplyIcon />
                             </IconButton>
                           </Tooltip>
                           {fb.deleted_at ? (
@@ -545,28 +512,6 @@ export default function AdminFeedback() {
           )}
         </Box>
       )}
-
-      {/* Admin Response Dialog */}
-      <Dialog open={responseDialog.open} onClose={() => setResponseDialog({ open: false, id: null, value: '' })} fullWidth maxWidth="sm">
-        <DialogTitle>Add admin response</DialogTitle>
-        <DialogContent>
-          <TextField
-            multiline
-            minRows={3}
-            fullWidth
-            value={responseDialog.value}
-            onChange={(e) => setResponseDialog((prev) => ({ ...prev, value: e.target.value }))}
-            placeholder="Add a short response or guidance"
-            sx={{ mt: 1 }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setResponseDialog({ open: false, id: null, value: '' })}>Cancel</Button>
-          <Button variant="contained" onClick={handleSaveResponse}>
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }
