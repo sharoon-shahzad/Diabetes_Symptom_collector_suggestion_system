@@ -8,16 +8,10 @@ import {
     TextField,
     Button,
     Link,
-    MenuItem,
-    Select,
-    InputLabel,
-    FormControl,
     Alert,
     IconButton,
     InputAdornment,
 } from '@mui/material';
-import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
@@ -25,8 +19,6 @@ export default function SignUpForm() {
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [dob, setDob] = useState(null);
-    const [gender, setGender] = useState('');
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState('');
     const [error, setError] = useState('');
@@ -34,7 +26,7 @@ export default function SignUpForm() {
     const navigate = useNavigate();
 
     const validate = () => {
-        if (!fullName || !email || !password || !dob || !gender) {
+        if (!fullName || !email || !password) {
             setError('All fields are required.');
             return false;
         }
@@ -46,14 +38,6 @@ export default function SignUpForm() {
         const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
         if (!passwordRegex.test(password)) {
             setError('Password must be at least 8 characters and include at least 1 letter, 1 number, and 1 symbol.');
-            return false;
-        }
-        if (!['Male', 'Female', 'Prefer not to say'].includes(gender)) {
-            setError('Invalid gender.');
-            return false;
-        }
-        if (isNaN(Date.parse(dob))) {
-            setError('Invalid date of birth.');
             return false;
         }
         setError('');
@@ -71,15 +55,11 @@ export default function SignUpForm() {
                 fullName,
                 email,
                 password,
-                gender,
-                date_of_birth: dob,
             });
             setSuccess(res.data.message || 'Check your email to activate your account.');
             setFullName('');
             setEmail('');
             setPassword('');
-            setDob(null);
-            setGender('');
             // Redirect to login after 3 seconds
             setTimeout(() => navigate('/signin'), 3000);
         } catch (err) {
@@ -88,10 +68,6 @@ export default function SignUpForm() {
             setLoading(false);
         }
     };
-
-    // Calculate max date for 11 years ago
-    const today = new Date();
-    const maxDate = new Date(today.getFullYear() - 11, today.getMonth(), today.getDate());
 
     return (
         <Paper
@@ -149,39 +125,6 @@ export default function SignUpForm() {
                         ),
                     }}
                 />
-                <LocalizationProvider dateAdapter={AdapterDateFns}>
-                    <DatePicker
-                        label="Date of Birth"
-                        value={dob}
-                        onChange={setDob}
-                        maxDate={maxDate}
-                        slotProps={{
-                            textField: {
-                                fullWidth: true,
-                                margin: 'normal',
-                                sx: { '& .MuiOutlinedInput-root': { borderRadius: 2 } },
-                            },
-                        }}
-                    />
-                </LocalizationProvider>
-                <FormControl
-                    fullWidth
-                    margin="normal"
-                    sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                >
-                    <InputLabel sx={{ color: '#aaa' }}>Gender</InputLabel>
-                    <Select
-                        value={['Male','Female','Prefer not to say'].includes(gender) ? gender : ''}
-                        onChange={e => setGender(e.target.value)}
-                        label="Gender"
-                        sx={{ color: '#fff' }}
-                        disabled={false}
-                    >
-                        <MenuItem value="Male">Male</MenuItem>
-                        <MenuItem value="Female">Female</MenuItem>
-                        <MenuItem value="Prefer not to say">Prefer not to say</MenuItem>
-                    </Select>
-                </FormControl>
                 <Button
                     variant="contained"
                     fullWidth

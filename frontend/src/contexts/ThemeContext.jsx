@@ -122,6 +122,29 @@ const lightTheme = createTheme({
     '0px 11px 14px -7px rgba(0,0,0,0.1),0px 23px 36px 3px rgba(0,0,0,0.07),0px 9px 44px 8px rgba(0,0,0,0.06)',
     '0px 11px 15px -7px rgba(0,0,0,0.1),0px 24px 38px 3px rgba(0,0,0,0.07),0px 9px 46px 8px rgba(0,0,0,0.06)',
   ],
+  components: {
+    MuiFormControl: {
+      defaultProps: { fullWidth: true },
+      styleOverrides: { root: { width: '100%' } },
+    },
+    MuiTextField: {
+      defaultProps: { fullWidth: true },
+    },
+    MuiSelect: {
+      defaultProps: { fullWidth: true },
+      styleOverrides: { root: { width: '100%' } },
+    },
+    MuiAutocomplete: {
+      defaultProps: { fullWidth: true },
+      styleOverrides: { root: { width: '100%' } },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: { root: { width: '100%' } },
+    },
+    MuiInputBase: {
+      styleOverrides: { root: { width: '100%' } },
+    },
+  },
 });
 
 const darkTheme = createTheme({
@@ -241,6 +264,29 @@ const darkTheme = createTheme({
     '0px 11px 14px -7px rgba(0,0,0,0.3),0px 23px 36px 3px rgba(0,0,0,0.24),0px 9px 44px 8px rgba(0,0,0,0.22)',
     '0px 11px 15px -7px rgba(0,0,0,0.3),0px 24px 38px 3px rgba(0,0,0,0.24),0px 9px 46px 8px rgba(0,0,0,0.22)',
   ],
+  components: {
+    MuiFormControl: {
+      defaultProps: { fullWidth: true },
+      styleOverrides: { root: { width: '100%' } },
+    },
+    MuiTextField: {
+      defaultProps: { fullWidth: true },
+    },
+    MuiSelect: {
+      defaultProps: { fullWidth: true },
+      styleOverrides: { root: { width: '100%' } },
+    },
+    MuiAutocomplete: {
+      defaultProps: { fullWidth: true },
+      styleOverrides: { root: { width: '100%' } },
+    },
+    MuiOutlinedInput: {
+      styleOverrides: { root: { width: '100%' } },
+    },
+    MuiInputBase: {
+      styleOverrides: { root: { width: '100%' } },
+    },
+  },
 });
 
 // Theme provider component
@@ -327,6 +373,11 @@ export const ThemeProvider = ({ children }) => {
                 t.palette.mode === 'dark'
                   ? 'rgba(255,255,255,0.35)'
                   : 'rgba(0,0,0,0.35)',
+            },
+            // Ensure all MUI form inputs/selects expand to available width
+            '.MuiFormControl-root, .MuiTextField-root, .MuiAutocomplete-root, .MuiSelect-root, .MuiOutlinedInput-root, .MuiInputBase-root': {
+              width: '100% !important',
+              minWidth: 0,
             },
           })}
         />

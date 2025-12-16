@@ -14,6 +14,15 @@ import Onboarding from './pages/Onboarding';
 import AdminDashboard from './pages/AdminDashboard';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import PersonalizedSuggestionSystem from './pages/PersonalizedSuggestionSystem';
+import PersonalizedSuggestionDashboard from './pages/PersonalizedSuggestionDashboard';
+import PersonalMedicalInfoPage from './pages/PersonalMedicalInfoPage';
+import ComingSoonPage from './pages/ComingSoonPage';
+import ChatAssistant from './pages/ChatAssistant';
+import DietPlanDashboard from './pages/DietPlanDashboard';
+import ExercisePlanDashboard from './pages/ExercisePlanDashboard';
+import LifestyleTipsDashboard from './pages/LifestyleTipsDashboard';
+import LifestyleTipsView from './pages/LifestyleTipsView';
 import UniversalHeader from './components/Common/UniversalHeader';
 import CMSManagement from './cms/pages/CMSManagement';
 import PublicCMS from './cms/pages/PublicCMS';
@@ -56,6 +65,15 @@ const AppContent = () => {
           <Route path="/content/:slug" element={<PublicCMS />} />
           <Route path="/forgotpassword" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
+          <Route path="/personalized-suggestions/dashboard" element={<PersonalizedSuggestionDashboard />} />
+          <Route path="/personalized-suggestions/personal-medical" element={<PersonalMedicalInfoPage />} />
+          <Route path="/personalized-suggestions/chat-assistant" element={<ChatAssistant />} />
+          <Route path="/personalized-suggestions/diet-plan" element={<DietPlanDashboard />} />
+          <Route path="/personalized-suggestions/exercise-plan" element={<ExercisePlanDashboard />} />
+          <Route path="/personalized-suggestions/lifestyle-tips" element={<LifestyleTipsDashboard />} />
+          <Route path="/personalized-suggestions/lifestyle-tips-view/:tipsId" element={<LifestyleTipsView />} />
+          <Route path="/personalized-suggestions/:section" element={<ComingSoonPage />} />
+          <Route path="/personalized-suggestions" element={<PersonalizedSuggestionSystem />} />
         </Routes>
       </Box>
       <ToastContainer 

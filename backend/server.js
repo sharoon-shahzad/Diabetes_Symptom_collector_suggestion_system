@@ -5,6 +5,8 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { connectDB } from './config/db.js';
 import { ensureRolesExist } from './utils/roleUtils.js';
+import { initializeEmbeddingModel } from './services/embeddingService.js';
+import { initializeChromaDB } from './services/chromaService.js';
 import authRoutes from './routes/authRoute.js';
 import userRoutes from './routes/userRoutes.js';
 import questionRoutes from './routes/questionRoutes.js';
@@ -17,6 +19,11 @@ import categoryRoutes from './routes/categoryRoutes.js';
 import contentRoutes from './routes/contentRoutes.js';
 import documentRoutes from './routes/documentRoutes.js';
 import queryRoutes from './routes/queryRoutes.js';
+import personalizedSystemRoutes from './routes/personalizedSystemRoutes.js';
+import chatRoutes from './routes/chatRoutes.js';
+import dietPlanRoutes from './routes/dietPlanRoutes.js';
+import exercisePlanRoutes from './routes/exercisePlanRoutes.js';
+import lifestyleTipsRoutes from './routes/lifestyleTipsRoutes.js';
 
 dotenv.config();
 
@@ -35,6 +42,12 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
+// Add logging middleware
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`);
+  next();
+});
+
 // Connect to database and ensure roles exist
 const startServer = async () => {
     try {
@@ -43,6 +56,24 @@ const startServer = async () => {
         
         // Ensure all required roles exist
         await ensureRolesExist();
+        
+        // **Initialize RAG services**
+        if (process.env.RAG_ENABLED === 'true') {
+            try {
+                console.log('🔧 Initializing RAG services...');
+                await initializeEmbeddingModel();
+                console.log('✅ Embedding model initialized');
+                
+                await initializeChromaDB();
+                console.log('✅ ChromaDB initialized');
+                console.log('🎯 RAG system ready');
+            } catch (ragError) {
+                console.error('❌ RAG initialization failed:', ragError.message);
+                console.log('⚠️  Server will continue without RAG - chat will use basic prompts only');
+            }
+        } else {
+            console.log('ℹ️  RAG is disabled (RAG_ENABLED=false)');
+        }
         
         // Start the server
         const PORT = process.env.PORT || 5000;
@@ -67,6 +98,11 @@ app.use('/api/v1/categories', categoryRoutes);
 app.use('/api/v1/content', contentRoutes);
 app.use('/api/v1/admin/docs', documentRoutes);
 app.use('/api/v1/query', queryRoutes);
+app.use('/api/v1/personalized-system', personalizedSystemRoutes);
+app.use('/api/v1/chat', chatRoutes);
+app.use('/api/v1/diet-plan', dietPlanRoutes);
+app.use('/api/v1/exercise-plan', exercisePlanRoutes);
+app.use('/api/v1/lifestyle-tips', lifestyleTipsRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);

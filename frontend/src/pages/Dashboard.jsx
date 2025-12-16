@@ -27,6 +27,9 @@ import PreferencesCard from '../components/DashboardNew/PreferencesCard';
 import PasswordOptionCard from '../components/DashboardNew/PasswordOptionCard';
 import { updateUserProfile } from '../utils/api';
 import ThemeToggle from '../components/Common/ThemeToggle';
+import DiabetesDiagnosisPopup from '../components/Common/DiabetesDiagnosisPopup';
+import axiosInstance from '../utils/axiosInstance';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 
 const drawerWidth = 220;
 
@@ -34,6 +37,7 @@ const sections = [
   { label: 'Insights', icon: <InsightsIcon /> },
   { label: 'My Account', icon: <AccountCircleIcon /> },
   { label: 'My Disease Data', icon: <HealingIcon /> },
+  { label: 'Personalized Suggestions', icon: <AutoAwesomeIcon /> },
 ];
 
 export default function Dashboard() {
@@ -43,7 +47,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDiagnosisPopup, setShowDiagnosisPopup] = useState(false);
   const navigate = useNavigate();
+  const theme = { palette: { mode: 'light' } }; // Add theme hook if available
 
   const completionPct = useMemo(() => {
     if (!diseaseData || !diseaseData.totalQuestions) return 0;
@@ -75,15 +81,48 @@ export default function Dashboard() {
   }, [diseaseData]);
 
   useEffect(() => {
+    let mounted = true;
+    let retryCount = 0;
+    const maxRetries = 3;
+    
     async function fetchUser() {
       try {
+        // Wait a bit for token to be set if this is right after login
+        if (retryCount === 0) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
         const userData = await getCurrentUser();
+        
+        if (!mounted) return;
+        
         setUser(userData);
-      } catch {
-        navigate('/signin');
+        
+        // Check if user needs to answer diabetes diagnosis question
+        if (userData.diabetes_diagnosed === null || userData.diabetes_diagnosed === undefined) {
+          setShowDiagnosisPopup(true);
+        }
+      } catch (error) {
+        if (!mounted) return;
+        
+        // Retry if we haven't exceeded max retries
+        if (retryCount < maxRetries && localStorage.getItem('accessToken')) {
+          retryCount++;
+          setTimeout(() => fetchUser(), 500);
+        } else {
+          // Only redirect if there's no token at all
+          if (!localStorage.getItem('accessToken')) {
+            navigate('/signin');
+          }
+        }
       }
     }
+    
     fetchUser();
+    
+    return () => {
+      mounted = false;
+    };
   }, [navigate]);
 
   useEffect(() => {
@@ -101,6 +140,39 @@ export default function Dashboard() {
   const handleLogout = async () => {
     await logout();
     navigate('/signin');
+  };
+
+  const handleDiagnosisAnswer = async (answer) => {
+    try {
+      const response = await axiosInstance.post('/personalized-system/diabetes-diagnosis', {
+        diabetes_diagnosed: answer,
+      });
+      
+      // Update user state
+      const updatedUser = {
+        ...user,
+        diabetes_diagnosed: answer,
+      };
+      setUser(updatedUser);
+      
+      // Update localStorage
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      
+      setShowDiagnosisPopup(false);
+      
+      // If user answered "yes", redirect to Personalized Suggestions
+      if (answer === 'yes') {
+        setSelectedIndex(3); // Personalized Suggestions index
+      } else {
+        // If user answered "no", check if onboarding is completed
+        if (!user?.onboardingCompleted) {
+          navigate('/onboarding');
+        }
+      }
+    } catch (err) {
+      console.error('Error updating diabetes diagnosis:', err);
+      alert('Failed to save your response. Please try again.');
+    }
   };
 
   const handleEditDiseaseData = () => {
@@ -1256,9 +1328,107 @@ export default function Dashboard() {
                 )}
               </Box>
             )}
+
+            {selectedIndex === 3 && (
+              <Box>
+                {user?.diabetes_diagnosed === 'yes' ? (
+                  <Box>
+                    <Paper 
+                      elevation={0}
+                      sx={{ 
+                        p: 4, 
+                        borderRadius: 3,
+                        background: (t) => t.palette.background.paper,
+                        border: (t) => `1px solid ${t.palette.divider}`,
+                        mb: 3,
+                      }}
+                    >
+                      <Box sx={{ textAlign: 'center', mb: 3 }}>
+                        <Box 
+                          sx={{ 
+                            width: 80,
+                            height: 80,
+                            borderRadius: '50%',
+                            background: (t) => alpha(t.palette.primary.main, 0.1),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            mx: 'auto',
+                            mb: 2,
+                            fontSize: '2.5rem',
+                          }}
+                        >
+                          ✨
+                        </Box>
+                        <Typography variant="h5" fontWeight={800} sx={{ mb: 1 }}>
+                          Personalized Suggestion System
+                        </Typography>
+                        <Typography variant="body1" color="text.secondary">
+                          Manage your personal and medical information for tailored health recommendations.
+                        </Typography>
+                      </Box>
+                    </Paper>
+                    
+                    <Button
+                      variant="contained"
+                      size="large"
+                      fullWidth
+                      onClick={() => navigate('/personalized-suggestions/dashboard')}
+                      sx={{
+                        py: 2,
+                        borderRadius: 2,
+                        fontWeight: 700,
+                      }}
+                    >
+                      Go to Personalized Suggestions
+                    </Button>
+                  </Box>
+                ) : (
+                  <Paper 
+                    elevation={0}
+                    sx={{ 
+                      p: 5, 
+                      borderRadius: 3,
+                      textAlign: 'center',
+                      background: (t) => t.palette.background.paper,
+                      border: (t) => `1px dashed ${t.palette.divider}`,
+                    }}
+                  >
+                    <Box 
+                      sx={{ 
+                        width: 120,
+                        height: 120,
+                        borderRadius: '50%',
+                        background: (t) => alpha(t.palette.warning.main, 0.1),
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mx: 'auto',
+                        mb: 3,
+                        fontSize: '4rem',
+                      }}
+                    >
+                      🔒
+                    </Box>
+                    <Typography variant="h5" fontWeight={800} sx={{ mb: 1.5 }}>
+                      Feature Locked
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary" sx={{ mb: 4, maxWidth: 500, mx: 'auto' }}>
+                      The Personalized Suggestion System is only available for users who have been diagnosed with diabetes.
+                    </Typography>
+                  </Paper>
+                )}
+              </Box>
+            )}
           </Box>
         </Box>
       </Box>
+
+      {/* Diabetes Diagnosis Popup */}
+      <DiabetesDiagnosisPopup
+        open={showDiagnosisPopup}
+        onAnswer={handleDiagnosisAnswer}
+      />
 
       {/* Edit Disease Data Modal */}
       <Modal
