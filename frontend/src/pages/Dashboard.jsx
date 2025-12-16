@@ -11,7 +11,9 @@ import EditIcon from '@mui/icons-material/Edit';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LockIcon from '@mui/icons-material/Lock';
-import { useNavigate } from 'react-router-dom';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import RateReviewIcon from '@mui/icons-material/RateReview';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { logout, getCurrentUser } from '../utils/auth';
 import { fetchMyDiseaseData } from '../utils/api';
 import LinearProgress from '@mui/material/LinearProgress';
@@ -29,7 +31,7 @@ import { updateUserProfile } from '../utils/api';
 import ThemeToggle from '../components/Common/ThemeToggle';
 import DiabetesDiagnosisPopup from '../components/Common/DiabetesDiagnosisPopup';
 import axiosInstance from '../utils/axiosInstance';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import UserFeedbackHistory from '../components/Feedback/UserFeedbackHistory';
 
 const drawerWidth = 220;
 
@@ -38,6 +40,7 @@ const sections = [
   { label: 'My Account', icon: <AccountCircleIcon /> },
   { label: 'My Disease Data', icon: <HealingIcon /> },
   { label: 'Personalized Suggestions', icon: <AutoAwesomeIcon /> },
+  { label: 'My Feedback', icon: <RateReviewIcon /> },
 ];
 
 export default function Dashboard() {
@@ -48,8 +51,9 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDiagnosisPopup, setShowDiagnosisPopup] = useState(false);
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const navigate = useNavigate();
-  const theme = { palette: { mode: 'light' } }; // Add theme hook if available
+  const location = useLocation();
 
   const completionPct = useMemo(() => {
     if (!diseaseData || !diseaseData.totalQuestions) return 0;
@@ -124,6 +128,18 @@ export default function Dashboard() {
       mounted = false;
     };
   }, [navigate]);
+
+  // Check if user came from feedback page to show feedback form
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('showFeedback') === 'true') {
+      // Switch to My Feedback section (index 4)
+      setSelectedIndex(4);
+      setShowFeedbackForm(true);
+      // Remove query param from URL
+      navigate('/dashboard', { replace: true });
+    }
+  }, [location.search, navigate]);
 
   useEffect(() => {
     // Fetch disease data on Insights (0) and My Disease Data (2)
@@ -224,7 +240,7 @@ export default function Dashboard() {
       // Use a clean, flat surface to avoid heavy radial/oval backgrounds
       background: (t) => t.palette.background.default
     }}>
-  <CssBaseline />
+      <CssBaseline />
       {/* Sidebar - Enhanced Professional Design */}
       <Drawer
         variant="permanent"
@@ -293,7 +309,7 @@ export default function Dashboard() {
                 variant="body2" 
                 fontWeight={700}
                 sx={{ 
-                    color: 'text.primary',
+                  color: 'text.primary',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
@@ -325,7 +341,13 @@ export default function Dashboard() {
                 button 
                 key={sec.label} 
                 selected={selectedIndex === index} 
-                onClick={() => setSelectedIndex(index)} 
+                onClick={() => {
+                  setSelectedIndex(index);
+                  // Reset feedback form flag when switching sections
+                  if (index !== 4) {
+                    setShowFeedbackForm(false);
+                  }
+                }} 
                 sx={{ 
                   borderRadius: 2,
                   mb: 1,
@@ -437,7 +459,7 @@ export default function Dashboard() {
         </Box>
       </Drawer>
       {/* Main Content */}
-  <Box component="main" sx={{ flexGrow: 1, ml: 0, mt: 0, minHeight: '100vh', background: 'transparent' }}>
+      <Box component="main" sx={{ flexGrow: 1, ml: 0, mt: 0, minHeight: '100vh', background: 'transparent' }}>
         {/* Hero header - Clean professional design */}
         <Box sx={{
           px: { xs: 2, md: 6 },
@@ -957,113 +979,113 @@ export default function Dashboard() {
                   }}>
                     {/* Password */}
                     <Box sx={{ 
-                        p: 3.5, 
-                        borderRadius: 3,
-                        border: (t) => `1px solid ${t.palette.divider}`,
-                        background: (t) => t.palette.background.paper,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        height: '100%',
-                      }}>
-                        <Box display="flex" alignItems="center" gap={2} mb={2}>
-                          <Box sx={{ 
-                            width: 44, 
-                            height: 44, 
-                            borderRadius: '50%', 
-                            bgcolor: (t) => alpha(t.palette.warning.main, 0.12), 
-                            display:'flex', 
-                            alignItems:'center', 
-                            justifyContent:'center',
-                          }}>
-                            <LockIcon sx={{ color: 'warning.main', fontSize: 24 }} />
-                          </Box>
-                          <Box>
-                            <Typography variant="subtitle1" fontWeight={800}>Password</Typography>
-                            <Typography variant="caption" color="text.secondary">Secure your account</Typography>
-                          </Box>
+                      p: 3.5, 
+                      borderRadius: 3,
+                      border: (t) => `1px solid ${t.palette.divider}`,
+                      background: (t) => t.palette.background.paper,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      height: '100%',
+                    }}>
+                      <Box display="flex" alignItems="center" gap={2} mb={2}>
+                        <Box sx={{ 
+                          width: 44, 
+                          height: 44, 
+                          borderRadius: '50%', 
+                          bgcolor: (t) => alpha(t.palette.warning.main, 0.12), 
+                          display:'flex', 
+                          alignItems:'center', 
+                          justifyContent:'center',
+                        }}>
+                          <LockIcon sx={{ color: 'warning.main', fontSize: 24 }} />
                         </Box>
-                        
-                        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', mb: 2 }}>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.7 }}>
-                            Keep your account secure by updating your password regularly.
-                          </Typography>
+                        <Box>
+                          <Typography variant="subtitle1" fontWeight={800}>Password</Typography>
+                          <Typography variant="caption" color="text.secondary">Secure your account</Typography>
                         </Box>
-                        
-                        <Button
-                          variant="contained"
-                          fullWidth
-                          color="warning"
-                          onClick={() => window.dispatchEvent(new Event('openChangePassword'))}
-                          sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 800, py: 1.2 }}
-                        >
-                          Change Password
-                        </Button>
                       </Box>
+                      
+                      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', mb: 2 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.7 }}>
+                          Keep your account secure by updating your password regularly.
+                        </Typography>
+                      </Box>
+                      
+                      <Button
+                        variant="contained"
+                        fullWidth
+                        color="warning"
+                        onClick={() => window.dispatchEvent(new Event('openChangePassword'))}
+                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 800, py: 1.2 }}
+                      >
+                        Change Password
+                      </Button>
+                    </Box>
 
                     {/* Preferences */}
                     <Box sx={{ 
-                        p: 3.5, 
-                        borderRadius: 3,
-                        border: (t) => `1px solid ${t.palette.divider}`,
-                        background: (t) => t.palette.background.paper,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        height: '100%',
-                      }}>
-                        <Box display="flex" alignItems="center" gap={2} mb={2}>
-                          <Box sx={{ 
-                            width: 44, 
-                            height: 44, 
-                            borderRadius: '50%', 
-                            bgcolor: (t) => alpha(t.palette.info.main, 0.12), 
-                            display:'flex', 
-                            alignItems:'center', 
-                            justifyContent:'center',
-                          }}>
-                            <Box component="span" sx={{ fontSize: 22 }}>🎨</Box>
-                          </Box>
-                          <Box>
-                            <Typography variant="subtitle1" fontWeight={800}>Preferences</Typography>
-                            <Typography variant="caption" color="text.secondary">Customize your experience</Typography>
-                          </Box>
-                        </Box>
-                        
-                        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', mb: 2 }}>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.7 }}>
-                            Personalize your dashboard with your preferred display theme.
-                          </Typography>
-                        </Box>
-                        
+                      p: 3.5, 
+                      borderRadius: 3,
+                      border: (t) => `1px solid ${t.palette.divider}`,
+                      background: (t) => t.palette.background.paper,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      height: '100%',
+                    }}>
+                      <Box display="flex" alignItems="center" gap={2} mb={2}>
                         <Box sx={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'space-between',
-                          transition: 'all 0.3s ease',
-                          p: 2,
-                          borderRadius: 2.5,
-                          background: (t) => alpha(t.palette.background.paper, 0.4),
-                          border: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`,
+                          width: 44, 
+                          height: 44, 
+                          borderRadius: '50%', 
+                          bgcolor: (t) => alpha(t.palette.info.main, 0.12), 
+                          display:'flex', 
+                          alignItems:'center', 
+                          justifyContent:'center',
+                        }}>
+                          <Box component="span" sx={{ fontSize: 22 }}>🎨</Box>
+                        </Box>
+                        <Box>
+                          <Typography variant="subtitle1" fontWeight={800}>Preferences</Typography>
+                          <Typography variant="caption" color="text.secondary">Customize your experience</Typography>
+                        </Box>
+                      </Box>
+                      
+                      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', mb: 2 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.7 }}>
+                          Personalize your dashboard with your preferred display theme.
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        transition: 'all 0.3s ease',
+                        p: 2,
+                        borderRadius: 2.5,
+                        background: (t) => alpha(t.palette.background.paper, 0.4),
+                        border: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`,
+                        '&:hover': {
+                          background: (t) => alpha(t.palette.background.paper, 0.6),
+                          borderColor: (t) => alpha(t.palette.info.main, 0.3),
+                        }
+                      }}>
+                        <Box>
+                          <Typography variant="body1" fontWeight={700}>Theme</Typography>
+                          <Typography variant="caption" color="text.secondary">Choose your display mode</Typography>
+                        </Box>
+                        <Box sx={{ 
+                          transition: 'transform 0.3s ease',
                           '&:hover': {
-                            background: (t) => alpha(t.palette.background.paper, 0.6),
-                            borderColor: (t) => alpha(t.palette.info.main, 0.3),
+                            transform: 'scale(1.05)',
                           }
                         }}>
-                          <Box>
-                            <Typography variant="body1" fontWeight={700}>Theme</Typography>
-                            <Typography variant="caption" color="text.secondary">Choose your display mode</Typography>
-                          </Box>
-                          <Box sx={{ 
-                            transition: 'transform 0.3s ease',
-                            '&:hover': {
-                              transform: 'scale(1.05)',
-                            }
-                          }}>
-                            <ThemeToggle size="medium" />
-                          </Box>
+                          <ThemeToggle size="medium" />
                         </Box>
                       </Box>
                     </Box>
                   </Box>
+                </Box>
               </Paper>
             )}
 
@@ -1419,6 +1441,20 @@ export default function Dashboard() {
                   </Paper>
                 )}
               </Box>
+            )}
+
+            {selectedIndex === 4 && (
+              <Paper 
+                elevation={0} 
+                sx={{ 
+                  p: { xs: 3, md: 4 }, 
+                  borderRadius: 3,
+                  background: (t) => t.palette.background.paper,
+                  border: (t) => `1px solid ${t.palette.divider}`,
+                }}
+              >
+                <UserFeedbackHistory showFormOnMount={showFeedbackForm} />
+              </Paper>
             )}
           </Box>
         </Box>

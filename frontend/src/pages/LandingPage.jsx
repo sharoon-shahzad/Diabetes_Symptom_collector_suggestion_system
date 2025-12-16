@@ -1,4 +1,4 @@
- import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -50,6 +50,7 @@ import { useInView } from 'react-intersection-observer';
 import ThemeToggle from '../components/Common/ThemeToggle';
 import BlogSection from '../components/Common/BlogSection';
 import ArticleModal from '../components/Common/ArticleModal';
+import TestimonialsSection from '../components/Common/TestimonialsSection';
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -137,30 +138,6 @@ const LandingPage = () => {
     { number: '24/7', label: 'Available Support', icon: <Support /> },
   ];
 
-  const testimonials = [
-    {
-      name: 'Sarah Johnson',
-      role: 'Diabetes Patient',
-      content: 'This system helped me understand my symptoms better and provided actionable recommendations. The AI assessment was incredibly accurate!',
-      avatar: 'SJ',
-      rating: 5,
-    },
-    {
-      name: 'Dr. Michael Chen',
-      role: 'Endocrinologist',
-      content: 'As a healthcare professional, I recommend this tool to my patients. It provides valuable insights and helps with early detection.',
-      avatar: 'MC',
-      rating: 5,
-    },
-    {
-      name: 'Emily Rodriguez',
-      role: 'Health Coach',
-      content: 'The personalized recommendations are spot-on. My clients love how easy it is to track their symptoms and get instant feedback.',
-      avatar: 'ER',
-      rating: 5,
-    },
-  ];
-
   const handleArticleClick = (article) => {
     setArticleModal({ open: true, article });
   };
@@ -237,10 +214,11 @@ const LandingPage = () => {
 
               {/* Navigation Links */}
               {[
-                { label: 'Home', href: '#home' },
-                { label: 'About', href: '#about' },
-                { label: 'Blogs & Articles', href: '#blogs-articles' },
-                { label: 'Contact', href: '#contact' },
+                { label: 'Home', href: '#home', isRoute: false },
+                { label: 'About', href: '#about', isRoute: false },
+                { label: 'Blogs & Articles', href: '#blogs-articles', isRoute: false },
+                { label: 'Forum', href: '/feedback', isRoute: true },
+                { label: 'Contact', href: '#contact', isRoute: false },
               ].map((link, index) => (
                 <motion.div
                   key={link.label}
@@ -272,9 +250,13 @@ const LandingPage = () => {
                             },
                           }}
                     onClick={() => {
-                      const element = document.querySelector(link.href);
-                      if (element) {
-                        element.scrollIntoView({ behavior: 'smooth' });
+                      if (link.isRoute) {
+                        navigate(link.href);
+                      } else {
+                        const element = document.querySelector(link.href);
+                        if (element) {
+                          element.scrollIntoView({ behavior: 'smooth' });
+                        }
                       }
                     }}
                   >
@@ -1030,100 +1012,7 @@ const LandingPage = () => {
       </Box>
 
       {/* Testimonials Section */}
-      <Box sx={{ py: 8, background: theme.palette.background.paper }}>
-        <Container maxWidth="lg">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={containerVariants}
-          >
-            <Box textAlign="center" mb={6}>
-              <motion.div variants={itemVariants}>
-                <Typography variant="h3" fontWeight={700} color="text.primary" gutterBottom>
-                  What Our Users Say
-                </Typography>
-                <Typography variant="h6" color="text.secondary">
-                  Trusted by patients and healthcare professionals worldwide
-                </Typography>
-              </motion.div>
-            </Box>
-            <Grid container spacing={4} justifyContent="center">
-              {testimonials.map((testimonial, index) => (
-                <Grid size={{ xs: 12, md: 4 }} key={index} sx={{ display: 'flex' }}>
-                  <motion.div variants={itemVariants} style={{ width: '100%' }}>
-                    <Card
-                      sx={{
-                        height: '100%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        background: theme.palette.background.paper,
-                        border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
-                        borderRadius: 3,
-                        transition: 'all 0.3s ease',
-                        boxShadow: `0 4px 20px ${alpha(theme.palette.primary.main, 0.1)}`,
-                        '&:hover': {
-                          transform: 'translateY(-8px)',
-                          boxShadow: `0 12px 40px ${alpha(theme.palette.primary.main, 0.2)}`,
-                          border: `1px solid ${theme.palette.primary.main}`,
-                        },
-                      }}
-                    >
-                      <CardContent
-                        sx={{
-                          p: 4,
-                          display: 'flex',
-                          flexDirection: 'column',
-                          flexGrow: 1,
-                        }}
-                      >
-                        <Box sx={{ display: 'flex', mb: 3 }}>
-                          {[...Array(testimonial.rating)].map((_, i) => (
-                            <Star key={i} sx={{ color: '#ffc107', fontSize: 20 }} />
-                          ))}
-                        </Box>
-                        <Typography 
-                          variant="body1" 
-                          color="text.secondary" 
-                          paragraph
-                          sx={{ 
-                            flexGrow: 1,
-                            fontStyle: 'italic',
-                            lineHeight: 1.6,
-                          }}
-                        >
-                          "{testimonial.content}"
-                        </Typography>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 'auto' }}>
-                          <Avatar 
-                            sx={{ 
-                              bgcolor: theme.palette.primary.main,
-                              width: 48,
-                              height: 48,
-                              fontSize: '1.1rem',
-                              fontWeight: 600,
-                            }}
-                          >
-                            {testimonial.avatar}
-                          </Avatar>
-                          <Box>
-                            <Typography variant="subtitle1" fontWeight={600}>
-                              {testimonial.name}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {testimonial.role}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                </Grid>
-              ))}
-            </Grid>
-          </motion.div>
-        </Container>
-      </Box>
+      <TestimonialsSection />
 
       {/* Blogs & Articles Section */}
       <BlogSection

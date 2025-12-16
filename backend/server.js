@@ -1,3 +1,4 @@
+
 import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
@@ -24,6 +25,8 @@ import chatRoutes from './routes/chatRoutes.js';
 import dietPlanRoutes from './routes/dietPlanRoutes.js';
 import exercisePlanRoutes from './routes/exercisePlanRoutes.js';
 import lifestyleTipsRoutes from './routes/lifestyleTipsRoutes.js';
+import feedbackRoutes from './routes/feedbackRoutes.js';
+import adminFeedbackRoutes from './routes/adminFeedbackRoutes.js';
 
 dotenv.config();
 
@@ -103,6 +106,8 @@ app.use('/api/v1/chat', chatRoutes);
 app.use('/api/v1/diet-plan', dietPlanRoutes);
 app.use('/api/v1/exercise-plan', exercisePlanRoutes);
 app.use('/api/v1/lifestyle-tips', lifestyleTipsRoutes);
+app.use('/api/v1/feedback', feedbackRoutes);
+app.use('/api/v1/admin/feedback', adminFeedbackRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
