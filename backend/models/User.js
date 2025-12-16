@@ -17,18 +17,29 @@ const userSchema = new mongoose.Schema({
     phone_number: {
         type: String,
     },
-    whatsapp_number: {
+    country: {
         type: String,
+        required: false,
+        trim: true,
     },
-    date_of_birth: {
-        type: Date,
+    country_code: {
+        type: String,
+        trim: true,
     },
-    gender: {
+    whatsapp_number: {
         type: String,
     },
     isActivated: {
         type: Boolean,
         default: false,
+    },
+    diabetes_diagnosed: {
+        type: String,
+        enum: ['yes', 'no', null],
+        default: null, // null means not yet answered
+    },
+    diabetes_diagnosed_answered_at: {
+        type: Date,
     },
     activationToken: {
         type: String,

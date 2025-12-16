@@ -29,10 +29,10 @@ const generateAccessAndRefreshTokens = async (userId, email) => {
 // Registration controller
 export const register = async (req, res) => {
     try {
-        const { fullName, email, password, gender, date_of_birth } = req.body;
+        const { fullName, email, password } = req.body;
         
         // Validation
-        if (!fullName || !email || !password || !gender || !date_of_birth) {
+        if (!fullName || !email || !password) {
             return res.status(400).json({ 
                 success: false,
                 message: 'All fields are required.' 
@@ -77,8 +77,6 @@ export const register = async (req, res) => {
             fullName,
             email,
             password: hashedPassword,
-            gender,
-            date_of_birth,
             isActivated: false,
             activationToken,
             activationTokenExpires
@@ -202,9 +200,9 @@ export const login = async (req, res) => {
                     id: user._id,
                     fullName: user.fullName,
                     email: user.email,
-                    gender: user.gender,
-                    date_of_birth: user.date_of_birth,
-                    roles: roles
+                    roles: roles,
+                    diabetes_diagnosed: user.diabetes_diagnosed,
+                    onboardingCompleted: user.onboardingCompleted,
                 },
                 accessToken,
                 refreshToken
@@ -328,9 +326,9 @@ export const getCurrentUser = async (req, res) => {
                     id: user._id,
                     fullName: user.fullName,
                     email: user.email,
-                    gender: user.gender,
-                    date_of_birth: user.date_of_birth,
-                    isActivated: user.isActivated
+                    isActivated: user.isActivated,
+                    diabetes_diagnosed: user.diabetes_diagnosed,
+                    onboardingCompleted: user.onboardingCompleted,
                 }
             }
         });

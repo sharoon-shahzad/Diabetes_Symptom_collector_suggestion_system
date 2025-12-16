@@ -11,6 +11,8 @@ import EditIcon from '@mui/icons-material/Edit';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LockIcon from '@mui/icons-material/Lock';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import RateReviewIcon from '@mui/icons-material/RateReview';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { logout, getCurrentUser } from '../utils/auth';
 import { fetchMyDiseaseData } from '../utils/api';
@@ -27,8 +29,9 @@ import PreferencesCard from '../components/DashboardNew/PreferencesCard';
 import PasswordOptionCard from '../components/DashboardNew/PasswordOptionCard';
 import { updateUserProfile } from '../utils/api';
 import ThemeToggle from '../components/Common/ThemeToggle';
+import DiabetesDiagnosisPopup from '../components/Common/DiabetesDiagnosisPopup';
+import axiosInstance from '../utils/axiosInstance';
 import UserFeedbackHistory from '../components/Feedback/UserFeedbackHistory';
-import RateReviewIcon from '@mui/icons-material/RateReview';
 
 const drawerWidth = 220;
 
@@ -36,6 +39,7 @@ const sections = [
   { label: 'Insights', icon: <InsightsIcon /> },
   { label: 'My Account', icon: <AccountCircleIcon /> },
   { label: 'My Disease Data', icon: <HealingIcon /> },
+  { label: 'Personalized Suggestions', icon: <AutoAwesomeIcon /> },
   { label: 'My Feedback', icon: <RateReviewIcon /> },
 ];
 
@@ -46,6 +50,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDiagnosisPopup, setShowDiagnosisPopup] = useState(false);
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -79,24 +85,56 @@ export default function Dashboard() {
   }, [diseaseData]);
 
   useEffect(() => {
+    let mounted = true;
+    let retryCount = 0;
+    const maxRetries = 3;
+    
     async function fetchUser() {
       try {
+        // Wait a bit for token to be set if this is right after login
+        if (retryCount === 0) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
         const userData = await getCurrentUser();
+        
+        if (!mounted) return;
+        
         setUser(userData);
-      } catch {
-        navigate('/signin');
+        
+        // Check if user needs to answer diabetes diagnosis question
+        if (userData.diabetes_diagnosed === null || userData.diabetes_diagnosed === undefined) {
+          setShowDiagnosisPopup(true);
+        }
+      } catch (error) {
+        if (!mounted) return;
+        
+        // Retry if we haven't exceeded max retries
+        if (retryCount < maxRetries && localStorage.getItem('accessToken')) {
+          retryCount++;
+          setTimeout(() => fetchUser(), 500);
+        } else {
+          // Only redirect if there's no token at all
+          if (!localStorage.getItem('accessToken')) {
+            navigate('/signin');
+          }
+        }
       }
     }
+    
     fetchUser();
+    
+    return () => {
+      mounted = false;
+    };
   }, [navigate]);
 
   // Check if user came from feedback page to show feedback form
-  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     if (searchParams.get('showFeedback') === 'true') {
-      // Switch to My Feedback section (index 3)
-      setSelectedIndex(3);
+      // Switch to My Feedback section (index 4)
+      setSelectedIndex(4);
       setShowFeedbackForm(true);
       // Remove query param from URL
       navigate('/dashboard', { replace: true });
@@ -118,6 +156,39 @@ export default function Dashboard() {
   const handleLogout = async () => {
     await logout();
     navigate('/signin');
+  };
+
+  const handleDiagnosisAnswer = async (answer) => {
+    try {
+      const response = await axiosInstance.post('/personalized-system/diabetes-diagnosis', {
+        diabetes_diagnosed: answer,
+      });
+      
+      // Update user state
+      const updatedUser = {
+        ...user,
+        diabetes_diagnosed: answer,
+      };
+      setUser(updatedUser);
+      
+      // Update localStorage
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      
+      setShowDiagnosisPopup(false);
+      
+      // If user answered "yes", redirect to Personalized Suggestions
+      if (answer === 'yes') {
+        setSelectedIndex(3); // Personalized Suggestions index
+      } else {
+        // If user answered "no", check if onboarding is completed
+        if (!user?.onboardingCompleted) {
+          navigate('/onboarding');
+        }
+      }
+    } catch (err) {
+      console.error('Error updating diabetes diagnosis:', err);
+      alert('Failed to save your response. Please try again.');
+    }
   };
 
   const handleEditDiseaseData = () => {
@@ -169,7 +240,7 @@ export default function Dashboard() {
       // Use a clean, flat surface to avoid heavy radial/oval backgrounds
       background: (t) => t.palette.background.default
     }}>
-  <CssBaseline />
+      <CssBaseline />
       {/* Sidebar - Enhanced Professional Design */}
       <Drawer
         variant="permanent"
@@ -238,7 +309,7 @@ export default function Dashboard() {
                 variant="body2" 
                 fontWeight={700}
                 sx={{ 
-                    color: 'text.primary',
+                  color: 'text.primary',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
@@ -273,7 +344,7 @@ export default function Dashboard() {
                 onClick={() => {
                   setSelectedIndex(index);
                   // Reset feedback form flag when switching sections
-                  if (index !== 3) {
+                  if (index !== 4) {
                     setShowFeedbackForm(false);
                   }
                 }} 
@@ -388,7 +459,7 @@ export default function Dashboard() {
         </Box>
       </Drawer>
       {/* Main Content */}
-  <Box component="main" sx={{ flexGrow: 1, ml: 0, mt: 0, minHeight: '100vh', background: 'transparent' }}>
+      <Box component="main" sx={{ flexGrow: 1, ml: 0, mt: 0, minHeight: '100vh', background: 'transparent' }}>
         {/* Hero header - Clean professional design */}
         <Box sx={{
           px: { xs: 2, md: 6 },
@@ -908,127 +979,113 @@ export default function Dashboard() {
                   }}>
                     {/* Password */}
                     <Box sx={{ 
-                        p: 3.5, 
-                        borderRadius: 3,
-                        border: (t) => `1px solid ${t.palette.divider}`,
-                        background: (t) => t.palette.background.paper,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        height: '100%',
-                      }}>
-                        <Box display="flex" alignItems="center" gap={2} mb={2}>
-                          <Box sx={{ 
-                            width: 44, 
-                            height: 44, 
-                            borderRadius: '50%', 
-                            bgcolor: (t) => alpha(t.palette.warning.main, 0.12), 
-                            display:'flex', 
-                            alignItems:'center', 
-                            justifyContent:'center',
-                          }}>
-                            <LockIcon sx={{ color: 'warning.main', fontSize: 24 }} />
-                          </Box>
-                          <Box>
-                            <Typography variant="subtitle1" fontWeight={800}>Password</Typography>
-                            <Typography variant="caption" color="text.secondary">Secure your account</Typography>
-                          </Box>
+                      p: 3.5, 
+                      borderRadius: 3,
+                      border: (t) => `1px solid ${t.palette.divider}`,
+                      background: (t) => t.palette.background.paper,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      height: '100%',
+                    }}>
+                      <Box display="flex" alignItems="center" gap={2} mb={2}>
+                        <Box sx={{ 
+                          width: 44, 
+                          height: 44, 
+                          borderRadius: '50%', 
+                          bgcolor: (t) => alpha(t.palette.warning.main, 0.12), 
+                          display:'flex', 
+                          alignItems:'center', 
+                          justifyContent:'center',
+                        }}>
+                          <LockIcon sx={{ color: 'warning.main', fontSize: 24 }} />
                         </Box>
-                        
-                        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', mb: 2 }}>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.7 }}>
-                            Keep your account secure by updating your password regularly.
-                          </Typography>
+                        <Box>
+                          <Typography variant="subtitle1" fontWeight={800}>Password</Typography>
+                          <Typography variant="caption" color="text.secondary">Secure your account</Typography>
                         </Box>
-                        
-                        <Button
-                          variant="contained"
-                          fullWidth
-                          color="warning"
-                          onClick={() => window.dispatchEvent(new Event('openChangePassword'))}
-                          sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 800, py: 1.2 }}
-                        >
-                          Change Password
-                        </Button>
                       </Box>
+                      
+                      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', mb: 2 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.7 }}>
+                          Keep your account secure by updating your password regularly.
+                        </Typography>
+                      </Box>
+                      
+                      <Button
+                        variant="contained"
+                        fullWidth
+                        color="warning"
+                        onClick={() => window.dispatchEvent(new Event('openChangePassword'))}
+                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 800, py: 1.2 }}
+                      >
+                        Change Password
+                      </Button>
+                    </Box>
 
                     {/* Preferences */}
                     <Box sx={{ 
-                        p: 3.5, 
-                        borderRadius: 3,
-                        border: (t) => `1px solid ${t.palette.divider}`,
-                        background: (t) => t.palette.background.paper,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        height: '100%',
-                      }}>
-                        <Box display="flex" alignItems="center" gap={2} mb={2}>
-                          <Box sx={{ 
-                            width: 44, 
-                            height: 44, 
-                            borderRadius: '50%', 
-                            bgcolor: (t) => alpha(t.palette.info.main, 0.12), 
-                            display:'flex', 
-                            alignItems:'center', 
-                            justifyContent:'center',
-                          }}>
-                            <Box component="span" sx={{ fontSize: 22 }}>🎨</Box>
-                          </Box>
-                          <Box>
-                            <Typography variant="subtitle1" fontWeight={800}>Preferences</Typography>
-                            <Typography variant="caption" color="text.secondary">Customize your experience</Typography>
-                          </Box>
-                        </Box>
-                        
-                        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', mb: 2 }}>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.7 }}>
-                            Personalize your dashboard with your preferred display theme.
-                          </Typography>
-                        </Box>
-                        
+                      p: 3.5, 
+                      borderRadius: 3,
+                      border: (t) => `1px solid ${t.palette.divider}`,
+                      background: (t) => t.palette.background.paper,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      height: '100%',
+                    }}>
+                      <Box display="flex" alignItems="center" gap={2} mb={2}>
                         <Box sx={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'space-between',
-                          transition: 'all 0.3s ease',
-                          p: 2,
-                          borderRadius: 2.5,
-                          background: (t) => alpha(t.palette.background.paper, 0.4),
-                          border: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`,
+                          width: 44, 
+                          height: 44, 
+                          borderRadius: '50%', 
+                          bgcolor: (t) => alpha(t.palette.info.main, 0.12), 
+                          display:'flex', 
+                          alignItems:'center', 
+                          justifyContent:'center',
+                        }}>
+                          <Box component="span" sx={{ fontSize: 22 }}>🎨</Box>
+                        </Box>
+                        <Box>
+                          <Typography variant="subtitle1" fontWeight={800}>Preferences</Typography>
+                          <Typography variant="caption" color="text.secondary">Customize your experience</Typography>
+                        </Box>
+                      </Box>
+                      
+                      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', mb: 2 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.7 }}>
+                          Personalize your dashboard with your preferred display theme.
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        transition: 'all 0.3s ease',
+                        p: 2,
+                        borderRadius: 2.5,
+                        background: (t) => alpha(t.palette.background.paper, 0.4),
+                        border: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`,
+                        '&:hover': {
+                          background: (t) => alpha(t.palette.background.paper, 0.6),
+                          borderColor: (t) => alpha(t.palette.info.main, 0.3),
+                        }
+                      }}>
+                        <Box>
+                          <Typography variant="body1" fontWeight={700}>Theme</Typography>
+                          <Typography variant="caption" color="text.secondary">Choose your display mode</Typography>
+                        </Box>
+                        <Box sx={{ 
+                          transition: 'transform 0.3s ease',
                           '&:hover': {
-                            background: (t) => alpha(t.palette.background.paper, 0.6),
-                            borderColor: (t) => alpha(t.palette.info.main, 0.3),
+                            transform: 'scale(1.05)',
                           }
                         }}>
-                          <Box>
-                            <Typography variant="body1" fontWeight={700}>Theme</Typography>
-                            <Typography variant="caption" color="text.secondary">Choose your display mode</Typography>
-                          </Box>
-                          <Box sx={{ 
-                            transition: 'transform 0.3s ease',
-                            '&:hover': {
-                              transform: 'scale(1.05)',
-                            }
-                          }}>
-                            <ThemeToggle size="medium" />
-                          </Box>
+                          <ThemeToggle size="medium" />
                         </Box>
                       </Box>
                     </Box>
                   </Box>
-              </Paper>
-            )}
-
-            {selectedIndex === 3 && (
-              <Paper 
-                elevation={0} 
-                sx={{ 
-                  p: { xs: 3, md: 4 }, 
-                  borderRadius: 3,
-                  background: (t) => t.palette.background.paper,
-                  border: (t) => `1px solid ${t.palette.divider}`,
-                }}
-              >
-                <UserFeedbackHistory showFormOnMount={showFeedbackForm} />
+                </Box>
               </Paper>
             )}
 
@@ -1294,9 +1351,120 @@ export default function Dashboard() {
               </Box>
             )}
 
+            {selectedIndex === 3 && (
+              <Box>
+                {user?.diabetes_diagnosed === 'yes' ? (
+                  <Box>
+                    <Paper 
+                      elevation={0}
+                      sx={{ 
+                        p: 4, 
+                        borderRadius: 3,
+                        background: (t) => t.palette.background.paper,
+                        border: (t) => `1px solid ${t.palette.divider}`,
+                        mb: 3,
+                      }}
+                    >
+                      <Box sx={{ textAlign: 'center', mb: 3 }}>
+                        <Box 
+                          sx={{ 
+                            width: 80,
+                            height: 80,
+                            borderRadius: '50%',
+                            background: (t) => alpha(t.palette.primary.main, 0.1),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            mx: 'auto',
+                            mb: 2,
+                            fontSize: '2.5rem',
+                          }}
+                        >
+                          ✨
+                        </Box>
+                        <Typography variant="h5" fontWeight={800} sx={{ mb: 1 }}>
+                          Personalized Suggestion System
+                        </Typography>
+                        <Typography variant="body1" color="text.secondary">
+                          Manage your personal and medical information for tailored health recommendations.
+                        </Typography>
+                      </Box>
+                    </Paper>
+                    
+                    <Button
+                      variant="contained"
+                      size="large"
+                      fullWidth
+                      onClick={() => navigate('/personalized-suggestions/dashboard')}
+                      sx={{
+                        py: 2,
+                        borderRadius: 2,
+                        fontWeight: 700,
+                      }}
+                    >
+                      Go to Personalized Suggestions
+                    </Button>
+                  </Box>
+                ) : (
+                  <Paper 
+                    elevation={0}
+                    sx={{ 
+                      p: 5, 
+                      borderRadius: 3,
+                      textAlign: 'center',
+                      background: (t) => t.palette.background.paper,
+                      border: (t) => `1px dashed ${t.palette.divider}`,
+                    }}
+                  >
+                    <Box 
+                      sx={{ 
+                        width: 120,
+                        height: 120,
+                        borderRadius: '50%',
+                        background: (t) => alpha(t.palette.warning.main, 0.1),
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mx: 'auto',
+                        mb: 3,
+                        fontSize: '4rem',
+                      }}
+                    >
+                      🔒
+                    </Box>
+                    <Typography variant="h5" fontWeight={800} sx={{ mb: 1.5 }}>
+                      Feature Locked
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary" sx={{ mb: 4, maxWidth: 500, mx: 'auto' }}>
+                      The Personalized Suggestion System is only available for users who have been diagnosed with diabetes.
+                    </Typography>
+                  </Paper>
+                )}
+              </Box>
+            )}
+
+            {selectedIndex === 4 && (
+              <Paper 
+                elevation={0} 
+                sx={{ 
+                  p: { xs: 3, md: 4 }, 
+                  borderRadius: 3,
+                  background: (t) => t.palette.background.paper,
+                  border: (t) => `1px solid ${t.palette.divider}`,
+                }}
+              >
+                <UserFeedbackHistory showFormOnMount={showFeedbackForm} />
+              </Paper>
+            )}
           </Box>
         </Box>
       </Box>
+
+      {/* Diabetes Diagnosis Popup */}
+      <DiabetesDiagnosisPopup
+        open={showDiagnosisPopup}
+        onAnswer={handleDiagnosisAnswer}
+      />
 
       {/* Edit Disease Data Modal */}
       <Modal

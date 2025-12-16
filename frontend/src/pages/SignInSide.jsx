@@ -29,8 +29,17 @@ export default function SignInSide() {
             zIndex: -1,
             inset: 0,
             backgroundImage: isDarkMode 
-              ? 'radial-gradient(at 50% 50%, hsla(210, 100%, 16%, 0.5), hsl(220, 30%, 5%))'
-              : 'radial-gradient(at 50% 50%, hsla(210, 100%, 90%, 0.5), hsl(220, 30%, 95%))',
+              ? 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)'
+              : 'linear-gradient(135deg, #f8fafc 0%, #eef2ff 40%, #e0f2fe 100%)',
+          },
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            zIndex: -1,
+            inset: 0,
+            backgroundImage: isDarkMode
+              ? 'radial-gradient(circle at 20% 30%, rgba(99,102,241,0.15), transparent 50%), radial-gradient(circle at 80% 70%, rgba(14,165,233,0.15), transparent 50%)'
+              : 'radial-gradient(circle at 20% 30%, rgba(99,102,241,0.08), transparent 50%), radial-gradient(circle at 80% 70%, rgba(14,165,233,0.08), transparent 50%)',
           },
         },
       ]}

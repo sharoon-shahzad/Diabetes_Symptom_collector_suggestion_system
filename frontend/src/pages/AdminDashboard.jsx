@@ -42,22 +42,43 @@ export default function AdminDashboard() {
       document.head.appendChild(link);
     }
     async function fetchUser() {
-      try {
-        const userData = await getCurrentUser();
-        setUser(userData);
-        
-        // Fetch user roles to determine available sections
-        const token = localStorage.getItem('accessToken');
-        const rolesResponse = await fetch('http://localhost:5000/api/v1/users/roles', {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (rolesResponse.ok) {
-          const rolesData = await rolesResponse.json();
-          setUserRoles(rolesData.data || []);
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      const attemptFetch = async () => {
+        try {
+          // Wait a bit for token to be set if this is right after login
+          if (retryCount === 0) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+          
+          const userData = await getCurrentUser();
+          setUser(userData);
+          
+          // Fetch user roles to determine available sections
+          const token = localStorage.getItem('accessToken');
+          const rolesResponse = await fetch('http://localhost:5000/api/v1/users/roles', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          if (rolesResponse.ok) {
+            const rolesData = await rolesResponse.json();
+            setUserRoles(rolesData.data || []);
+          }
+        } catch (error) {
+          // Retry if we haven't exceeded max retries
+          if (retryCount < maxRetries && localStorage.getItem('accessToken')) {
+            retryCount++;
+            setTimeout(attemptFetch, 500);
+          } else {
+            // Only redirect if there's no token at all
+            if (!localStorage.getItem('accessToken')) {
+              navigate('/signin');
+            }
+          }
         }
-      } catch {
-        navigate('/signin');
-      }
+      };
+      
+      attemptFetch();
     }
     fetchUser();
   }, [navigate]);
