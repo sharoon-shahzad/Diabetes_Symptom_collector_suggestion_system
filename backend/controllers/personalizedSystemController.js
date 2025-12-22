@@ -8,13 +8,14 @@ export const getPersonalInfo = async (req, res) => {
         const userId = req.user._id;
         
         const personalInfo = await UserPersonalInfo.findOne({ user_id: userId });
-        const user = await User.findById(userId).select('country country_code phone_number');
+        const user = await User.findById(userId).select('fullName country country_code phone_number');
         
         if (!personalInfo) {
             // Return user data even if personal info doesn't exist yet
             return res.status(200).json({
                 success: true,
                 data: {
+                    fullName: user?.fullName || '',
                     country: user?.country || '',
                     country_code: user?.country_code || '',
                     phone_number: user?.phone_number || ''
@@ -25,6 +26,7 @@ export const getPersonalInfo = async (req, res) => {
         // Merge user data (country, phone) with personal info
         const responseData = {
             ...personalInfo.toObject(),
+            fullName: user?.fullName || personalInfo.fullName || '',
             country: user?.country || '',
             country_code: user?.country_code || '',
             phone_number: user?.phone_number || ''
@@ -142,8 +144,9 @@ export const getMedicalInfo = async (req, res) => {
         const medicalInfo = await UserMedicalInfo.findOne({ user_id: userId });
         
         if (!medicalInfo) {
-            return res.status(404).json({
-                success: false,
+            return res.status(200).json({
+                success: true,
+                data: {},
                 message: 'Medical information not found.',
             });
         }

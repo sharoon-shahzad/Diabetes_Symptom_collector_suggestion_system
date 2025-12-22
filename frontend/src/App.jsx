@@ -11,6 +11,7 @@ import ActivateAccount from './pages/ActivateAccount';
 import Dashboard from './pages/Dashboard';
 import Assessment from './pages/Assessment';
 import Onboarding from './pages/Onboarding';
+import SymptomAssessment from './pages/SymptomAssessment';
 import AdminDashboard from './pages/AdminDashboard';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
@@ -23,6 +24,7 @@ import DietPlanDashboard from './pages/DietPlanDashboard';
 import ExercisePlanDashboard from './pages/ExercisePlanDashboard';
 import LifestyleTipsDashboard from './pages/LifestyleTipsDashboard';
 import LifestyleTipsView from './pages/LifestyleTipsView';
+import CommunityFeedbackDashboard from './pages/CommunityFeedbackDashboard';
 import UniversalHeader from './components/Common/UniversalHeader';
 import CMSManagement from './cms/pages/CMSManagement';
 import PublicCMS from './cms/pages/PublicCMS';
@@ -57,7 +59,9 @@ const AppContent = () => {
           <Route path="/activate/:token" element={<ActivateAccount />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/symptom-assessment" element={<SymptomAssessment />} />
           <Route path="/assessment" element={<Assessment />} />
+          <Route path="/feedback" element={<CommunityFeedbackDashboard />} />
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
           <Route path="/admin/upload" element={<DocumentUpload />} />
           <Route path="/cms" element={<CMSManagement />} />

@@ -79,6 +79,19 @@ const userSchema = new mongoose.Schema({
         enum: ['draft', 'submitted'],
         default: 'draft',
     },
+    // Latest diabetes risk assessment summary
+    last_assessment_risk_level: {
+        type: String,
+    },
+    last_assessment_probability: {
+        type: Number,
+    },
+    last_assessment_at: {
+        type: Date,
+    },
+    last_assessment_popup_handled_at: {
+        type: Date,
+    },
 }, { timestamps: true });
 
 // Add index for onboarding completion check

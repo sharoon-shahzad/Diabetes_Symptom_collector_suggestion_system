@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Box, Container, Card, CardContent, CardActions, Button, LinearProgress, Chip, Typography, useTheme, useMediaQuery } from '@mui/material';
 import { Person as PersonIcon, Restaurant as RestaurantIcon, FitnessCenter as FitnessCenterIcon, Lightbulb as LightbulbIcon, EmojiEvents as EmojiEventsIcon, Chat as ChatIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
+import { getCurrentUser } from '../utils/auth';
 import axiosInstance from '../utils/axiosInstance.js';
 
 const PersonalizedSuggestionDashboard = () => {
@@ -10,8 +12,41 @@ const PersonalizedSuggestionDashboard = () => {
   const isSm = useMediaQuery(theme.breakpoints.down('sm'));
   const isMd = useMediaQuery(theme.breakpoints.down('md'));
   const [personalInfoCompletion, setPersonalInfoCompletion] = useState(0);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
 
-  useEffect(() => { fetchCompletion(); }, []);
+  useEffect(() => {
+    let mounted = true;
+
+    const checkAccess = async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        if (!mounted) return;
+
+        if (currentUser?.diabetes_diagnosed === 'yes') {
+          setIsAuthorized(true);
+        } else {
+          toast.warn('Personalized suggestions unlock after a confirmed diabetes diagnosis.');
+          navigate('/dashboard');
+        }
+      } catch (e) {
+        if (!mounted) return;
+        toast.error('Please sign in again to access personalized suggestions.');
+        navigate('/signin');
+      } finally {
+        if (mounted) setAuthChecked(true);
+      }
+    };
+
+    checkAccess();
+    return () => { mounted = false; };
+  }, [navigate]);
+
+  useEffect(() => {
+    if (isAuthorized) {
+      fetchCompletion();
+    }
+  }, [isAuthorized]);
 
   const fetchCompletion = async () => {
     try {
@@ -34,17 +69,37 @@ const PersonalizedSuggestionDashboard = () => {
     }
   };
 
+  const infoComplete = personalInfoCompletion >= 100;
+
   const sections = [
     { id: 'personal-medical', title: 'Personal & Medical Information', description: 'Manage your personal details and medical history', icon: <PersonIcon sx={{ fontSize: 40 }} />, color: '#2563eb', route: '/personalized-suggestions/personal-medical', completion: personalInfoCompletion, isActive: true },
-    { id: 'diet-plan', title: 'Diet Plan', description: 'AI-powered meal plans based on regional guidelines', icon: <RestaurantIcon sx={{ fontSize: 40 }} />, color: '#10b981', route: '/personalized-suggestions/diet-plan', completion: 0, isActive: true },
-    { id: 'exercise-plan', title: 'Exercise Plan', description: 'Customized fitness routines and workouts', icon: <FitnessCenterIcon sx={{ fontSize: 40 }} />, color: '#f59e0b', route: '/personalized-suggestions/exercise-plan', completion: 0, isActive: true },
-    { id: 'lifestyle-tips', title: 'Lifestyle Tips', description: 'Daily habits and wellness recommendations', icon: <LightbulbIcon sx={{ fontSize: 40 }} />, color: '#8b5cf6', route: '/personalized-suggestions/lifestyle-tips', completion: 0, isActive: true },
+    { id: 'diet-plan', title: 'Diet Plan', description: 'AI-powered meal plans based on regional guidelines', icon: <RestaurantIcon sx={{ fontSize: 40 }} />, color: '#10b981', route: '/personalized-suggestions/diet-plan', completion: 0, isActive: infoComplete },
+    { id: 'exercise-plan', title: 'Exercise Plan', description: 'Customized fitness routines and workouts', icon: <FitnessCenterIcon sx={{ fontSize: 40 }} />, color: '#f59e0b', route: '/personalized-suggestions/exercise-plan', completion: 0, isActive: infoComplete },
+    { id: 'lifestyle-tips', title: 'Lifestyle Tips', description: 'Daily habits and wellness recommendations', icon: <LightbulbIcon sx={{ fontSize: 40 }} />, color: '#8b5cf6', route: '/personalized-suggestions/lifestyle-tips', completion: 0, isActive: infoComplete },
     { id: 'pro-tips', title: 'Pro Tips', description: 'Expert advice and best practices', icon: <EmojiEventsIcon sx={{ fontSize: 40 }} />, color: '#ec4899', route: '/personalized-suggestions/pro-tips', completion: 0, isActive: false },
-    { id: 'chat-assistant', title: 'Chat Assistant', description: 'Get instant answers from AI assistant', icon: <ChatIcon sx={{ fontSize: 40 }} />, color: '#06b6d4', route: '/personalized-suggestions/chat-assistant', completion: 0, isActive: true },
+    { id: 'chat-assistant', title: 'Chat Assistant', description: 'Get instant answers from AI assistant', icon: <ChatIcon sx={{ fontSize: 40 }} />, color: '#06b6d4', route: '/personalized-suggestions/chat-assistant', completion: 0, isActive: infoComplete },
   ];
 
-  const handleClick = (section) => navigate(section.route, { state: { from: 'dashboard' } });
+  const handleClick = (section) => {
+    if (!section.isActive) {
+      toast.info('Complete your Personal & Medical Information to unlock this section.');
+      return;
+    }
+    navigate(section.route, { state: { from: 'dashboard' } });
+  };
   const columns = isSm ? '1fr' : (isMd ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)');
+
+  if (!authChecked) {
+    return (
+      <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f8fafc' }}>
+        <Typography variant="body1" color="text.secondary">Loading personalized suggestions...</Typography>
+      </Box>
+    );
+  }
+
+  if (authChecked && !isAuthorized) {
+    return null;
+  }
 
   return (
     <Box sx={{ 
@@ -225,7 +280,7 @@ const PersonalizedSuggestionDashboard = () => {
         </Box>
 
         <Box sx={{ mt: 5, p: 3, bgcolor: '#f0f9ff', borderRadius: 2, textAlign: 'center' }}>
-          <Typography variant="body2" color="text.secondary">💡 Start by completing your Personal & Medical Information to unlock personalized recommendations</Typography>
+          <Typography variant="body2" color="text.secondary">💡 Complete your Personal & Medical Information to unlock diet, exercise, lifestyle tips, and chat.</Typography>
         </Box>
       </Container>
     </Box>

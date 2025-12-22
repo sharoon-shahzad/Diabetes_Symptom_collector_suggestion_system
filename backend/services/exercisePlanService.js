@@ -78,12 +78,20 @@ class ExercisePlanService {
     try {
       const aiResponse = await this.callLMStudio(prompt);
       structured = this.parseExercisePlan(aiResponse);
+      console.log('✅ Exercise plan parsed successfully:', JSON.stringify(structured, null, 2));
     } catch (lmError) {
       console.warn('⚠️  LM Studio unavailable or timed out, using fallback exercise plan generator');
+      console.error('LM Error details:', lmError.message);
       structured = this.generateFallbackExercisePlan(personal, medical);
     }
 
+    if (!structured || !structured.sessions || structured.sessions.length === 0) {
+      console.error('❌ No valid exercise sessions generated');
+      throw new Error('Failed to generate exercise plan: No valid sessions created');
+    }
+
     const totals = this.calculateTotals(structured.sessions, personal.weight);
+    console.log('✅ Calculated totals:', totals);
 
     const plan = new ExercisePlan({
       user_id: userId,
@@ -96,9 +104,16 @@ class ExercisePlanService {
       status: 'pending',
       generated_at: new Date()
     });
+    
+    console.log('💾 Saving exercise plan to database...');
     await plan.save();
+    console.log('✅ Exercise plan saved successfully');
 
     return { success: true, plan, region_coverage: regionCoverage };
+  } catch (error) {
+    console.error('❌ Error in generateExercisePlan:', error.message);
+    console.error('Stack trace:', error.stack);
+    throw error;
   }
 
   async queryRegionalExercise(region) {
@@ -212,15 +227,34 @@ class ExercisePlanService {
         const parsed = JSON.parse(text);
         if (!parsed.sessions || !Array.isArray(parsed.sessions)) throw new Error('Invalid sessions structure');
         parsed.sessions = parsed.sessions.map(s => {
-          const items = (s.items||[]).map(i => {
+          const sessionType = (s.type || '').toLowerCase();
+          const items = (s.items||[])
+            .filter(i => i && i.exercise && i.exercise.trim().length > 0) // Filter out invalid items
+            .map(i => {
             const duration = this.parseNumber(i.duration_min);
             const mets = this.parseNumber(i.mets);
             const estCals = this.parseNumber(i.estimated_calories);
+
+            // Ensure intensity is always present for Mongoose validation
+            let intensity = i.intensity;
+            const category = (i.category || '').toLowerCase();
+            if (!intensity) {
+              if (category.includes('flex') || sessionType.includes('flex')) {
+                intensity = 'Low';
+              } else if (category.includes('strength') || category.includes('resistance')) {
+                intensity = 'Moderate';
+              } else if (category.includes('aerobic') || sessionType.includes('aerobic') || category.includes('cardio')) {
+                intensity = 'Moderate';
+              } else {
+                intensity = 'Moderate';
+              }
+            }
+
             return {
-              exercise: i.exercise,
-              category: i.category,
+              exercise: i.exercise.trim(),
+              category: i.category || 'General',
               duration_min: duration,
-              intensity: i.intensity,
+              intensity,
               mets,
               estimated_calories: estCals,
               heart_rate_zone: i.heart_rate_zone,
@@ -302,7 +336,8 @@ class ExercisePlanService {
     }
 
     console.error('❌ All parsing attempts failed. Response preview:', aiResponse?.substring(0, 200));
-    throw new Error('Unable to parse exercise plan from AI response. LM Studio may not be returning valid JSON.');
+    console.error('Full response for debugging:', aiResponse);
+    throw new Error('Unable to parse exercise plan from AI response. LM Studio may not be returning valid JSON. Check logs for full response.');
   }
 
   calculateTotals(sessions, weightKg) {

@@ -1,6 +1,7 @@
 import { UsersAnswers } from '../models/Users_Answers.js';
 import { Question } from '../models/Question.js';
 import { Symptom } from '../models/Symptom.js';
+import { User } from '../models/User.js';
 import { assessDiabetesRiskPython } from '../services/mlService.js';
 
 // Map stored answers to model features expected by EnhancedDiabetesSystem
@@ -25,50 +26,90 @@ function mapAnswersToFeatures(answersByQuestionId, questions) {
     Alopecia: 0,
   };
 
-  const symptomNameToFeature = {
-    'Polyuria': 'Polyuria',
-    'Polydipsia': 'Polydipsia',
-    'sudden weight loss': 'sudden weight loss',
-    'weakness': 'weakness',
-    'Polyphagia': 'Polyphagia',
-    'Genital thrush': 'Genital thrush',
-    'visual blurring': 'visual blurring',
-    'Itching': 'Itching',
-    'Irritability': 'Irritability',
-    'delayed healing': 'delayed healing',
-    'partial paresis': 'partial paresis',
-    'muscle stiffness': 'muscle stiffness',
-    'Alopecia': 'Alopecia',
+  // Helper: interpret "yes-like" responses
+  const yesLike = (text) => /yes|often|severe|every|frequent|always/i.test(text || '');
+
+  // Map symptom category names (seeded as Symptom.name) to features
+  // These are the high-level groups from seed.js (e.g. "Urination Patterns")
+  const symptomCategoryToFeature = {
+    'urination patterns': 'Polyuria',
+    'thirst and hydration': 'Polydipsia',
+    'weight changes': 'sudden weight loss',
+    'energy levels': 'weakness',
+    'appetite changes': 'Polyphagia',
+    infections: 'Genital thrush',
+    'vision changes': 'visual blurring',
+    'skin changes': 'Itching',
+    'mood changes': 'Irritability',
+    'wound healing': 'delayed healing',
+    'muscle conditions': null, // handled via question-text patterns below
+    'hair conditions': 'Alopecia',
   };
+
+  // Detailed patterns based on question text
+  const featurePatterns = [
+    { feature: 'Polyuria', patterns: [/polyuria/i, /frequent urination/i] },
+    { feature: 'Polydipsia', patterns: [/polydipsia/i, /excessive thirst/i] },
+    { feature: 'sudden weight loss', patterns: [/sudden weight loss/i] },
+    { feature: 'weakness', patterns: [/weak|fatigued|fatigue|tired/i, /energy levels?/i] },
+    { feature: 'Polyphagia', patterns: [/polyphagia/i, /increased hunger|always hungry|very hungry/i] },
+    { feature: 'Genital thrush', patterns: [/genital thrush/i, /genital.*yeast|yeast infection/i] },
+    { feature: 'visual blurring', patterns: [/visual blurring/i, /blurred vision|vision changes?/i] },
+    { feature: 'Itching', patterns: [/itching|itchy/i] },
+    { feature: 'Irritability', patterns: [/irritable|irritability|mood changes?/i] },
+    { feature: 'delayed healing', patterns: [/delayed healing/i, /wounds? take longer to heal/i, /slow healing/i] },
+    { feature: 'partial paresis', patterns: [/partial paresis/i, /muscle weakness/i] },
+    { feature: 'muscle stiffness', patterns: [/muscle stiffness/i] },
+    { feature: 'Alopecia', patterns: [/alopecia/i, /hair loss|hair fall/i] },
+  ];
 
   for (const q of questions) {
     const ans = answersByQuestionId.get(String(q._id));
     if (!ans) continue;
-    const text = (ans.answer_id?.answer_text || '').toString().trim();
 
-    // Age and Gender and Obesity come from General Health category questions seeded under symptom General Health
-    if (/what is your age\?/i.test(q.question_text)) {
-      const num = parseInt(text, 10);
-      if (!Number.isNaN(num)) features.Age = num;
+    const text = (ans.answer_id?.answer_text || '').toString().trim();
+    const questionText = (q.question_text || '').toString();
+    const symptomName = q.symptom_id?.name ? q.symptom_id.name.toString().trim().toLowerCase() : '';
+
+    // Age: any question mentioning age; extract first number from answer
+    if (/age/i.test(questionText)) {
+      const match = text.match(/\d+/);
+      if (match) {
+        const num = parseInt(match[0], 10);
+        if (!Number.isNaN(num)) features.Age = num;
+      }
       continue;
     }
-    if (/what is your biological sex\?/i.test(q.question_text)) {
+
+    // Gender / Sex
+    if (/gender|sex/i.test(questionText)) {
       features.Gender = /male/i.test(text) ? 1 : 0;
       continue;
     }
-    if (/are you obese|bmi|weight|height/i.test(q.question_text)) {
-      // Simple heuristic: explicit Yes/No obesity question preferred
+
+    // Obesity / BMI / weight-related (future-proofed if such questions are added)
+    if (/obese|obesity|bmi|body mass index|overweight/i.test(questionText)) {
       if (/yes/i.test(text)) features.Obesity = 1;
       if (/no/i.test(text)) features.Obesity = 0;
       continue;
     }
 
-    // Map symptom presence yes/no from symptom name
-    if (q.symptom_id && q.symptom_id.name) {
-      const featureName = symptomNameToFeature[q.symptom_id.name];
-      if (featureName) {
-        features[featureName] = /yes|often|severe|every/i.test(text) ? 1 : 0;
+    // Try mapping via question-text patterns first (most precise)
+    let featureName = null;
+    for (const fp of featurePatterns) {
+      if (fp.patterns.some((re) => re.test(questionText))) {
+        featureName = fp.feature;
+        break;
       }
+    }
+
+    // If still not mapped, try using the high-level symptom category name
+    if (!featureName && symptomName) {
+      featureName = symptomCategoryToFeature[symptomName] || null;
+    }
+
+    if (featureName) {
+      features[featureName] = yesLike(text) ? 1 : 0;
     }
   }
 
@@ -105,6 +146,22 @@ export const assessDiabetes = async (req, res) => {
 
     const result = await assessDiabetesRiskPython(features);
     console.log('ML model result:', result);
+
+    // Persist latest assessment summary on the user for dashboard insights
+    try {
+      const riskLevelRaw = result?.risk_level || 'low';
+      const probabilityRaw = result?.diabetes_probability ?? 0;
+
+      await User.findByIdAndUpdate(userId, {
+        last_assessment_risk_level: typeof riskLevelRaw === 'string' ? riskLevelRaw : String(riskLevelRaw),
+        last_assessment_probability: Number(probabilityRaw) || 0,
+        last_assessment_at: new Date(),
+        // Reset popup handled flag so the new assessment can trigger a fresh prompt
+        last_assessment_popup_handled_at: null,
+      });
+    } catch (persistErr) {
+      console.error('Failed to persist latest assessment summary on user:', persistErr);
+    }
 
     // Check if the result contains an error
     if (result.error) {

@@ -16,7 +16,8 @@ import {
   Slider,
   Stack,
   Paper,
-  Button
+  Button,
+  Chip
 } from '@mui/material';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -259,16 +260,61 @@ const QuestionList = ({ symptomId, symptomName, isLoggedIn, onDataUpdated }) => 
   if (!questions.length) return <Typography color="success.main" sx={{ my: 2 }}>All questions completed for this symptom!</Typography>;
 
   return (
-    <Stack spacing={3} mt={2}>
+    <Stack spacing={3} mt={3}>
       {questions.map((question) => (
-        <Paper key={question._id} elevation={2} sx={{ p: 2, borderRadius: 2, bgcolor: 'background.paper', position: 'relative' }}>
-          <FormControl fullWidth>
-            <FormLabel sx={{ fontWeight: 600 }}>{question.question_text}</FormLabel>
-            {renderQuestion(question)}
-          </FormControl>
-          <Box mt={1}>
-            {success[question._id] && <Typography color="success.main" fontWeight={500}>Saved!</Typography>}
-            {saveError[question._id] && <Typography color="error.main" fontWeight={500}>{saveError[question._id]}</Typography>}
+        <Paper
+          key={question._id}
+          elevation={0}
+          sx={{
+            p: 3,
+            borderRadius: 3,
+            position: 'relative',
+            background: 'radial-gradient(circle at 0% 0%, #111827 0%, #020617 45%, #020617 100%)',
+            border: '1px solid rgba(148, 163, 184, 0.35)',
+            boxShadow: '0 24px 60px rgba(15, 23, 42, 0.65)',
+            overflow: 'hidden',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              inset: 0,
+              background:
+                'radial-gradient(circle at 10% 0%, rgba(59,130,246,0.18) 0, transparent 55%), radial-gradient(circle at 85% 100%, rgba(139,92,246,0.2) 0, transparent 55%)',
+              opacity: 0.9,
+              pointerEvents: 'none',
+            },
+          }}
+        >
+          <Box position="relative" zIndex={1}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
+              <FormControl fullWidth>
+                <FormLabel
+                  sx={{
+                    fontWeight: 700,
+                    fontSize: '1.05rem',
+                    color: '#e5e7eb',
+                    mb: 1,
+                  }}
+                >
+                  {question.question_text}
+                </FormLabel>
+                {renderQuestion(question)}
+              </FormControl>
+              {success[question._id] && (
+                <Chip
+                  label="Saved"
+                  color="success"
+                  size="small"
+                  sx={{ ml: 2, fontWeight: 600 }}
+                />
+              )}
+            </Box>
+            <Box mt={0.5}>
+              {saveError[question._id] && (
+                <Typography color="error.main" fontWeight={500} variant="body2">
+                  {saveError[question._id]}
+                </Typography>
+              )}
+            </Box>
           </Box>
         </Paper>
       ))}
@@ -282,7 +328,22 @@ const QuestionList = ({ symptomId, symptomName, isLoggedIn, onDataUpdated }) => 
             variant="contained"
             color="primary"
             size="large"
-            sx={{ borderRadius: 2, fontWeight: 700, textTransform: 'none', minWidth: 180 }}
+            sx={{
+              borderRadius: 999,
+              fontWeight: 800,
+              textTransform: 'none',
+              minWidth: 200,
+              px: 4,
+              py: 1.2,
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%)',
+              boxShadow: '0 14px 40px rgba(79, 70, 229, 0.55)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%)',
+                boxShadow: '0 18px 48px rgba(79, 70, 229, 0.7)',
+                transform: 'translateY(-1px)',
+              },
+              transition: 'all 0.25s ease-out',
+            }}
             onClick={handleSaveAll}
             disabled={globalSaving}
           >

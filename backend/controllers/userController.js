@@ -205,6 +205,7 @@ export const getMyDiseaseData = async (req, res) => {
                 symptomMap[symptomName] = [];
             }
             symptomMap[symptomName].push({
+                question_id: ua.question_id?._id,
                 question: ua.question_id?.question_text || 'Unknown Question',
                 answer: ua.answer_id?.answer_text || 'N/A',
                 date: ua.createdAt,

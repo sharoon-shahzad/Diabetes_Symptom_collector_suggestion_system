@@ -1176,13 +1176,13 @@ const LandingPage = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Phone sx={{ fontSize: 16, color: theme.palette.text.secondary }} />
                   <Typography variant="body2" color="text.secondary">
-                    +1 (555) 123-4567
+                    +92 300 1234567
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <LocationOn sx={{ fontSize: 16, color: theme.palette.text.secondary }} />
                   <Typography variant="body2" color="text.secondary">
-                    San Francisco, CA
+                    Islamabad, Pakistan
                   </Typography>
                 </Box>
               </Stack>
@@ -1191,7 +1191,7 @@ const LandingPage = () => {
           <Divider sx={{ my: 4 }} />
           <Box sx={{ textAlign: 'center' }}>
             <Typography variant="body2" color="text.secondary">
-              © 2024 DiaVise. All rights reserved. | Built with ❤️ for better health outcomes.
+              © 2024 DiaVise. All rights reserved. | Built for better health outcomes.
             </Typography>
           </Box>
         </Container>
