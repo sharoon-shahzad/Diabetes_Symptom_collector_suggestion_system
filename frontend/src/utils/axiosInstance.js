@@ -23,7 +23,12 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    
+    // Skip redirect for certain paths
+    const noRedirectPaths = ['/auth/login', '/auth/register', '/auth/refresh-token'];
+    const isNoRedirectPath = noRedirectPaths.some(path => originalRequest.url?.includes(path));
+    
+    if (error.response?.status === 401 && !originalRequest._retry && !isNoRedirectPath) {
       originalRequest._retry = true;
       try {
         // Try to refresh token
@@ -33,9 +38,12 @@ axiosInstance.interceptors.response.use(
           originalRequest.headers['Authorization'] = `Bearer ${res.data.data.accessToken}`;
           return axiosInstance(originalRequest);
         }
-      } catch {
-        // If refresh fails, redirect to login
-        window.location.href = '/signin';
+      } catch (refreshError) {
+        // If refresh fails, clear token and redirect to login
+        localStorage.removeItem('accessToken');
+        if (!window.location.pathname.includes('/signin')) {
+          window.location.href = '/signin';
+        }
       }
     }
     return Promise.reject(error);

@@ -28,6 +28,58 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
 
   if (!plan) return null;
 
+  // Calculate actual totals from meals dynamically
+  const calculateActualTotals = () => {
+    if (!plan.meals || !Array.isArray(plan.meals)) {
+      return {
+        calories: 0,
+        carbs: 0,
+        protein: 0,
+        fat: 0,
+        fiber: 0
+      };
+    }
+
+    const totals = {
+      calories: 0,
+      carbs: 0,
+      protein: 0,
+      fat: 0,
+      fiber: 0
+    };
+
+    plan.meals.forEach(meal => {
+      // Use meal.total_calories if available, otherwise sum from items
+      if (meal.total_calories) {
+        totals.calories += Number(meal.total_calories) || 0;
+      } else if (meal.items && Array.isArray(meal.items)) {
+        meal.items.forEach(item => {
+          totals.calories += Number(item.calories) || 0;
+        });
+      }
+
+      // Sum macros from items
+      if (meal.items && Array.isArray(meal.items)) {
+        meal.items.forEach(item => {
+          totals.carbs += Number(item.carbs) || 0;
+          totals.protein += Number(item.protein) || 0;
+          totals.fat += Number(item.fat) || 0;
+          totals.fiber += Number(item.fiber) || 0;
+        });
+      }
+    });
+
+    return {
+      calories: Math.round(totals.calories),
+      carbs: Math.round(totals.carbs * 10) / 10,
+      protein: Math.round(totals.protein * 10) / 10,
+      fat: Math.round(totals.fat * 10) / 10,
+      fiber: Math.round(totals.fiber * 10) / 10
+    };
+  };
+
+  const actualTotals = calculateActualTotals();
+
   const toggleMeal = (idx) => {
     setExpandedMeals(prev => ({ ...prev, [idx]: !prev[idx] }));
   };
@@ -166,7 +218,7 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
                 }}
               >
                 <Typography variant="h4" fontWeight="bold" color="primary">
-                  {plan.nutritional_totals?.calories || plan.total_calories}
+                  {actualTotals.calories}
                 </Typography>
                 <Typography variant="body2" color="primary" sx={{ mt: 0.5, fontWeight: 600 }}>
                   Calories (kcal)
@@ -185,7 +237,7 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
                 }}
               >
                 <Typography variant="h4" fontWeight="bold" sx={{ color: '#2e7d32' }}>
-                  {plan.nutritional_totals?.carbs || 0}g
+                  {actualTotals.carbs}g
                 </Typography>
                 <Typography variant="body2" sx={{ color: '#2e7d32', mt: 0.5, fontWeight: 600 }}>
                   Carbohydrates
@@ -204,7 +256,7 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
                 }}
               >
                 <Typography variant="h4" fontWeight="bold" sx={{ color: '#9c27b0' }}>
-                  {plan.nutritional_totals?.protein || 0}g
+                  {actualTotals.protein}g
                 </Typography>
                 <Typography variant="body2" sx={{ color: '#9c27b0', mt: 0.5, fontWeight: 600 }}>
                   Protein
@@ -223,7 +275,7 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
                 }}
               >
                 <Typography variant="h4" fontWeight="bold" sx={{ color: '#ed6c02' }}>
-                  {plan.nutritional_totals?.fat || 0}g
+                  {actualTotals.fat}g
                 </Typography>
                 <Typography variant="body2" sx={{ color: '#ed6c02', mt: 0.5, fontWeight: 600 }}>
                   Fat
@@ -232,10 +284,10 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
             </Grid>
           </Grid>
 
-          {plan.nutritional_totals?.fiber && (
+          {actualTotals.fiber > 0 && (
             <Box mt={3} textAlign="center">
               <Chip 
-                label={`Fiber: ${plan.nutritional_totals.fiber}g`} 
+                label={`Fiber: ${actualTotals.fiber}g`} 
                 sx={{ bgcolor: '#4caf50', color: 'white', fontWeight: 600, px: 2, py: 2.5 }}
               />
             </Box>
@@ -247,6 +299,12 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
         {plan.meals && plan.meals.map((meal, index) => {
           const borderColor = getMealBorderColor(index);
           const isExpanded = expandedMeals[index];
+          
+          // Calculate meal total from items if not available
+          const mealCalories = meal.total_calories || 
+            (meal.items && Array.isArray(meal.items) 
+              ? meal.items.reduce((sum, item) => sum + (Number(item.calories) || 0), 0)
+              : 0);
           
           return (
             <Paper 
@@ -286,7 +344,7 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
                   )}
                 </Box>
                 <Chip 
-                  label={`${meal.total_calories || 0} kcal`}
+                  label={`${Math.round(mealCalories)} kcal`}
                   sx={{ bgcolor: borderColor, color: 'white', fontWeight: 600 }}
                 />
                 <IconButton

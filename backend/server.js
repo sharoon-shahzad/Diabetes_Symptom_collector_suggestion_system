@@ -39,10 +39,13 @@ app.use(cors({
   origin: [
     'http://localhost:5173',
     'http://localhost:5174',
+    'http://192.168.1.19:8081', // Expo dev server
+    'exp://192.168.1.19:8081', // Expo protocol
     process.env.FRONTEND_URL
   ].filter(Boolean),
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
 }));
 
 // Add logging middleware

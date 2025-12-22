@@ -1,4 +1,5 @@
 import { Symptom } from '../models/Symptom.js';
+import { Disease } from '../models/Disease.js';
 import mongoose from 'mongoose';
 
 // Get all symptoms for a disease
@@ -6,8 +7,22 @@ export const getSymptomsByDisease = async (req, res) => {
   try {
     const { diseaseId } = req.params;
     console.log('Fetching symptoms for diseaseId:', diseaseId);
-    const symptoms = await Symptom.find({ disease_id: new mongoose.Types.ObjectId(diseaseId), deleted_at: null });
-    console.log('Symptoms found:', symptoms);
+    
+    let disease;
+    // Check if diseaseId is a valid ObjectId or a disease name
+    if (mongoose.Types.ObjectId.isValid(diseaseId)) {
+      disease = await Disease.findById(diseaseId);
+    } else {
+      // Try to find by name
+      disease = await Disease.findOne({ name: new RegExp(`^${diseaseId}$`, 'i') });
+    }
+    
+    if (!disease) {
+      return res.status(404).json({ success: false, message: 'Disease not found' });
+    }
+    
+    const symptoms = await Symptom.find({ disease_id: disease._id, deleted_at: null });
+    console.log('Symptoms found:', symptoms.length);
     res.json({ success: true, data: symptoms });
   } catch (err) {
     console.error('Error in getSymptomsByDisease:', err);

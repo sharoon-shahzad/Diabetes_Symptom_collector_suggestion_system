@@ -200,9 +200,14 @@ export const login = async (req, res) => {
                     id: user._id,
                     fullName: user.fullName,
                     email: user.email,
+                    phone_number: user.phone_number,
+                    country: user.country,
+                    country_code: user.country_code,
                     roles: roles,
                     diabetes_diagnosed: user.diabetes_diagnosed,
                     onboardingCompleted: user.onboardingCompleted,
+                    createdAt: user.createdAt,
+                    updatedAt: user.updatedAt,
                 },
                 accessToken,
                 refreshToken
@@ -326,9 +331,17 @@ export const getCurrentUser = async (req, res) => {
                     id: user._id,
                     fullName: user.fullName,
                     email: user.email,
+                    phone_number: user.phone_number,
+                    country: user.country,
+                    country_code: user.country_code,
                     isActivated: user.isActivated,
                     diabetes_diagnosed: user.diabetes_diagnosed,
                     onboardingCompleted: user.onboardingCompleted,
+                    last_assessment_risk_level: user.last_assessment_risk_level,
+                    last_assessment_probability: user.last_assessment_probability,
+                    last_assessment_at: user.last_assessment_at,
+                    createdAt: user.createdAt,
+                    updatedAt: user.updatedAt,
                 }
             }
         });

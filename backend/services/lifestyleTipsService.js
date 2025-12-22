@@ -1,5 +1,7 @@
 import LifestyleTip from '../models/LifestyleTip.js';
 import { User } from '../models/User.js';
+import { UserPersonalInfo } from '../models/UserPersonalInfo.js';
+import { UserMedicalInfo } from '../models/UserMedicalInfo.js';
 import { processQuery } from './queryService.js';
 import axios from 'axios';
 
@@ -19,36 +21,55 @@ async function isLmStudioHealthy() {
 class LifestyleTipsService {
   async generateLifestyleTips(userId, targetDate) {
     try {
+      console.log(`📋 Generating lifestyle tips for userId: ${userId}, targetDate: ${targetDate}`);
+      
       // Get user profile
       const user = await User.findById(userId);
       if (!user) throw new Error('User not found');
+      console.log(`✅ User found: ${user.email}`);
 
-      const personalInfo = user.personalInfo || {};
-      const medicalInfo = user.medicalInfo || {};
+      // Fetch personal and medical info from separate collections
+      const personalInfoDoc = await UserPersonalInfo.findOne({ user_id: userId });
+      const medicalInfoDoc = await UserMedicalInfo.findOne({ user_id: userId });
+      console.log(`📊 PersonalInfo found: ${!!personalInfoDoc}, MedicalInfo found: ${!!medicalInfoDoc}`);
+
+      const personalInfo = personalInfoDoc ? personalInfoDoc.toObject() : {};
+      const medicalInfo = medicalInfoDoc ? medicalInfoDoc.toObject() : {};
 
       // Check if tips already exist for this date
+      const targetDateObj = new Date(targetDate);
+      targetDateObj.setHours(0, 0, 0, 0);
+      
       const existingTips = await LifestyleTip.findOne({
         user_id: userId,
-        target_date: new Date(targetDate).toDateString(),
+        target_date: targetDateObj,
       });
       if (existingTips) throw new Error('Tips already exist for this date');
 
       // Get region from user profile or personal info
-      const region = user.region || medicalInfo.region || 'Global';
+      const region = user.country || 'Global';
 
       // Get regional lifestyle guidelines
+      console.log(`🌍 Getting regional guidelines for: ${region}`);
       const guidelinesContext = await this.queryRegionalLifestyleGuidelines(region);
+      console.log(`✅ Guidelines retrieved: ${guidelinesContext.chunks?.length || 0} chunks`);
 
       // Build personalized prompt
       const prompt = this.buildLifestylePrompt(personalInfo, medicalInfo, guidelinesContext, targetDate);
+      console.log(`📝 Prompt built, length: ${prompt.length}`);
 
       // Call LM Studio (with graceful fallback)
       let parsedTips;
       let source = 'lm-studio';
       try {
+        console.log(`🤖 Calling LM Studio...`);
         const aiResponse = await this.callLMStudio(prompt);
+        console.log(`✅ LM Studio response received, length: ${aiResponse.length}`);
         parsedTips = this.parseLifestyleTips(aiResponse);
+        console.log(`✅ Tips parsed successfully:`, JSON.stringify(parsedTips, null, 2));
       } catch (e) {
+        console.warn('⚠️ LM Studio unavailable, using fallback tips');
+        console.error('LM Studio error:', e.message);
         // Build a minimal parsedTips using fallback
         parsedTips = {
           categories: [
@@ -84,10 +105,17 @@ class LifestyleTipsService {
         source = 'fallback';
       }
 
+      // Validate parsed tips
+      if (!parsedTips || !parsedTips.categories || parsedTips.categories.length === 0) {
+        console.error('❌ No valid tips generated');
+        throw new Error('Failed to generate lifestyle tips: No valid categories created');
+      }
+      console.log(`✅ ${parsedTips.categories.length} categories generated`);
+
       // Create and save tips
       const tips = new LifestyleTip({
         user_id: userId,
-        target_date: new Date(targetDate),
+        target_date: targetDateObj,
         region,
         categories: parsedTips.categories,
         personalized_insights: parsedTips.personalized_insights,
@@ -96,7 +124,9 @@ class LifestyleTipsService {
         source,
       });
 
+      console.log('💾 Saving lifestyle tips to database...');
       await tips.save();
+      console.log('✅ Lifestyle tips saved successfully');
 
       return {
         success: true,
@@ -110,6 +140,8 @@ class LifestyleTipsService {
         },
       };
     } catch (error) {
+      console.error('❌ Error in generateLifestyleTips:', error);
+      console.error('❌ Error stack:', error.stack);
       throw new Error(`Failed to generate lifestyle tips: ${error.message}`);
     }
   }
@@ -220,6 +252,7 @@ IMPORTANT: Respond ONLY with valid JSON, no markdown, no code blocks. Use this e
   }
 
   parseLifestyleTips(aiResponse) {
+    console.log(`📝 Parsing lifestyle tips, response length: ${aiResponse?.length || 0}`);
     try {
       // Try to extract JSON from response
       let jsonStr = aiResponse;
@@ -227,17 +260,25 @@ IMPORTANT: Respond ONLY with valid JSON, no markdown, no code blocks. Use this e
       // If response is wrapped in markdown code blocks, extract it
       if (aiResponse.includes('```json')) {
         const match = aiResponse.match(/```json\n?([\s\S]*?)\n?```/);
-        if (match) jsonStr = match[1];
+        if (match) {
+          jsonStr = match[1];
+          console.log('✅ Extracted JSON from markdown code block');
+        }
       } else if (aiResponse.includes('```')) {
         const match = aiResponse.match(/```\n?([\s\S]*?)\n?```/);
-        if (match) jsonStr = match[1];
+        if (match) {
+          jsonStr = match[1];
+          console.log('✅ Extracted JSON from generic code block');
+        }
       }
 
       const parsed = JSON.parse(jsonStr);
+      console.log('✅ JSON parsed successfully');
 
       // Validate and structure
       const categories = parsed.categories || [];
       const personalized_insights = parsed.personalized_insights || [];
+      console.log(`📊 Found ${categories.length} categories, ${personalized_insights.length} insights`);
 
       return {
         categories: categories.map((cat) => ({
@@ -252,6 +293,8 @@ IMPORTANT: Respond ONLY with valid JSON, no markdown, no code blocks. Use this e
         personalized_insights,
       };
     } catch (error) {
+      console.error('❌ Failed to parse lifestyle tips:', error.message);
+      console.error('Response preview:', aiResponse?.substring(0, 500));
       throw new Error(`Failed to parse AI response: ${error.message}`);
     }
   }
