@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   View, 
   StyleSheet, 
@@ -20,22 +20,15 @@ import { useTheme } from '../contexts/ThemeContext';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 
-const SignupScreenNew = () => {
+const LoginScreenNew = () => {
   const navigation = useNavigation();
-  const { register } = useAuth();
+  const { login } = useAuth();
   const { theme } = useTheme();
 
-  const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    gender: '',
-    date_of_birth: '',
-  });
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -57,42 +50,19 @@ const SignupScreenNew = () => {
     ]).start();
   }, []);
 
-  const updateField = (field, value) => {
-    setFormData({ ...formData, [field]: value });
-    setErrors({ ...errors, [field]: '' });
-  };
-
   const validate = () => {
     const newErrors = {};
     
-    if (!formData.fullName.trim()) {
-      newErrors.fullName = 'Full name is required';
-    }
-    
-    if (!formData.email) {
+    if (!email) {
       newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
       newErrors.email = 'Please enter a valid email address';
     }
     
-    if (!formData.password) {
+    if (!password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
+    } else if (password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
-    }
-    
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-    
-    if (!formData.gender) {
-      newErrors.gender = 'Please select your gender';
-    }
-    
-    if (!formData.date_of_birth) {
-      newErrors.date_of_birth = 'Date of birth is required';
     }
     
     setErrors(newErrors);
@@ -104,22 +74,24 @@ const SignupScreenNew = () => {
     
     setLoading(true);
     try {
-      const registrationData = {
-        fullName: formData.fullName,
-        email: formData.email,
-        password: formData.password,
-        gender: formData.gender,
-        date_of_birth: formData.date_of_birth,
-      };
-      await register(registrationData);
-      Alert.alert(
-        'Success',
-        'Account created successfully! Please check your email to activate your account.',
-        [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
-      );
+      await login(email, password);
+      navigation.replace('Dashboard');
     } catch (err) {
-      console.log('Signup error:', err);
-      Alert.alert('Error', err.response?.data?.message || 'Registration failed. Please try again.');
+      console.log('Login error:', err);
+      
+      let errorMessage = 'Login failed. Please try again.';
+      
+      if (err.message === 'Network Error' || !err.response) {
+        errorMessage = '⚠️ Cannot connect to server.\n\nPlease ensure:\n1. Backend server is running\n2. You are connected to the same network\n3. Firewall allows the connection';
+      } else if (err.response?.status === 401) {
+        errorMessage = 'Invalid email or password. Please check your credentials.';
+      } else if (err.response?.status === 404) {
+        errorMessage = 'Account not found. Please sign up first.';
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
+      
+      Alert.alert('Login Failed', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -163,40 +135,33 @@ const SignupScreenNew = () => {
               </TouchableOpacity>
               
               <LinearGradient
-                colors={['#10b981', '#059669', '#047857']}
+                colors={['#3b82f6', '#2563eb', '#1e40af']}
                 style={styles.iconContainer}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
                 <View style={styles.iconRing}>
-                  <Ionicons name="person-add" size={28} color="#ffffff" />
+                  <Ionicons name="lock-closed" size={28} color="#ffffff" />
                 </View>
               </LinearGradient>
               
               <Text style={styles.title}>
-                Create Account
+                Welcome Back!
               </Text>
               <Text style={styles.subtitle}>
-                Join thousands improving their health
+                Sign in to continue your health journey
               </Text>
             </View>
 
             {/* Form */}
             <View style={styles.form}>
               <Input
-                label="Full Name"
-                value={formData.fullName}
-                onChangeText={(text) => updateField('fullName', text)}
-                placeholder="John Doe"
-                autoCapitalize="words"
-                error={errors.fullName}
-                leftIcon={<Ionicons name="person-outline" size={20} color={theme.colors.text.hint} />}
-              />
-
-              <Input
                 label="Email Address"
-                value={formData.email}
-                onChangeText={(text) => updateField('email', text)}
+                value={email}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  setErrors({ ...errors, email: '' });
+                }}
                 placeholder="your@email.com"
                 keyboardType="email-address"
                 autoCapitalize="none"
@@ -206,9 +171,12 @@ const SignupScreenNew = () => {
 
               <Input
                 label="Password"
-                value={formData.password}
-                onChangeText={(text) => updateField('password', text)}
-                placeholder="At least 6 characters"
+                value={password}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  setErrors({ ...errors, password: '' });
+                }}
+                placeholder="Enter your password"
                 secureTextEntry={!showPassword}
                 error={errors.password}
                 leftIcon={<Ionicons name="lock-closed-outline" size={20} color={theme.colors.text.hint} />}
@@ -223,57 +191,25 @@ const SignupScreenNew = () => {
                 }
               />
 
-              <Input
-                label="Confirm Password"
-                value={formData.confirmPassword}
-                onChangeText={(text) => updateField('confirmPassword', text)}
-                placeholder="Re-enter your password"
-                secureTextEntry={!showConfirmPassword}
-                error={errors.confirmPassword}
-                leftIcon={<Ionicons name="lock-closed-outline" size={20} color={theme.colors.text.hint} />}
-                rightIcon={
-                  <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-                    <Ionicons
-                      name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
-                      size={20}
-                      color={theme.colors.text.hint}
-                    />
-                  </TouchableOpacity>
-                }
-              />
-
-              <Input
-                label="Gender"
-                value={formData.gender}
-                onChangeText={(text) => updateField('gender', text)}
-                placeholder="Male or Female"
-                error={errors.gender}
-                leftIcon={<Ionicons name="male-female-outline" size={20} color={theme.colors.text.hint} />}
-              />
-
-              <Input
-                label="Date of Birth"
-                value={formData.date_of_birth}
-                onChangeText={(text) => updateField('date_of_birth', text)}
-                placeholder="YYYY-MM-DD"
-                error={errors.date_of_birth}
-                leftIcon={<Ionicons name="calendar-outline" size={20} color={theme.colors.text.hint} />}
-              />
+              <TouchableOpacity style={styles.forgotPassword}>
+                <Text style={styles.forgotPasswordText}>
+                  Forgot Password?
+                </Text>
+              </TouchableOpacity>
 
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={handleSubmit}
                 disabled={loading}
-                style={styles.submitButton}
               >
                 <LinearGradient
-                  colors={['#10b981', '#059669']}
-                  style={styles.submitButtonGradient}
+                  colors={['#3b82f6', '#2563eb']}
+                  style={styles.submitButton}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                 >
                   <Text style={styles.submitButtonText}>
-                    {loading ? 'Creating Account...' : 'Create Account'}
+                    {loading ? 'Signing In...' : 'Sign In'}
                   </Text>
                   {!loading && <Ionicons name="arrow-forward" size={18} color="#ffffff" />}
                 </LinearGradient>
@@ -283,14 +219,14 @@ const SignupScreenNew = () => {
             {/* Footer */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>
-                Already have an account?{' '}
+                Don't have an account?{' '}
               </Text>
               <TouchableOpacity 
-                onPress={() => navigation.navigate('Login')}
+                onPress={() => navigation.navigate('Signup')}
                 style={styles.footerLink}
               >
                 <Text style={styles.footerLinkText}>
-                  Sign In
+                  Sign Up
                 </Text>
               </TouchableOpacity>
             </View>
@@ -319,7 +255,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 36,
   },
   backButton: {
     position: 'absolute',
@@ -349,7 +285,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
-    shadowColor: '#10b981',
+    shadowColor: '#3b82f6',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 12,
@@ -377,18 +313,25 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   form: {
-    marginBottom: 24,
+    marginBottom: 28,
+  },
+  forgotPassword: {
+    alignSelf: 'flex-end',
+    marginBottom: 20,
+    marginTop: -6,
+  },
+  forgotPasswordText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#3b82f6',
   },
   submitButton: {
-    marginTop: 8,
-  },
-  submitButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
     borderRadius: 14,
-    shadowColor: '#10b981',
+    shadowColor: '#3b82f6',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -416,8 +359,8 @@ const styles = StyleSheet.create({
   footerLinkText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#10b981',
+    color: '#3b82f6',
   },
 });
 
-export default SignupScreenNew;
+export default LoginScreenNew;
