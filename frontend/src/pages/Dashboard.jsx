@@ -1363,7 +1363,7 @@ export default function Dashboard() {
                       {/* Daily Calorie Tracking */}
                       <Grid item xs={12} md={6}>
                         <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`, height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha(t.palette.primary.main, 0.08)}`, borderColor: (t) => alpha(t.palette.primary.main, 0.2) } }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, flexWrap: 'wrap', gap: 1 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, flexWrap: 'wrap', gap: 1, minWidth: '400px' }}>
                             <Typography variant="subtitle1" fontWeight={700} sx={{ fontSize: '1rem' }}>Calorie Distribution</Typography>
                             <ToggleButtonGroup
                               value={nutritionTimeRange}
@@ -1410,7 +1410,7 @@ export default function Dashboard() {
                       {/* Carbohydrate Tracking */}
                       <Grid item xs={12} md={6}>
                         <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`, height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha(t.palette.warning.main, 0.08)}`, borderColor: (t) => alpha(t.palette.warning.main, 0.2) } }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, flexWrap: 'wrap', gap: 1 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, flexWrap: 'wrap', gap: 1, minWidth: '400px' }}>
                             <Typography variant="subtitle1" fontWeight={700} sx={{ fontSize: '1rem' }}>Carbohydrate Trends</Typography>
                             <ToggleButtonGroup
                               value={nutritionTimeRange}
@@ -1456,36 +1456,36 @@ export default function Dashboard() {
 
                       {/* Macronutrient Distribution Pie Chart */}
                       <Grid item xs={12} md={6}>
-                        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`, height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha(t.palette.primary.main, 0.08)}`, borderColor: (t) => alpha(t.palette.primary.main, 0.2) } }}>
-                          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2.5, fontSize: '1rem' }}>Macronutrient Balance</Typography>
-                          <Box sx={{ display: 'grid', gap: 1.5 }}>
+                        <Paper elevation={0} sx={{ p: 4, borderRadius: 3, border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`, height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha(t.palette.primary.main, 0.08)}`, borderColor: (t) => alpha(t.palette.primary.main, 0.2) } }}>
+                          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 3, fontSize: '1.1rem' }}>Macronutrient Balance</Typography>
+                          <Box sx={{ display: 'grid', gap: 2.5, minWidth: '390px' }}>
                             <Box>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.75 }}>
-                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.8rem', fontWeight: 500 }}>Carbohydrates</Typography>
-                                <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.8rem' }}>45%</Typography>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.95rem', fontWeight: 500 }}>Carbohydrates</Typography>
+                                <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.95rem' }}>45%</Typography>
                               </Box>
-                              <LinearProgress variant="determinate" value={45} sx={{ height: 10, borderRadius: 2, bgcolor: alpha('#f97316', 0.12), '& .MuiLinearProgress-bar': { bgcolor: '#f97316', borderRadius: 2, transition: 'transform 0.4s ease' } }} />
+                              <LinearProgress variant="determinate" value={45} sx={{ height: 14, borderRadius: 2, bgcolor: alpha('#f97316', 0.12), '& .MuiLinearProgress-bar': { bgcolor: '#f97316', borderRadius: 2, transition: 'transform 0.4s ease' } }} />
                             </Box>
                             <Box>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.75 }}>
-                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.8rem', fontWeight: 500 }}>Proteins</Typography>
-                                <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.8rem' }}>30%</Typography>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.95rem', fontWeight: 500 }}>Proteins</Typography>
+                                <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.95rem' }}>30%</Typography>
                               </Box>
-                              <LinearProgress variant="determinate" value={30} sx={{ height: 10, borderRadius: 2, bgcolor: alpha('#3b82f6', 0.12), '& .MuiLinearProgress-bar': { bgcolor: '#3b82f6', borderRadius: 2, transition: 'transform 0.4s ease' } }} />
+                              <LinearProgress variant="determinate" value={30} sx={{ height: 14, borderRadius: 2, bgcolor: alpha('#3b82f6', 0.12), '& .MuiLinearProgress-bar': { bgcolor: '#3b82f6', borderRadius: 2, transition: 'transform 0.4s ease' } }} />
                             </Box>
                             <Box>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.75 }}>
-                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.8rem', fontWeight: 500 }}>Fats</Typography>
-                                <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.8rem' }}>20%</Typography>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.95rem', fontWeight: 500 }}>Fats</Typography>
+                                <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.95rem' }}>20%</Typography>
                               </Box>
-                              <LinearProgress variant="determinate" value={20} sx={{ height: 10, borderRadius: 2, bgcolor: alpha('#eab308', 0.12), '& .MuiLinearProgress-bar': { bgcolor: '#eab308', borderRadius: 2, transition: 'transform 0.4s ease' } }} />
+                              <LinearProgress variant="determinate" value={20} sx={{ height: 14, borderRadius: 2, bgcolor: alpha('#eab308', 0.12), '& .MuiLinearProgress-bar': { bgcolor: '#eab308', borderRadius: 2, transition: 'transform 0.4s ease' } }} />
                             </Box>
                             <Box>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.75 }}>
-                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.8rem', fontWeight: 500 }}>Fiber</Typography>
-                                <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.8rem' }}>5%</Typography>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.95rem', fontWeight: 500 }}>Fiber</Typography>
+                                <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.95rem' }}>5%</Typography>
                               </Box>
-                              <LinearProgress variant="determinate" value={5} sx={{ height: 10, borderRadius: 2, bgcolor: alpha('#10b981', 0.12), '& .MuiLinearProgress-bar': { bgcolor: '#10b981', borderRadius: 2, transition: 'transform 0.4s ease' } }} />
+                              <LinearProgress variant="determinate" value={5} sx={{ height: 14, borderRadius: 2, bgcolor: alpha('#10b981', 0.12), '& .MuiLinearProgress-bar': { bgcolor: '#10b981', borderRadius: 2, transition: 'transform 0.4s ease' } }} />
                             </Box>
                           </Box>
                         </Paper>
@@ -1493,9 +1493,10 @@ export default function Dashboard() {
 
                       {/* Meal-Wise Calorie Distribution */}
                       <Grid item xs={12} md={6}>
-                        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`, height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha(t.palette.primary.main, 0.08)}`, borderColor: (t) => alpha(t.palette.primary.main, 0.2) } }}>
-                          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2.5, fontSize: '1rem' }}>Meal-Wise Distribution (Today)</Typography>
-                          <ResponsiveContainer width="100%" height={220}>
+                        <Paper elevation={0} sx={{ p: 4, borderRadius: 3, border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`, height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha(t.palette.primary.main, 0.08)}`, borderColor: (t) => alpha(t.palette.primary.main, 0.2) } }}>
+                          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 3, fontSize: '1.1rem' }}>Meal-Wise Distribution (Today)</Typography>
+                          <Box sx={{ minWidth: '390px' }}>
+                            <ResponsiveContainer width="100%" height={220}>
                             <ComposedChart data={[
                               { meal: 'Breakfast', calories: 420, protein: 18 },
                               { meal: 'Lunch', calories: 650, protein: 32 },
@@ -1512,6 +1513,7 @@ export default function Dashboard() {
                               <Line yAxisId="right" type="monotone" dataKey="protein" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} />
                             </ComposedChart>
                           </ResponsiveContainer>
+                          </Box>
                         </Paper>
                       </Grid>
                     </Grid>
