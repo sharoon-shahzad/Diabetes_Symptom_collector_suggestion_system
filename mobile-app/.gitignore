@@ -24,3 +24,15 @@ mobile-app/.env
 node_modules/
 chroma_db/chroma.sqlite3
 .DS_Store
+
+
+# Frontend Node modules
+frontend/node_modules/
+
+# Local database
+chroma_db/chroma.sqlite3
+
+# OS/system files
+.DS_Store
+Thumbs.db
+*.log

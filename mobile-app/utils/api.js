@@ -1,6 +1,7 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getBackendURL } from './ipDiscovery';
+import config from '../config';
 
 // Create a default axios instance that will be updated
 const api = axios.create({
@@ -50,24 +51,48 @@ async function initializeAPI() {
 
   try {
     console.log('🔍 Initializing API with IP discovery...');
-    const backendURL = await getBackendURL(true); // Use full scan
-    console.log('📡 API Base URL:', backendURL);
-
-    // Update the baseURL of the existing instance
-    api.defaults.baseURL = backendURL;
-
-    isInitialized = true;
-    return api;
+    
+    // Try configured IP first
+    if (config.BACKEND_IP) {
+      const configuredURL = config.API_URL;
+      console.log('📝 Testing configured IP:', configuredURL);
+      
+      try {
+        const response = await axios.get(`${configuredURL.replace('/api/v1', '')}/api/v1/server-info`, {
+          timeout: config.DISCOVERY_TIMEOUT
+        });
+        
+        if (response.data && response.data.success) {
+          api.defaults.baseURL = configuredURL;
+          console.log('✅ API initialized with configured URL:', configuredURL);
+          isInitialized = true;
+          return api;
+        }
+      } catch (error) {
+        console.log('⚠️ Configured IP not reachable, trying auto-discovery...');
+      }
+    }
+    
+    // Fall back to auto-discovery if enabled
+    if (config.ENABLE_AUTO_DISCOVERY) {
+      const backendURL = await getBackendURL(true); // Use full scan
+      console.log('📡 API Base URL:', backendURL);
+      api.defaults.baseURL = backendURL;
+      isInitialized = true;
+      return api;
+    }
+    
+    throw new Error('Cannot connect to backend and auto-discovery is disabled');
   } catch (error) {
     console.error('❌ Failed to initialize API:', error.message);
-    // Don't use fallback - throw error to user
     isInitialized = false;
     throw new Error(
       'Cannot connect to backend server.\n\n' +
       'Please ensure:\n' +
       '• Backend server is running on port 5000\n' +
       '• Both devices are on the same WiFi network\n' +
-      '• Firewall is not blocking connections\n\n' +
+      '• Firewall is not blocking connections\n' +
+      '• Update BACKEND_IP in config.js if needed\n\n' +
       'Error: ' + error.message
     );
   }

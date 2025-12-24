@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { getBackendURL, getCachedIP } from '../utils/ipDiscovery';
+import config from '../config';
 
 // Dynamic API URL - will be set after IP discovery
 let API_BASE_URL = null;
@@ -27,17 +28,46 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initializeAPI = async () => {
       try {
-        console.log('🔍 Discovering backend server...');
-        const backendURL = await getBackendURL(true); // Full discovery
-        API_BASE_URL = backendURL;
-        api.defaults.baseURL = backendURL;
-        console.log('✅ Backend URL set to:', backendURL);
-        setApiReady(true);
+        console.log('🔍 Initializing backend connection...');
+        
+        // Try configured IP first
+        if (config.BACKEND_IP) {
+          const configuredURL = config.API_URL;
+          console.log('📝 Testing configured IP:', configuredURL);
+          
+          try {
+            const response = await axios.get(`${configuredURL.replace('/api/v1', '')}/api/v1/server-info`, {
+              timeout: config.DISCOVERY_TIMEOUT
+            });
+            
+            if (response.data && response.data.success) {
+              API_BASE_URL = configuredURL;
+              api.defaults.baseURL = configuredURL;
+              console.log('✅ Using configured backend URL:', configuredURL);
+              setApiReady(true);
+              return;
+            }
+          } catch (error) {
+            console.log('⚠️ Configured IP not reachable, trying auto-discovery...');
+          }
+        }
+        
+        // Fall back to auto-discovery if enabled
+        if (config.ENABLE_AUTO_DISCOVERY) {
+          console.log('🔍 Starting auto-discovery...');
+          const backendURL = await getBackendURL(true); // Full discovery
+          API_BASE_URL = backendURL;
+          api.defaults.baseURL = backendURL;
+          console.log('✅ Backend URL set to:', backendURL);
+          setApiReady(true);
+        } else {
+          throw new Error('Cannot connect to backend and auto-discovery is disabled');
+        }
       } catch (error) {
-        console.error('❌ Failed to discover backend:', error.message);
+        console.error('❌ Failed to connect to backend:', error.message);
+        console.error('💡 Please update BACKEND_IP in config.js with your computer\'s IP address');
         setApiReady(false);
         setLoading(false);
-        // Don't set fallback - let user know they need to fix connection
       }
     };
     initializeAPI();

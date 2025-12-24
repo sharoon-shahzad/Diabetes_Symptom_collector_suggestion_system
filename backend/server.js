@@ -51,13 +51,7 @@ function getLocalIPAddress() {
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://192.168.1.19:8081', // Expo dev server
-    'exp://192.168.1.19:8081', // Expo protocol
-    process.env.FRONTEND_URL
-  ].filter(Boolean),
+  origin: true, // Accept all origins (for mobile app development)
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
