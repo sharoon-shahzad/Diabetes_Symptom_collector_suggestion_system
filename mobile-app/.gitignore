@@ -1,0 +1,26 @@
+# Node
+node_modules/
+package-lock.json
+
+# Environment
+.env
+*.env
+
+# Expo
+.expo/
+.expo-shared/
+
+# OS
+.DS_Store
+Thumbs.db
+
+mobile-app/node_modules/
+mobile-app/.expo/
+mobile-app/.env
+
+# Markdown documentation
+*.md
+
+node_modules/
+chroma_db/chroma.sqlite3
+.DS_Store

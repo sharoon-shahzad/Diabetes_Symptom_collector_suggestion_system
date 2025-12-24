@@ -13,6 +13,7 @@ import { Text } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
   useTheme, 
   GlassCard, 
@@ -20,12 +21,14 @@ import {
   NeonText,
   FloatingParticle,
 } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
 
 const WelcomeScreen = () => {
   const navigation = useNavigation();
   const { theme } = useTheme();
+  const { user, loading } = useAuth();
   
   console.log('WelcomeScreen rendered');
   console.log('Navigation object:', navigation);
@@ -33,6 +36,21 @@ const WelcomeScreen = () => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
+
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkAuth = async () => {
+      if (loading) return; // Wait for auth to load
+      
+      const token = await AsyncStorage.getItem('accessToken');
+      if (token && user) {
+        console.log('✅ User already logged in, navigating to Dashboard');
+        navigation.replace('Dashboard');
+      }
+    };
+    
+    checkAuth();
+  }, [user, loading]);
 
   useEffect(() => {
     console.log('WelcomeScreen useEffect - starting animations');

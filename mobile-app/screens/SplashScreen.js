@@ -4,10 +4,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, NeonText, FloatingParticle } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SplashScreen = () => {
   const navigation = useNavigation();
   const { theme } = useTheme();
+  const { user, loading } = useAuth();
   
   const [fadeAnim] = useState(new Animated.Value(0));
   const [scaleAnim] = useState(new Animated.Value(0.3));
@@ -63,6 +66,7 @@ const SplashScreen = () => {
         duration: 500,
         useNativeDriver: true,
       }).start(() => {
+        // Always go to Welcome screen first
         navigation.replace('Welcome');
       });
     }, 3000);
