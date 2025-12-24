@@ -28,7 +28,7 @@ import ScienceIcon from '@mui/icons-material/Science';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import MenuIcon from '@mui/icons-material/Menu';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import { Person as PersonIcon, Restaurant as RestaurantIcon, FitnessCenter as FitnessCenterIcon, Lightbulb as LightbulbIcon, EmojiEvents as EmojiEventsIcon, Chat as ChatIcon, SelfImprovement as SelfImprovementIcon, NightlightRound as NightlightRoundIcon, LocalDrink as LocalDrinkIcon, DirectionsWalk as DirectionsWalkIcon, LocalHospital as LocalHospitalIcon, Info as InfoIcon } from '@mui/icons-material';
+import { Person as PersonIcon, Restaurant as RestaurantIcon, FitnessCenter as FitnessCenterIcon, Lightbulb as LightbulbIcon, EmojiEvents as EmojiEventsIcon, Chat as ChatIcon, SelfImprovement as SelfImprovementIcon, NightlightRound as NightlightRoundIcon, LocalDrink as LocalDrinkIcon, DirectionsWalk as DirectionsWalkIcon, LocalHospital as LocalHospitalIcon, Info as InfoIcon, ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { logout, getCurrentUser } from '../utils/auth';
 import { fetchMyDiseaseData, updateUserProfile, assessDiabetesRisk } from '../utils/api';
@@ -51,6 +51,12 @@ import axiosInstance from '../utils/axiosInstance';
 import UserFeedbackHistory from '../components/Feedback/UserFeedbackHistory';
 import { LineChart, Line, XAxis, YAxis, Tooltip as ReTooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart, ComposedChart, Bar, Legend } from 'recharts';
 import * as DynamicInsights from '../components/Dashboard/DynamicInsightsComponents';
+import PersonalMedicalInfoPage from './PersonalMedicalInfoPage';
+import DietPlanDashboard from './DietPlanDashboard';
+import ExercisePlanDashboard from './ExercisePlanDashboard';
+import LifestyleTipsDashboard from './LifestyleTipsDashboard';
+import ChatAssistant from './ChatAssistant';
+import dashboardTheme from '../theme/dashboardTheme';
 
 const drawerWidth = 220;
 
@@ -88,6 +94,7 @@ export default function Dashboard() {
   const [lifestyleHistory, setLifestyleHistory] = useState(null);
   const [assessmentSummary, setAssessmentSummary] = useState(null);
   const [assessmentLoading, setAssessmentLoading] = useState(false);
+  const [openCardModal, setOpenCardModal] = useState(null); // Track which card modal is open
 
   // Enhanced dynamic features state
   const [chartTimeRange, setChartTimeRange] = useState(() => {
@@ -1094,8 +1101,7 @@ export default function Dashboard() {
     <Box sx={{ 
       display: 'flex', 
       minHeight: '100vh', 
-      // Use a clean, flat surface to avoid heavy radial/oval backgrounds
-      background: (t) => t.palette.background.default
+      background: '#e8eaf6'
     }}>
       <CssBaseline />
       {/* Sidebar - Enhanced Professional Design */}
@@ -1112,13 +1118,9 @@ export default function Dashboard() {
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
-            background: (t) => t.palette.mode === 'dark' 
-              ? 'linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%)' 
-              : 'linear-gradient(180deg, #ffffff 0%, #fafbfc 100%)',
-            borderRight: (t) => `1px solid ${t.palette.divider}`,
-            boxShadow: (t) => t.palette.mode === 'dark'
-              ? '2px 0 12px rgba(0,0,0,0.5)'
-              : '2px 0 12px rgba(0,0,0,0.04)',
+            background: '#ffffff',
+            borderRight: '1px solid #e5e7eb',
+            boxShadow: 'none',
             // Hide scrollbar in sidebar but keep it scrollable
             overflowY: 'auto',
             scrollbarWidth: 'none', // Firefox
@@ -1359,7 +1361,7 @@ export default function Dashboard() {
                     <Grid container spacing={3}>
 
                       {/* Daily Calorie Tracking */}
-                      <Grid item xs={12} lg={6}>
+                      <Grid item xs={12} md={6}>
                         <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`, height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha(t.palette.primary.main, 0.08)}`, borderColor: (t) => alpha(t.palette.primary.main, 0.2) } }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, flexWrap: 'wrap', gap: 1 }}>
                             <Typography variant="subtitle1" fontWeight={700} sx={{ fontSize: '1rem' }}>Calorie Distribution</Typography>
@@ -1406,7 +1408,7 @@ export default function Dashboard() {
                       </Grid>
 
                       {/* Carbohydrate Tracking */}
-                      <Grid item xs={12} lg={6}>
+                      <Grid item xs={12} md={6}>
                         <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`, height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha(t.palette.warning.main, 0.08)}`, borderColor: (t) => alpha(t.palette.warning.main, 0.2) } }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, flexWrap: 'wrap', gap: 1 }}>
                             <Typography variant="subtitle1" fontWeight={700} sx={{ fontSize: '1rem' }}>Carbohydrate Trends</Typography>
@@ -1453,7 +1455,7 @@ export default function Dashboard() {
                       </Grid>
 
                       {/* Macronutrient Distribution Pie Chart */}
-                      <Grid item xs={12} md={6} lg={6}>
+                      <Grid item xs={12} md={6}>
                         <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`, height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha(t.palette.primary.main, 0.08)}`, borderColor: (t) => alpha(t.palette.primary.main, 0.2) } }}>
                           <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2.5, fontSize: '1rem' }}>Macronutrient Balance</Typography>
                           <Box sx={{ display: 'grid', gap: 1.5 }}>
@@ -1490,7 +1492,7 @@ export default function Dashboard() {
                       </Grid>
 
                       {/* Meal-Wise Calorie Distribution */}
-                      <Grid item xs={12} md={6} lg={6}>
+                      <Grid item xs={12} md={6}>
                         <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`, height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha(t.palette.primary.main, 0.08)}`, borderColor: (t) => alpha(t.palette.primary.main, 0.2) } }}>
                           <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2.5, fontSize: '1rem' }}>Meal-Wise Distribution (Today)</Typography>
                           <ResponsiveContainer width="100%" height={220}>
@@ -3302,23 +3304,41 @@ export default function Dashboard() {
             )}
 
             {currentSection === 'Personalized Suggestions' && (
-              <Box>
-                {/* Title and Description */}
-                <Box sx={{ mb: 5 }}>
-                  <Typography variant="h4" fontWeight={900} sx={{ mb: 1.5, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                    ✨ Personalized Wellness Hub
+              <Box sx={{ background: '#e8eaf6', borderRadius: '16px', p: 5, minHeight: '70vh' }}>
+                {/* Premium Title and Description */}
+                <Box sx={{ mb: 5, textAlign: 'center' }}>
+                  <Typography 
+                    variant="h3" 
+                    sx={{ 
+                      fontWeight: 800,
+                      mb: 2,
+                      color: '#1f2937',
+                      fontSize: '2.5rem',
+                    }}
+                  >
+                    Comprehensive Features
                   </Typography>
-                  <Typography variant="body1" color="text.secondary" sx={{ fontSize: '1.1rem', lineHeight: 1.7 }}>
-                    Your complete health companion with AI-powered recommendations across diet, exercise, and lifestyle management
+                  <Typography 
+                    variant="body1" 
+                    color="text.secondary" 
+                    sx={{ 
+                      fontSize: '1.1rem', 
+                      lineHeight: 1.7,
+                      maxWidth: 800,
+                      mx: 'auto',
+                      color: '#5f6368',
+                    }}
+                  >
+                    Everything you need for accurate diabetes risk assessment and health management
                   </Typography>
                 </Box>
 
-                {/* Six Cards Grid */}
+                {/* Premium Six Cards Grid */}
                 <Box 
                   sx={{
                     display: 'grid',
-                    gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
-                    gap: 4,
+                    gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
+                    gap: 3,
                     mb: 5,
                   }}
                 >
@@ -3326,101 +3346,78 @@ export default function Dashboard() {
                   <Card
                     elevation={0}
                     sx={{
+                      background: '#ffffff',
                       borderRadius: '24px',
-                      transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                      border: '2px solid transparent',
-                      background: 'linear-gradient(white, white) padding-box, linear-gradient(135deg, #667eea, #764ba2) border-box',
+                      border: '1px solid #e5e7eb',
                       cursor: 'pointer',
-                      overflow: 'hidden',
-                      boxShadow: '0 10px 40px rgba(102, 126, 234, 0.15)',
-                      '&:hover': { 
-                        boxShadow: '0 20px 60px rgba(102, 126, 234, 0.35)',
-                        transform: 'translateY(-8px) scale(1.02)',
-                        border: '2px solid transparent',
-                      },
+                      transition: 'all 0.3s ease',
                       height: '100%',
                       display: 'flex',
                       flexDirection: 'column',
-                      position: 'relative',
+                      p: 4,
+                      '&:hover': {
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                        transform: 'translateY(-4px)',
+                      }
                     }}
-                    onClick={() => navigate('/personalized-suggestions/personal-medical')}
+                    onClick={() => setOpenCardModal('personal-medical')}
                   >
                     <Box 
                       sx={{ 
                         display: 'flex', 
-                        flexDirection: 'column',
                         justifyContent: 'center', 
                         alignItems: 'center', 
-                        height: '180px', 
+                        width: 80,
+                        height: 80,
+                        borderRadius: '50%',
                         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        color: '#fff',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        '&::before': {
-                          content: '""',
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          background: 'radial-gradient(circle at 30% 50%, rgba(255,255,255,0.15) 0%, transparent 60%)',
-                        }
+                        mb: 3,
+                        mx: 'auto',
                       }}
                     >
-                      <PersonIcon sx={{ fontSize: 70, color: '#fff', zIndex: 1, filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))' }} />
-                      {user?.full_name && (
-                        <Typography variant="body2" sx={{ mt: 2, color: 'rgba(255,255,255,0.95)', fontWeight: 700, fontSize: '0.95rem', zIndex: 1, textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-                          {user.full_name}
-                        </Typography>
-                      )}
+                      <PersonIcon sx={{ fontSize: 40, color: '#fff' }} />
                     </Box>
-                    <CardContent sx={{ flexGrow: 1, pt: 3.5, pb: 2, px: 3 }}>
-                      <Typography variant="h6" fontWeight={900} gutterBottom sx={{ fontSize: '1.2rem', color: '#1f2937', mb: 1.5 }}>
+                    <CardContent sx={{ flexGrow: 1, p: 0, '&:last-child': { pb: 0 } }}>
+                      <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5, color: '#1f2937', textAlign: 'center', fontSize: '1.25rem' }}>
                         Personal & Medical Information
                       </Typography>
-                      <Typography variant="body2" sx={{ color: '#6b7280', mb: 3, fontSize: '0.95rem', lineHeight: 1.7 }}>
-                        Your health profile and medical history
+                      <Typography variant="body2" sx={{ color: '#6b7280', lineHeight: 1.7, textAlign: 'center' }}>
+                        Complete your health profile to unlock personalized recommendations and insights.
                       </Typography>
                       {personalInfoCompletion > 0 && (
                         <Box>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-                            <Typography variant="caption" sx={{ color: '#6b7280', fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Completion</Typography>
-                            <Typography variant="caption" fontWeight={900} sx={{ color: '#667eea', fontSize: '1rem' }}>{personalInfoCompletion}%</Typography>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography variant="caption" sx={{ color: dashboardTheme.colors.neutral[600], fontWeight: 600 }}>
+                              Completion
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: dashboardTheme.colors.primary.main, fontWeight: 700 }}>
+                              {personalInfoCompletion}%
+                            </Typography>
                           </Box>
                           <LinearProgress 
                             variant="determinate" 
                             value={personalInfoCompletion} 
                             sx={{ 
-                              height: 10, 
-                              borderRadius: '12px', 
-                              bgcolor: '#f3f4f6', 
+                              height: 6, 
+                              borderRadius: '8px', 
+                              bgcolor: dashboardTheme.colors.neutral[200],
                               '& .MuiLinearProgress-bar': { 
-                                background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)', 
-                                borderRadius: '12px',
-                                boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)'
+                                background: dashboardTheme.colors.primary.gradient,
+                                borderRadius: '8px',
                               } 
                             }} 
                           />
                         </Box>
                       )}
                     </CardContent>
-                    <CardActions sx={{ pt: 0, pb: 3.5, px: 3, width: '100%' }}>
+                    <CardActions sx={{ p: 0, pt: 3 }}>
                       <Button 
                         fullWidth 
                         variant="contained" 
                         sx={{ 
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
-                          color: '#fff', 
-                          textTransform: 'none', 
-                          fontWeight: 900, 
-                          py: 1.8, 
-                          borderRadius: '14px', 
-                          fontSize: '1rem',
-                          boxShadow: '0 4px 16px rgba(102, 126, 234, 0.4)',
-                          '&:hover': {
-                            background: 'linear-gradient(135deg, #5568d3 0%, #6a3e8f 100%)',
-                            boxShadow: '0 6px 24px rgba(102, 126, 234, 0.5)',
-                          }
+                          ...dashboardTheme.buttonStyles.primary,
+                          background: dashboardTheme.colors.primary.gradient,
+                          py: 1.5,
                         }}
                       >
                         Continue
@@ -3432,95 +3429,79 @@ export default function Dashboard() {
                   <Card
                     elevation={0}
                     sx={{
+                      background: '#ffffff',
                       borderRadius: '24px',
-                      transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                      border: personalInfoCompletion >= 100 ? '2px solid transparent' : '2px solid #e5e7eb',
-                      background: personalInfoCompletion >= 100 ? 'linear-gradient(white, white) padding-box, linear-gradient(135deg, #10b981, #059669) border-box' : 'linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%)',
+                      border: '1px solid #e5e7eb',
                       cursor: personalInfoCompletion >= 100 ? 'pointer' : 'not-allowed',
-                      overflow: 'hidden',
-                      boxShadow: personalInfoCompletion >= 100 ? '0 10px 40px rgba(16, 185, 129, 0.15)' : '0 4px 12px rgba(0,0,0,0.05)',
-                      '&:hover': personalInfoCompletion >= 100 ? { 
-                        boxShadow: '0 20px 60px rgba(16, 185, 129, 0.35)',
-                        transform: 'translateY(-8px) scale(1.02)',
-                      } : {},
-                      opacity: personalInfoCompletion >= 100 ? 1 : 0.7,
+                      transition: 'all 0.3s ease',
+                      opacity: personalInfoCompletion >= 100 ? 1 : 0.6,
                       height: '100%',
                       display: 'flex',
                       flexDirection: 'column',
+                      p: 4,
                       position: 'relative',
+                      '&:hover': personalInfoCompletion >= 100 ? {
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                        transform: 'translateY(-4px)',
+                      } : {},
                     }}
                     onClick={() => {
                       if (personalInfoCompletion < 100) {
                         toast.info('Complete your Personal & Medical Information to unlock this section.');
                         return;
                       }
-                      navigate('/personalized-suggestions/diet-plan');
+                      setOpenCardModal('diet-plan');
                     }}
                   >
                     {personalInfoCompletion < 100 && (
-                      <Box sx={{ position: 'absolute', top: 16, right: 16, zIndex: 10 }}>
-                        <Chip 
-                          label="🔒 Locked" 
-                          size="small" 
-                          sx={{ 
-                            background: 'linear-gradient(135deg, #fca5a5 0%, #ef4444 100%)', 
-                            color: '#fff', 
-                            fontWeight: 900,
-                            fontSize: '0.85rem',
-                            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
-                          }} 
-                        />
-                      </Box>
+                      <Chip 
+                        label="🔒 Locked" 
+                        size="small" 
+                        sx={{ 
+                          position: 'absolute',
+                          top: 16,
+                          right: 16,
+                          background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                          color: '#fff',
+                          fontWeight: 700,
+                          zIndex: 10,
+                        }} 
+                      />
                     )}
                     <Box 
                       sx={{ 
                         display: 'flex', 
                         justifyContent: 'center', 
                         alignItems: 'center', 
-                        height: '180px', 
-                        background: personalInfoCompletion >= 100 ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%)',
-                        color: personalInfoCompletion >= 100 ? '#fff' : '#9ca3af',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        '&::before': personalInfoCompletion >= 100 ? {
-                          content: '""',
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          background: 'radial-gradient(circle at 30% 50%, rgba(255,255,255,0.15) 0%, transparent 60%)',
-                        } : {},
+                        width: 80,
+                        height: 80,
+                        borderRadius: '50%',
+                        background: personalInfoCompletion >= 100 
+                          ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                          : '#e5e7eb',
+                        mb: 3,
+                        mx: 'auto',
                       }}
                     >
-                      <RestaurantIcon sx={{ fontSize: 70, color: personalInfoCompletion >= 100 ? '#fff' : '#9ca3af', filter: personalInfoCompletion >= 100 ? 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))' : 'none' }} />
+                      <RestaurantIcon sx={{ fontSize: 40, color: personalInfoCompletion >= 100 ? '#fff' : '#9ca3af' }} />
                     </Box>
-                    <CardContent sx={{ flexGrow: 1, pt: 3.5, pb: 2, px: 3 }}>
-                      <Typography variant="h6" fontWeight={900} gutterBottom sx={{ fontSize: '1.2rem', color: '#1f2937', mb: 1.5 }}>
-                        Diet Plan
+                    <CardContent sx={{ flexGrow: 1, p: 0, '&:last-child': { pb: 0 } }}>
+                      <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5, color: '#1f2937', textAlign: 'center', fontSize: '1.25rem' }}>
+                        Nutrition & Diet Plan
                       </Typography>
-                      <Typography variant="body2" sx={{ color: '#6b7280', mb: 2.5, fontSize: '0.95rem', lineHeight: 1.7 }}>
-                        AI-powered meal plans based on regional guidelines
+                      <Typography variant="body2" sx={{ color: '#6b7280', lineHeight: 1.7, textAlign: 'center' }}>
+                        AI-powered meal plans tailored to your diabetes management needs and regional preferences.
                       </Typography>
                     </CardContent>
-                    <CardActions sx={{ pt: 0, pb: 3.5, px: 3, width: '100%' }}>
+                    <CardActions sx={{ p: 0, pt: 3 }}>
                       <Button 
                         fullWidth 
                         variant="contained"
                         disabled={personalInfoCompletion < 100}
                         sx={{
-                          background: personalInfoCompletion >= 100 ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : '#e5e7eb',
-                          color: personalInfoCompletion >= 100 ? '#fff' : '#9ca3af',
-                          textTransform: 'none',
-                          fontWeight: 900,
-                          py: 1.8,
-                          borderRadius: '14px',
-                          fontSize: '1rem',
-                          boxShadow: personalInfoCompletion >= 100 ? '0 4px 16px rgba(16, 185, 129, 0.4)' : 'none',
-                          '&:hover': personalInfoCompletion >= 100 ? {
-                            background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-                            boxShadow: '0 6px 24px rgba(16, 185, 129, 0.5)',
-                          } : {},
+                          ...dashboardTheme.buttonStyles.primary,
+                          background: personalInfoCompletion >= 100 ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : dashboardTheme.colors.neutral[400],
+                          py: 1.5,
                         }}
                       >
                         Continue
@@ -3532,95 +3513,79 @@ export default function Dashboard() {
                   <Card
                     elevation={0}
                     sx={{
+                      background: '#ffffff',
                       borderRadius: '24px',
-                      transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                      border: personalInfoCompletion >= 100 ? '2px solid transparent' : '2px solid #e5e7eb',
-                      background: personalInfoCompletion >= 100 ? 'linear-gradient(white, white) padding-box, linear-gradient(135deg, #f59e0b, #d97706) border-box' : 'linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%)',
+                      border: '1px solid #e5e7eb',
                       cursor: personalInfoCompletion >= 100 ? 'pointer' : 'not-allowed',
-                      overflow: 'hidden',
-                      boxShadow: personalInfoCompletion >= 100 ? '0 10px 40px rgba(245, 158, 11, 0.15)' : '0 4px 12px rgba(0,0,0,0.05)',
-                      '&:hover': personalInfoCompletion >= 100 ? { 
-                        boxShadow: '0 20px 60px rgba(245, 158, 11, 0.35)',
-                        transform: 'translateY(-8px) scale(1.02)',
-                      } : {},
-                      opacity: personalInfoCompletion >= 100 ? 1 : 0.7,
+                      transition: 'all 0.3s ease',
+                      opacity: personalInfoCompletion >= 100 ? 1 : 0.6,
                       height: '100%',
                       display: 'flex',
                       flexDirection: 'column',
+                      p: 4,
                       position: 'relative',
+                      '&:hover': personalInfoCompletion >= 100 ? {
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                        transform: 'translateY(-4px)',
+                      } : {},
                     }}
                     onClick={() => {
                       if (personalInfoCompletion < 100) {
                         toast.info('Complete your Personal & Medical Information to unlock this section.');
                         return;
                       }
-                      navigate('/personalized-suggestions/exercise-plan');
+                      setOpenCardModal('exercise-plan');
                     }}
                   >
                     {personalInfoCompletion < 100 && (
-                      <Box sx={{ position: 'absolute', top: 16, right: 16, zIndex: 10 }}>
-                        <Chip 
-                          label="🔒 Locked" 
-                          size="small" 
-                          sx={{ 
-                            background: 'linear-gradient(135deg, #fca5a5 0%, #ef4444 100%)', 
-                            color: '#fff', 
-                            fontWeight: 900,
-                            fontSize: '0.85rem',
-                            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
-                          }} 
-                        />
-                      </Box>
+                      <Chip 
+                        label="🔒 Locked" 
+                        size="small" 
+                        sx={{ 
+                          position: 'absolute',
+                          top: 16,
+                          right: 16,
+                          background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                          color: '#fff',
+                          fontWeight: 700,
+                          zIndex: 10,
+                        }} 
+                      />
                     )}
                     <Box 
                       sx={{ 
                         display: 'flex', 
                         justifyContent: 'center', 
                         alignItems: 'center', 
-                        height: '180px', 
-                        background: personalInfoCompletion >= 100 ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' : 'linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%)',
-                        color: personalInfoCompletion >= 100 ? '#fff' : '#9ca3af',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        '&::before': personalInfoCompletion >= 100 ? {
-                          content: '""',
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          background: 'radial-gradient(circle at 30% 50%, rgba(255,255,255,0.15) 0%, transparent 60%)',
-                        } : {},
+                        width: 80,
+                        height: 80,
+                        borderRadius: '50%',
+                        background: personalInfoCompletion >= 100 
+                          ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                          : '#e5e7eb',
+                        mb: 3,
+                        mx: 'auto',
                       }}
                     >
-                      <FitnessCenterIcon sx={{ fontSize: 70, color: personalInfoCompletion >= 100 ? '#fff' : '#9ca3af', filter: personalInfoCompletion >= 100 ? 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))' : 'none' }} />
+                      <FitnessCenterIcon sx={{ fontSize: 40, color: personalInfoCompletion >= 100 ? '#fff' : '#9ca3af' }} />
                     </Box>
-                    <CardContent sx={{ flexGrow: 1, pt: 3.5, pb: 2, px: 3 }}>
-                      <Typography variant="h6" fontWeight={900} gutterBottom sx={{ fontSize: '1.2rem', color: '#1f2937', mb: 1.5 }}>
+                    <CardContent sx={{ flexGrow: 1, p: 0, '&:last-child': { pb: 0 } }}>
+                      <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5, color: '#1f2937', textAlign: 'center', fontSize: '1.25rem' }}>
                         Exercise Plan
                       </Typography>
-                      <Typography variant="body2" sx={{ color: '#6b7280', mb: 2.5, fontSize: '0.95rem', lineHeight: 1.7 }}>
-                        Customized fitness routines and workouts
+                      <Typography variant="body2" sx={{ color: '#6b7280', lineHeight: 1.7, textAlign: 'center' }}>
+                        Personalized workout routines designed for safe and effective diabetes management.
                       </Typography>
                     </CardContent>
-                    <CardActions sx={{ pt: 0, pb: 3.5, px: 3, width: '100%' }}>
+                    <CardActions sx={{ p: 0, pt: 3 }}>
                       <Button 
                         fullWidth 
                         variant="contained"
                         disabled={personalInfoCompletion < 100}
                         sx={{
-                          background: personalInfoCompletion >= 100 ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' : '#e5e7eb',
-                          color: personalInfoCompletion >= 100 ? '#fff' : '#9ca3af',
-                          textTransform: 'none',
-                          fontWeight: 900,
-                          py: 1.8,
-                          borderRadius: '14px',
-                          fontSize: '1rem',
-                          boxShadow: personalInfoCompletion >= 100 ? '0 4px 16px rgba(245, 158, 11, 0.4)' : 'none',
-                          '&:hover': personalInfoCompletion >= 100 ? {
-                            background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
-                            boxShadow: '0 6px 24px rgba(245, 158, 11, 0.5)',
-                          } : {},
+                          ...dashboardTheme.buttonStyles.primary,
+                          background: personalInfoCompletion >= 100 ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : dashboardTheme.colors.neutral[400],
+                          py: 1.5,
                         }}
                       >
                         Continue
@@ -3632,95 +3597,79 @@ export default function Dashboard() {
                   <Card
                     elevation={0}
                     sx={{
+                      background: '#ffffff',
                       borderRadius: '24px',
-                      transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                      border: personalInfoCompletion >= 100 ? '2px solid transparent' : '2px solid #e5e7eb',
-                      background: personalInfoCompletion >= 100 ? 'linear-gradient(white, white) padding-box, linear-gradient(135deg, #8b5cf6, #7c3aed) border-box' : 'linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%)',
+                      border: '1px solid #e5e7eb',
                       cursor: personalInfoCompletion >= 100 ? 'pointer' : 'not-allowed',
-                      overflow: 'hidden',
-                      boxShadow: personalInfoCompletion >= 100 ? '0 10px 40px rgba(139, 92, 246, 0.15)' : '0 4px 12px rgba(0,0,0,0.05)',
-                      '&:hover': personalInfoCompletion >= 100 ? { 
-                        boxShadow: '0 20px 60px rgba(139, 92, 246, 0.35)',
-                        transform: 'translateY(-8px) scale(1.02)',
-                      } : {},
-                      opacity: personalInfoCompletion >= 100 ? 1 : 0.7,
+                      transition: 'all 0.3s ease',
+                      opacity: personalInfoCompletion >= 100 ? 1 : 0.6,
                       height: '100%',
                       display: 'flex',
                       flexDirection: 'column',
+                      p: 4,
                       position: 'relative',
+                      '&:hover': personalInfoCompletion >= 100 ? {
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                        transform: 'translateY(-4px)',
+                      } : {},
                     }}
                     onClick={() => {
                       if (personalInfoCompletion < 100) {
                         toast.info('Complete your Personal & Medical Information to unlock this section.');
                         return;
                       }
-                      navigate('/personalized-suggestions/lifestyle-tips');
+                      setOpenCardModal('lifestyle-tips');
                     }}
                   >
                     {personalInfoCompletion < 100 && (
-                      <Box sx={{ position: 'absolute', top: 16, right: 16, zIndex: 10 }}>
-                        <Chip 
-                          label="🔒 Locked" 
-                          size="small" 
-                          sx={{ 
-                            background: 'linear-gradient(135deg, #fca5a5 0%, #ef4444 100%)', 
-                            color: '#fff', 
-                            fontWeight: 900,
-                            fontSize: '0.85rem',
-                            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
-                          }} 
-                        />
-                      </Box>
+                      <Chip 
+                        label="🔒 Locked" 
+                        size="small" 
+                        sx={{ 
+                          position: 'absolute',
+                          top: 16,
+                          right: 16,
+                          background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                          color: '#fff',
+                          fontWeight: 700,
+                          zIndex: 10,
+                        }} 
+                      />
                     )}
                     <Box 
                       sx={{ 
                         display: 'flex', 
                         justifyContent: 'center', 
                         alignItems: 'center', 
-                        height: '180px', 
-                        background: personalInfoCompletion >= 100 ? 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' : 'linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%)',
-                        color: personalInfoCompletion >= 100 ? '#fff' : '#9ca3af',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        '&::before': personalInfoCompletion >= 100 ? {
-                          content: '""',
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          background: 'radial-gradient(circle at 30% 50%, rgba(255,255,255,0.15) 0%, transparent 60%)',
-                        } : {},
+                        width: 80,
+                        height: 80,
+                        borderRadius: '50%',
+                        background: personalInfoCompletion >= 100 
+                          ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+                          : '#e5e7eb',
+                        mb: 3,
+                        mx: 'auto',
                       }}
                     >
-                      <LightbulbIcon sx={{ fontSize: 70, color: personalInfoCompletion >= 100 ? '#fff' : '#9ca3af', filter: personalInfoCompletion >= 100 ? 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))' : 'none' }} />
+                      <LightbulbIcon sx={{ fontSize: 40, color: personalInfoCompletion >= 100 ? '#fff' : '#9ca3af' }} />
                     </Box>
-                    <CardContent sx={{ flexGrow: 1, pt: 3.5, pb: 2, px: 3 }}>
-                      <Typography variant="h6" fontWeight={900} gutterBottom sx={{ fontSize: '1.2rem', color: '#1f2937', mb: 1.5 }}>
-                        Lifestyle Tips
+                    <CardContent sx={{ flexGrow: 1, p: 0, '&:last-child': { pb: 0 } }}>
+                      <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5, color: '#1f2937', textAlign: 'center', fontSize: '1.25rem' }}>
+                        Lifestyle Tips & Wellness
                       </Typography>
-                      <Typography variant="body2" sx={{ color: '#6b7280', mb: 2.5, fontSize: '0.95rem', lineHeight: 1.7 }}>
-                        Daily habits and wellness recommendations
+                      <Typography variant="body2" sx={{ color: '#6b7280', lineHeight: 1.7, textAlign: 'center' }}>
+                        Evidence-based lifestyle guidance and wellness tips for better diabetes management.
                       </Typography>
                     </CardContent>
-                    <CardActions sx={{ pt: 0, pb: 3.5, px: 3, width: '100%' }}>
+                    <CardActions sx={{ p: 0, pt: 3 }}>
                       <Button 
                         fullWidth 
                         variant="contained"
                         disabled={personalInfoCompletion < 100}
                         sx={{
-                          background: personalInfoCompletion >= 100 ? 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' : '#e5e7eb',
-                          color: personalInfoCompletion >= 100 ? '#fff' : '#9ca3af',
-                          textTransform: 'none',
-                          fontWeight: 900,
-                          py: 1.8,
-                          borderRadius: '14px',
-                          fontSize: '1rem',
-                          boxShadow: personalInfoCompletion >= 100 ? '0 4px 16px rgba(139, 92, 246, 0.4)' : 'none',
-                          '&:hover': personalInfoCompletion >= 100 ? {
-                            background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
-                            boxShadow: '0 6px 24px rgba(139, 92, 246, 0.5)',
-                          } : {},
+                          ...dashboardTheme.buttonStyles.primary,
+                          background: personalInfoCompletion >= 100 ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' : dashboardTheme.colors.neutral[400],
+                          py: 1.5,
                         }}
                       >
                         Continue
@@ -3732,66 +3681,64 @@ export default function Dashboard() {
                   <Card
                     elevation={0}
                     sx={{
+                      background: '#ffffff',
                       borderRadius: '24px',
-                      border: '2px solid #e5e7eb',
-                      background: 'linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%)',
+                      border: '1px solid #e5e7eb',
                       cursor: 'default',
-                      overflow: 'hidden',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                      opacity: 0.7,
+                      transition: 'all 0.3s ease',
+                      opacity: 0.6,
                       height: '100%',
                       display: 'flex',
                       flexDirection: 'column',
+                      p: 4,
                       position: 'relative',
                     }}
                   >
-                    <Box sx={{ position: 'absolute', top: 16, right: 16, zIndex: 10 }}>
-                      <Chip 
-                        label="⏳ Coming Soon" 
-                        size="small" 
-                        sx={{ 
-                          background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)', 
-                          color: '#fff', 
-                          fontWeight: 900,
-                          fontSize: '0.85rem',
-                          boxShadow: '0 4px 12px rgba(251, 191, 36, 0.3)',
-                        }} 
-                      />
-                    </Box>
+                    <Chip 
+                      label="⏳ Coming Soon" 
+                      size="small" 
+                      sx={{ 
+                        position: 'absolute',
+                        top: 16,
+                        right: 16,
+                        background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                        color: '#fff',
+                        fontWeight: 700,
+                        zIndex: 10,
+                      }} 
+                    />
                     <Box 
                       sx={{ 
                         display: 'flex', 
                         justifyContent: 'center', 
                         alignItems: 'center', 
-                        height: '180px', 
-                        background: 'linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%)',
-                        color: '#9ca3af',
-                        position: 'relative',
+                        width: 80,
+                        height: 80,
+                        borderRadius: '50%',
+                        background: '#e5e7eb',
+                        mb: 3,
+                        mx: 'auto',
                       }}
                     >
-                      <EmojiEventsIcon sx={{ fontSize: 70, color: '#9ca3af' }} />
+                      <EmojiEventsIcon sx={{ fontSize: 40, color: '#9ca3af' }} />
                     </Box>
-                    <CardContent sx={{ flexGrow: 1, pt: 3.5, pb: 2, px: 3 }}>
-                      <Typography variant="h6" fontWeight={900} gutterBottom sx={{ fontSize: '1.2rem', color: '#1f2937', mb: 1.5 }}>
+                    <CardContent sx={{ flexGrow: 1, p: 0, '&:last-child': { pb: 0 } }}>
+                      <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5, color: '#1f2937', textAlign: 'center', fontSize: '1.25rem' }}>
                         Pro Tips
                       </Typography>
-                      <Typography variant="body2" sx={{ color: '#6b7280', mb: 2.5, fontSize: '0.95rem', lineHeight: 1.7 }}>
-                        Expert advice and best practices
+                      <Typography variant="body2" sx={{ color: '#6b7280', lineHeight: 1.7, textAlign: 'center' }}>
+                        Expert advice and best practices for managing your health and wellness journey.
                       </Typography>
                     </CardContent>
-                    <CardActions sx={{ pt: 0, pb: 3.5, px: 3, width: '100%' }}>
+                    <CardActions sx={{ p: 0, pt: 3 }}>
                       <Button 
                         fullWidth 
                         variant="contained"
                         disabled
                         sx={{
-                          background: '#e5e7eb',
-                          color: '#9ca3af',
-                          textTransform: 'none',
-                          fontWeight: 900,
-                          py: 1.8,
-                          borderRadius: '14px',
-                          fontSize: '1rem',
+                          ...dashboardTheme.buttonStyles.primary,
+                          background: dashboardTheme.colors.neutral[400],
+                          py: 1.5,
                         }}
                       >
                         Coming Soon
@@ -3803,95 +3750,79 @@ export default function Dashboard() {
                   <Card
                     elevation={0}
                     sx={{
+                      background: '#ffffff',
                       borderRadius: '24px',
-                      transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                      border: personalInfoCompletion >= 100 ? '2px solid transparent' : '2px solid #e5e7eb',
-                      background: personalInfoCompletion >= 100 ? 'linear-gradient(white, white) padding-box, linear-gradient(135deg, #06b6d4, #0891b2) border-box' : 'linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%)',
+                      border: '1px solid #e5e7eb',
                       cursor: personalInfoCompletion >= 100 ? 'pointer' : 'not-allowed',
-                      overflow: 'hidden',
-                      boxShadow: personalInfoCompletion >= 100 ? '0 10px 40px rgba(6, 182, 212, 0.15)' : '0 4px 12px rgba(0,0,0,0.05)',
-                      '&:hover': personalInfoCompletion >= 100 ? { 
-                        boxShadow: '0 20px 60px rgba(6, 182, 212, 0.35)',
-                        transform: 'translateY(-8px) scale(1.02)',
-                      } : {},
-                      opacity: personalInfoCompletion >= 100 ? 1 : 0.7,
+                      transition: 'all 0.3s ease',
+                      opacity: personalInfoCompletion >= 100 ? 1 : 0.6,
                       height: '100%',
                       display: 'flex',
                       flexDirection: 'column',
+                      p: 4,
                       position: 'relative',
+                      '&:hover': personalInfoCompletion >= 100 ? {
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                        transform: 'translateY(-4px)',
+                      } : {},
                     }}
                     onClick={() => {
                       if (personalInfoCompletion < 100) {
                         toast.info('Complete your Personal & Medical Information to unlock this section.');
                         return;
                       }
-                      navigate('/personalized-suggestions/chat-assistant');
+                      setOpenCardModal('chat-assistant');
                     }}
                   >
                     {personalInfoCompletion < 100 && (
-                      <Box sx={{ position: 'absolute', top: 16, right: 16, zIndex: 10 }}>
-                        <Chip 
-                          label="🔒 Locked" 
-                          size="small" 
-                          sx={{ 
-                            background: 'linear-gradient(135deg, #fca5a5 0%, #ef4444 100%)', 
-                            color: '#fff', 
-                            fontWeight: 900,
-                            fontSize: '0.85rem',
-                            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
-                          }} 
-                        />
-                      </Box>
+                      <Chip 
+                        label="🔒 Locked" 
+                        size="small" 
+                        sx={{ 
+                          position: 'absolute',
+                          top: 16,
+                          right: 16,
+                          background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                          color: '#fff',
+                          fontWeight: 700,
+                          zIndex: 10,
+                        }} 
+                      />
                     )}
                     <Box 
                       sx={{ 
                         display: 'flex', 
                         justifyContent: 'center', 
                         alignItems: 'center', 
-                        height: '180px', 
-                        background: personalInfoCompletion >= 100 ? 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)' : 'linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%)',
-                        color: personalInfoCompletion >= 100 ? '#fff' : '#9ca3af',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        '&::before': personalInfoCompletion >= 100 ? {
-                          content: '""',
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          background: 'radial-gradient(circle at 30% 50%, rgba(255,255,255,0.15) 0%, transparent 60%)',
-                        } : {},
+                        width: 80,
+                        height: 80,
+                        borderRadius: '50%',
+                        background: personalInfoCompletion >= 100 
+                          ? 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)'
+                          : '#e5e7eb',
+                        mb: 3,
+                        mx: 'auto',
                       }}
                     >
-                      <ChatIcon sx={{ fontSize: 70, color: personalInfoCompletion >= 100 ? '#fff' : '#9ca3af', filter: personalInfoCompletion >= 100 ? 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))' : 'none' }} />
+                      <ChatIcon sx={{ fontSize: 40, color: personalInfoCompletion >= 100 ? '#fff' : '#9ca3af' }} />
                     </Box>
-                    <CardContent sx={{ flexGrow: 1, pt: 3.5, pb: 2, px: 3 }}>
-                      <Typography variant="h6" fontWeight={900} gutterBottom sx={{ fontSize: '1.2rem', color: '#1f2937', mb: 1.5 }}>
-                        Chat Assistant
+                    <CardContent sx={{ flexGrow: 1, p: 0, '&:last-child': { pb: 0 } }}>
+                      <Typography variant="h6" sx={{ fontWeight: 700, mb: 1.5, color: '#1f2937', textAlign: 'center', fontSize: '1.25rem' }}>
+                        AI Health Assistant
                       </Typography>
-                      <Typography variant="body2" sx={{ color: '#6b7280', mb: 2.5, fontSize: '0.95rem', lineHeight: 1.7 }}>
-                        Get instant answers from AI assistant
+                      <Typography variant="body2" sx={{ color: '#6b7280', lineHeight: 1.7, textAlign: 'center' }}>
+                        Chat with our intelligent AI assistant for personalized health guidance and support.
                       </Typography>
                     </CardContent>
-                    <CardActions sx={{ pt: 0, pb: 3.5, px: 3, width: '100%' }}>
+                    <CardActions sx={{ p: 0, pt: 3 }}>
                       <Button 
                         fullWidth 
                         variant="contained"
                         disabled={personalInfoCompletion < 100}
                         sx={{
-                          background: personalInfoCompletion >= 100 ? 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)' : '#e5e7eb',
-                          color: personalInfoCompletion >= 100 ? '#fff' : '#9ca3af',
-                          textTransform: 'none',
-                          fontWeight: 900,
-                          py: 1.8,
-                          borderRadius: '14px',
-                          fontSize: '1rem',
-                          boxShadow: personalInfoCompletion >= 100 ? '0 4px 16px rgba(6, 182, 212, 0.4)' : 'none',
-                          '&:hover': personalInfoCompletion >= 100 ? {
-                            background: 'linear-gradient(135deg, #0891b2 0%, #0e7490 100%)',
-                            boxShadow: '0 6px 24px rgba(6, 182, 212, 0.5)',
-                          } : {},
+                          ...dashboardTheme.buttonStyles.primary,
+                          background: personalInfoCompletion >= 100 ? 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' : dashboardTheme.colors.neutral[400],
+                          py: 1.5,
                         }}
                       >
                         Continue
@@ -3899,23 +3830,6 @@ export default function Dashboard() {
                     </CardActions>
                   </Card>
                 </Box>
-
-                {/* Info Completion Banner */}
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 3.5,
-                    bgcolor: '#f0f9ff',
-                    borderRadius: '16px',
-                    textAlign: 'center',
-                    border: '2px solid #bfdbfe',
-                    background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-                  }}
-                >
-                  <Typography variant="body2" sx={{ color: '#0369a1', fontWeight: 700, fontSize: '1rem' }}>
-                    💡 Complete your Personal & Medical Information to unlock diet, exercise, lifestyle tips, and chat.
-                  </Typography>
-                </Paper>
               </Box>
             )}
 
@@ -4097,6 +4011,173 @@ export default function Dashboard() {
           />
         </>
       )}
+
+      {/* Personalized Suggestions Card Modal - Premium Redesign */}
+      <Modal
+        open={openCardModal !== null}
+        onClose={() => setOpenCardModal(null)}
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          p: 2,
+          ...dashboardTheme.modalStyles.backdrop,
+        }}
+      >
+        <Fade in={openCardModal !== null}>
+          <Box
+            sx={{
+              ...dashboardTheme.modalStyles.container,
+              width: '95%',
+              maxWidth: openCardModal === 'chat-assistant' ? '1400px' : '1200px',
+            }}
+          >
+            {/* Premium Modal Header */}
+            <Box
+              sx={{
+                ...dashboardTheme.modalStyles.header(
+                  openCardModal === 'personal-medical'
+                    ? dashboardTheme.colors.primary
+                    : openCardModal === 'diet-plan'
+                    ? dashboardTheme.colors.success
+                    : openCardModal === 'exercise-plan'
+                    ? dashboardTheme.colors.warning
+                    : openCardModal === 'lifestyle-tips'
+                    ? dashboardTheme.colors.secondary
+                    : dashboardTheme.colors.info
+                ),
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                position: 'relative',
+                overflow: 'hidden',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: -50,
+                  right: -50,
+                  width: 200,
+                  height: 200,
+                  background: 'radial-gradient(circle, rgba(255,255,255,0.15), transparent 70%)',
+                  borderRadius: '50%',
+                },
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, zIndex: 1 }}>
+                <IconButton
+                  onClick={() => setOpenCardModal(null)}
+                  sx={{
+                    color: '#fff',
+                    bgcolor: 'rgba(255,255,255,0.15)',
+                    backdropFilter: 'blur(10px)',
+                    '&:hover': {
+                      bgcolor: 'rgba(255,255,255,0.25)',
+                      transform: 'scale(1.05)',
+                    },
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}
+                >
+                  <ArrowBackIcon />
+                </IconButton>
+                <Box>
+                  <Typography 
+                    variant="h5" 
+                    sx={{ 
+                      ...dashboardTheme.typography.h5,
+                      color: '#fff',
+                      fontWeight: 700,
+                      mb: 0.5,
+                    }}
+                  >
+                    {openCardModal === 'personal-medical'
+                      ? '👤 Personal & Medical Information'
+                      : openCardModal === 'diet-plan'
+                      ? '🍽️ Nutrition & Diet Plan'
+                      : openCardModal === 'exercise-plan'
+                      ? '💪 Exercise & Fitness Plan'
+                      : openCardModal === 'lifestyle-tips'
+                      ? '💡 Lifestyle Tips & Wellness'
+                      : '🤖 AI Health Assistant'}
+                  </Typography>
+                  <Typography 
+                    variant="body2" 
+                    sx={{ 
+                      color: 'rgba(255,255,255,0.9)',
+                      fontSize: '0.9rem',
+                    }}
+                  >
+                    {openCardModal === 'personal-medical'
+                      ? 'Complete your health profile for personalized recommendations'
+                      : openCardModal === 'diet-plan'
+                      ? 'AI-powered meal plans based on evidence-based guidelines'
+                      : openCardModal === 'exercise-plan'
+                      ? 'Customized fitness routines tailored to your needs'
+                      : openCardModal === 'lifestyle-tips'
+                      ? 'Daily habits and wellness recommendations'
+                      : 'Get instant answers from your AI health assistant'}
+                  </Typography>
+                </Box>
+              </Box>
+              <IconButton
+                onClick={() => setOpenCardModal(null)}
+                sx={{
+                  color: '#fff',
+                  bgcolor: 'rgba(255,255,255,0.15)',
+                  backdropFilter: 'blur(10px)',
+                  zIndex: 1,
+                  '&:hover': {
+                    bgcolor: 'rgba(255,255,255,0.25)',
+                    transform: 'rotate(90deg)',
+                  },
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+              >
+                <CloseIcon />
+              </IconButton>
+            </Box>
+
+            {/* Premium Modal Content */}
+            <Box
+              sx={{
+                ...dashboardTheme.modalStyles.content,
+                flexGrow: 1,
+                bgcolor: openCardModal === 'chat-assistant' ? '#fff' : dashboardTheme.colors.neutral[50],
+                p: openCardModal === 'chat-assistant' ? 0 : 3,
+              }}
+            >
+              {openCardModal === 'personal-medical' && (
+                <Box sx={{ height: '100%' }}>
+                  <PersonalMedicalInfoPage inModal={true} />
+                </Box>
+              )}
+
+              {openCardModal === 'diet-plan' && (
+                <Box sx={{ height: '100%' }}>
+                  <DietPlanDashboard inModal={true} />
+                </Box>
+              )}
+
+              {openCardModal === 'exercise-plan' && (
+                <Box sx={{ height: '100%' }}>
+                  <ExercisePlanDashboard inModal={true} />
+                </Box>
+              )}
+
+              {openCardModal === 'lifestyle-tips' && (
+                <Box sx={{ height: '100%' }}>
+                  <LifestyleTipsDashboard inModal={true} />
+                </Box>
+              )}
+
+              {openCardModal === 'chat-assistant' && (
+                <Box sx={{ height: '75vh' }}>
+                  <ChatAssistant inModal={true} />
+                </Box>
+              )}
+            </Box>
+          </Box>
+        </Fade>
+      </Modal>
     </Box>
   );
 }

@@ -7,7 +7,7 @@ import MenuBookIcon from '@mui/icons-material/MenuBook';
 import ReactMarkdown from 'react-markdown';
 import axiosInstance from '../utils/axiosInstance';
 
-const ChatAssistant = () => {
+const ChatAssistant = ({ inModal = false }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -63,20 +63,20 @@ const ChatAssistant = () => {
 
   return (
     <Box sx={{ 
-      height: '100vh',
+      height: inModal ? '100%' : '100vh',
       display: 'flex',
       flexDirection: 'column',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
+      background: inModal ? 'transparent' : 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
       overflow: 'hidden',
       position: 'relative',
-      '&::before': {
+      '&::before': inModal ? {} : {
         content: '""',
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'radial-gradient(circle at 20% 30%, rgba(102,126,234,0.4), transparent 50%), radial-gradient(circle at 80% 70%, rgba(249,147,251,0.4), transparent 50%)',
+        background: 'radial-gradient(circle at 20% 30%, rgba(139,92,246,0.08), transparent 50%), radial-gradient(circle at 80% 70%, rgba(168,85,247,0.08), transparent 50%)',
         zIndex: 0
       }
     }}>
@@ -84,63 +84,65 @@ const ChatAssistant = () => {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        py: 3,
+        py: inModal ? 0 : 3,
         position: 'relative',
         zIndex: 1
       }}>
         <Paper 
           elevation={0}
           sx={{ 
-            borderRadius: 4,
+            borderRadius: inModal ? 0 : 4,
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
             height: '100%',
-            background: 'rgba(255, 255, 255, 0.98)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255,255,255,0.3)',
-            boxShadow: '0 20px 60px rgba(102,126,234,0.3)',
+            background: inModal ? '#fff' : 'rgba(255, 255, 255, 0.98)',
+            backdropFilter: inModal ? 'none' : 'blur(20px)',
+            border: inModal ? 'none' : '1px solid rgba(255,255,255,0.3)',
+            boxShadow: inModal ? 'none' : '0 20px 60px rgba(102,126,234,0.3)',
           }}
         >
-          {/* Header with modern gradient */}
-          <Box sx={{ 
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            p: 3,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2.5,
-            flexShrink: 0,
-            position: 'relative',
-            overflow: 'hidden',
-            '&::after': {
-              content: '""',
-              position: 'absolute',
-              right: -50,
-              bottom: -50,
-              width: 200,
-              height: 200,
-              background: 'radial-gradient(circle, rgba(255,255,255,0.1), transparent)',
-              borderRadius: '50%'
-            }
-          }}>
-            <Avatar sx={{ 
-              width: 56, 
-              height: 56,
-              bgcolor: 'white',
-              animation: loading ? 'pulse 1.5s ease-in-out infinite' : 'none',
-              boxShadow: '0 8px 20px rgba(0,0,0,0.2)',
-              '@keyframes pulse': {
-                '0%, 100%': { transform: 'scale(1)' },
-                '50%': { transform: 'scale(1.05)' },
-              },
+          {/* Header with modern gradient - hide when inModal */}
+          {!inModal && (
+            <Box sx={{ 
+              background: 'linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)',
+              p: 3,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 2.5,
+              flexShrink: 0,
+              position: 'relative',
+              overflow: 'hidden',
+              border: '1px solid #e5e7eb',
+              '&::after': {
+                content: '""',
+                position: 'absolute',
+                right: -50,
+                bottom: -50,
+                width: 200,
+                height: 200,
+                background: 'radial-gradient(circle, rgba(139,92,246,0.1), transparent)',
+                borderRadius: '50%'
+              }
             }}>
-              <Box component="span" sx={{ fontSize: '2rem' }}>🧑‍⚕️</Box>
-            </Avatar>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="h5" fontWeight="700" sx={{ color: 'white', mb: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Avatar sx={{ 
+                width: 56, 
+                height: 56,
+                bgcolor: '#8b5cf6',
+                animation: loading ? 'pulse 1.5s ease-in-out infinite' : 'none',
+                boxShadow: '0 8px 20px rgba(139,92,246,0.3)',
+                '@keyframes pulse': {
+                  '0%, 100%': { transform: 'scale(1)' },
+                  '50%': { transform: 'scale(1.05)' },
+                },
+              }}>
+                <Box component="span" sx={{ fontSize: '2rem' }}>🧑‍⚕️</Box>
+              </Avatar>
+              <Box sx={{ flex: 1 }}>
+                <Typography variant="h5" fontWeight="700" sx={{ color: '#1f2937', mb: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Box component="span">🩺</Box> Dr. DiaCare AI <Box component="span">✨</Box>
               </Typography>
-              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.9)', fontWeight: 500 }}>
+              <Typography variant="body2" sx={{ color: '#6b7280', fontWeight: 500 }}>
                 {loading ? '🔍 Analyzing your query...' : '💡 Your personalized diabetes assistant'}
               </Typography>
             </Box>
@@ -154,6 +156,7 @@ const ChatAssistant = () => {
               }
             `}</style>
           </Box>
+          )}
 
           {/* Chat messages */}
           <Box 
@@ -306,7 +309,7 @@ const ChatAssistant = () => {
                           mt: 0.5,
                           fontSize: '0.7rem',
                           height: 20,
-                          bgcolor: '#4caf50',
+                          bgcolor: '#10b981',
                           color: 'white',
                           '& .MuiChip-icon': { color: 'white' }
                         }}
@@ -315,7 +318,7 @@ const ChatAssistant = () => {
                   </Box>
                   
                   {msg.role === 'user' && (
-                    <Avatar sx={{ bgcolor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', width: 36, height: 36 }}>
+                    <Avatar sx={{ bgcolor: '#8b5cf6', width: 36, height: 36 }}>
                       <Box component="span" sx={{ fontSize: '1.2rem' }}>👤</Box>
                     </Avatar>
                   )}
@@ -341,7 +344,7 @@ const ChatAssistant = () => {
                           width: 8,
                           height: 8,
                           borderRadius: '50%',
-                          bgcolor: '#1e3c72',
+                          bgcolor: '#8b5cf6',
                           animation: `typing 1.4s ease-in-out ${i * 0.2}s infinite`,
                           '@keyframes typing': {
                             '0%, 60%, 100%': { transform: 'translateY(0)' },
@@ -413,15 +416,15 @@ const ChatAssistant = () => {
                 onClick={handleSend} 
                 disabled={loading || !input.trim()}
                 sx={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  background: '#8b5cf6',
                   color: 'white',
                   width: 52,
                   height: 52,
-                  boxShadow: '0 4px 12px rgba(102,126,234,0.4)',
+                  boxShadow: '0 4px 12px rgba(139,92,246,0.3)',
                   '&:hover': {
-                    background: 'linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%)',
+                    background: '#7c3aed',
                     transform: 'scale(1.05)',
-                    boxShadow: '0 6px 16px rgba(102,126,234,0.5)',
+                    boxShadow: '0 6px 16px rgba(139,92,246,0.4)',
                   },
                   '&:disabled': {
                     bgcolor: '#e0e0e0',

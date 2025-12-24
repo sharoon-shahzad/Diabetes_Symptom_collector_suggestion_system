@@ -52,19 +52,32 @@ const PriorityChip = ({ priority }) => {
   );
 };
 
-const LifestyleTipsView = () => {
+const LifestyleTipsView = ({ tips: propsTips, onBack: propsOnBack, onDelete: propsOnDelete }) => {
   const { tipsId } = useParams();
   const navigate = useNavigate();
-  const [tips, setTips] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [tips, setTips] = useState(propsTips || null);
+  const [loading, setLoading] = useState(!propsTips);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [expandedCategories, setExpandedCategories] = useState({});
   const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
-    fetchTips();
-  }, [tipsId]);
+    // If tips are provided via props, use them
+    if (propsTips) {
+      setTips(propsTips);
+      setLoading(false);
+      // Initialize expanded categories
+      const expanded = {};
+      propsTips.categories?.forEach((cat, idx) => {
+        expanded[idx] = true;
+      });
+      setExpandedCategories(expanded);
+    } else if (tipsId) {
+      // Otherwise fetch from API
+      fetchTips();
+    }
+  }, [tipsId, propsTips]);
 
   const fetchTips = async () => {
     try {
@@ -100,7 +113,8 @@ const LifestyleTipsView = () => {
   const handleChecklistToggle = async (index, completed) => {
     try {
       setUpdating(true);
-      await axiosInstance.put(`/lifestyle-tips/${tipsId}/checklist`, {
+      const id = propsTips?._id || tipsId;
+      await axiosInstance.put(`/lifestyle-tips/${id}/checklist`, {
         taskIndex: index,
         completed: !completed,
       });
@@ -123,7 +137,8 @@ const LifestyleTipsView = () => {
   const handleTipToggle = async (catIndex, tipIndex, completed) => {
     try {
       setUpdating(true);
-      await axiosInstance.put(`/lifestyle-tips/${tipsId}/category/${catIndex}/tip/${tipIndex}`, {
+      const id = propsTips?._id || tipsId;
+      await axiosInstance.put(`/lifestyle-tips/${id}/category/${catIndex}/tip/${tipIndex}`, {
         completed: !completed,
       });
 
@@ -144,9 +159,17 @@ const LifestyleTipsView = () => {
     if (!window.confirm('Are you sure you want to delete these tips?')) return;
 
     try {
-      await axiosInstance.delete(`/lifestyle-tips/${tipsId}`);
-      setSuccess('Tips deleted successfully!');
-      setTimeout(() => navigate('/personalized-suggestions/lifestyle-tips'), 1500);
+      const id = propsTips?._id || tipsId;
+      
+      if (propsOnDelete) {
+        // Use callback provided via props
+        await propsOnDelete(id);
+      } else {
+        // Default behavior - delete and navigate
+        await axiosInstance.delete(`/lifestyle-tips/${id}`);
+        setSuccess('Tips deleted successfully!');
+        setTimeout(() => navigate('/personalized-suggestions/lifestyle-tips'), 1500);
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to delete tips');
     }
@@ -164,7 +187,7 @@ const LifestyleTipsView = () => {
     return (
       <Container maxWidth="lg" sx={{ py: 5 }}>
         <Alert severity="error">{error || 'Tips not found'}</Alert>
-        <Button onClick={() => navigate(-1)} sx={{ mt: 2 }}>
+        <Button onClick={() => propsOnBack ? propsOnBack() : navigate(-1)} sx={{ mt: 2 }}>
           Go Back
         </Button>
       </Container>
@@ -200,7 +223,7 @@ const LifestyleTipsView = () => {
       <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
         {/* Header */}
         <Box display="flex" alignItems="center" gap={2} mb={3}>
-          <IconButton onClick={() => navigate(-1)} size="large">
+          <IconButton onClick={() => propsOnBack ? propsOnBack() : navigate(-1)} size="large">
             <ArrowBackIcon />
           </IconButton>
           <Box flex={1}>

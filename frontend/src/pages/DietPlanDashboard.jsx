@@ -59,7 +59,7 @@ const StatTile = ({ label, value, accent, icon }) => (
   </Paper>
 );
 
-const DietPlanDashboard = () => {
+const DietPlanDashboard = ({ inModal = false }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -208,7 +208,7 @@ const DietPlanDashboard = () => {
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4, mt: 6, position: 'relative', color: '#0f172a' }}>
+    <Container maxWidth="lg" sx={{ py: inModal ? 2 : 4, mt: inModal ? 0 : 6, position: 'relative', color: '#0f172a' }}>
       <Box
         sx={{
           position: 'absolute',
@@ -226,18 +226,19 @@ const DietPlanDashboard = () => {
           sx={{
             borderRadius: 4,
             p: { xs: 3, md: 4 },
-            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-            color: '#fff',
+            background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+            color: '#1f2937',
             position: 'relative',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            border: '1px solid #e5e7eb'
           }}
         >
-          <Box sx={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 85% 20%, rgba(255,255,255,0.18), transparent 35%)' }} />
+          <Box sx={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 85% 20%, rgba(34,197,94,0.08), transparent 35%)' }} />
           {/* Floating food emojis */}
-          <Box sx={{ position: 'absolute', top: 20, right: '8%', fontSize: '2.5rem', opacity: 0.2, animation: 'float 3s ease-in-out infinite' }}>🥗</Box>
-          <Box sx={{ position: 'absolute', bottom: 30, left: '6%', fontSize: '2rem', opacity: 0.2, animation: 'float 4s ease-in-out infinite', animationDelay: '1s' }}>🍎</Box>
-          <Box sx={{ position: 'absolute', top: '40%', right: '3%', fontSize: '2.2rem', opacity: 0.15, animation: 'float 3.5s ease-in-out infinite', animationDelay: '0.5s' }}>🥦</Box>
-          <Box sx={{ position: 'absolute', bottom: 20, right: '15%', fontSize: '1.8rem', opacity: 0.2, animation: 'float 4.5s ease-in-out infinite', animationDelay: '1.5s' }}>🥑</Box>
+          <Box sx={{ position: 'absolute', top: 20, right: '8%', fontSize: '2.5rem', opacity: 0.15, animation: 'float 3s ease-in-out infinite' }}>🥗</Box>
+          <Box sx={{ position: 'absolute', bottom: 30, left: '6%', fontSize: '2rem', opacity: 0.15, animation: 'float 4s ease-in-out infinite', animationDelay: '1s' }}>🍎</Box>
+          <Box sx={{ position: 'absolute', top: '40%', right: '3%', fontSize: '2.2rem', opacity: 0.12, animation: 'float 3.5s ease-in-out infinite', animationDelay: '0.5s' }}>🥦</Box>
+          <Box sx={{ position: 'absolute', bottom: 20, right: '15%', fontSize: '1.8rem', opacity: 0.15, animation: 'float 4.5s ease-in-out infinite', animationDelay: '1.5s' }}>🥑</Box>
           <style>{`
             @keyframes float {
               0%, 100% { transform: translateY(0px) rotate(0deg); }
@@ -257,11 +258,11 @@ const DietPlanDashboard = () => {
                 {regionCoverage ? (
                   <Chip
                     label={`Region: ${regionCoverage.region} • ${regionCoverage.coverage || 'N/A'}`}
-                    sx={{ bgcolor: 'rgba(255,255,255,0.16)', color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }}
+                    sx={{ bgcolor: '#ffffff', color: '#10b981', borderColor: '#d1fae5', fontWeight: 600 }}
                     variant="outlined"
                   />
                 ) : null}
-                <Chip label={`History: ${dietHistory.length || 0}`} sx={{ bgcolor: 'rgba(255,255,255,0.16)', color: '#fff' }} />
+                <Chip label={`History: ${dietHistory.length || 0}`} sx={{ bgcolor: '#ffffff', color: '#10b981', fontWeight: 600 }} />
               </Stack>
             </Box>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
@@ -277,8 +278,9 @@ const DietPlanDashboard = () => {
                   fontWeight: 'bold',
                   px: 3.5,
                   py: 1.2,
-                  bgcolor: '#0f172a',
-                  '&:hover': { bgcolor: '#0b1220' }
+                  bgcolor: '#10b981',
+                  color: '#fff',
+                  '&:hover': { bgcolor: '#059669' }
                 }}
               >
                 Create Diet Plan
@@ -290,9 +292,9 @@ const DietPlanDashboard = () => {
                 sx={{
                   textTransform: 'none',
                   fontWeight: 'bold',
-                  color: '#fff',
-                  borderColor: 'rgba(255,255,255,0.5)',
-                  '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.1)' }
+                  color: '#10b981',
+                  borderColor: '#10b981',
+                  '&:hover': { borderColor: '#059669', bgcolor: '#f0fdf4' }
                 }}
               >
                 Refresh
@@ -335,6 +337,13 @@ const DietPlanDashboard = () => {
                 onClick={() => setShowGenerator(true)}
                 disabled={!regionCoverage?.canGeneratePlan}
                 startIcon={<RestaurantIcon />}
+                sx={{
+                  bgcolor: '#10b981',
+                  color: '#fff',
+                  '&:hover': { bgcolor: '#059669' },
+                  textTransform: 'none',
+                  fontWeight: 600
+                }}
               >
                 Create Diet Plan
               </Button>
@@ -484,6 +493,13 @@ const DietPlanDashboard = () => {
             onClick={handleGeneratePlan}
             disabled={!selectedDate || generating}
             startIcon={generating ? <CircularProgress size={20} /> : <RestaurantIcon />}
+            sx={{
+              bgcolor: '#10b981',
+              color: '#fff',
+              '&:hover': { bgcolor: '#059669' },
+              textTransform: 'none',
+              fontWeight: 600
+            }}
           >
             {generating ? 'Generating...' : 'Generate Plan'}
           </Button>

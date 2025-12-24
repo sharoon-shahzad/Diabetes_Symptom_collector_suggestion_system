@@ -6,6 +6,7 @@ from sklearn.preprocessing import StandardScaler
 import warnings
 import json
 from datetime import datetime
+import sys
 warnings.filterwarnings('ignore')
 
 class DiabetesRiskAssessmentSystem:
@@ -348,6 +349,197 @@ class DiabetesRiskAssessmentSystem:
         """
         
         return summary.strip()
+
+    def predict_risk_with_llm_ensemble(self, symptoms_data, llm_base_url='http://127.0.0.1:1234', llm_model='diabetica-7b'):
+        """
+        Enhanced prediction using ensemble approach: XGBoost + LLM validation
+        This method is designed to work with external LLM calling (from Node.js)
+        Returns predictions optimized for LLM enhancement
+        
+        Args:
+            symptoms_data: Dictionary of symptoms and their values
+            llm_base_url: Base URL for LM Studio (optional, for future direct Python-LLM integration)
+            llm_model: Model name (optional, for future direct Python-LLM integration)
+            
+        Returns:
+            Dictionary with enhanced predictions ready for LLM processing
+        """
+        try:
+            # Get base XGBoost prediction
+            base_result = self.predict_risk_with_confidence(symptoms_data)
+            
+            # Enhance result with structured data for LLM processing
+            llm_ready_result = {
+                **base_result,
+                'llm_enhancement_ready': True,
+                'symptom_summary': self._create_symptom_summary(symptoms_data),
+                'clinical_context': self._create_clinical_context(symptoms_data, base_result),
+                'enhancement_metadata': {
+                    'model_type': 'XGBoost',
+                    'requires_llm_validation': base_result['confidence'] < 0.8,
+                    'symptom_count': sum(1 for k, v in symptoms_data.items() 
+                                       if k not in ['Age', 'Gender'] and v == 1),
+                    'classic_triad_present': self._check_classic_triad(symptoms_data)
+                }
+            }
+            
+            return llm_ready_result
+            
+        except Exception as e:
+            return {
+                'error': f"LLM-ready assessment failed: {str(e)}",
+                'risk_level': 'unknown',
+                'diabetes_probability': 0.0,
+                'confidence': 0.0,
+                'llm_enhancement_ready': False
+            }
+    
+    def _create_symptom_summary(self, symptoms_data):
+        """Create a human-readable symptom summary for LLM processing"""
+        present_symptoms = []
+        absent_symptoms = []
+        
+        symptom_names = {
+            'Polyuria': 'Frequent urination',
+            'Polydipsia': 'Excessive thirst',
+            'sudden weight loss': 'Sudden weight loss',
+            'weakness': 'Weakness/fatigue',
+            'Polyphagia': 'Excessive hunger',
+            'Genital thrush': 'Genital yeast infections',
+            'visual blurring': 'Blurred vision',
+            'Itching': 'Itching',
+            'Irritability': 'Irritability',
+            'delayed healing': 'Delayed wound healing',
+            'partial paresis': 'Muscle weakness',
+            'muscle stiffness': 'Muscle stiffness',
+            'Alopecia': 'Hair loss',
+            'Obesity': 'Obesity'
+        }
+        
+        for key, value in symptoms_data.items():
+            if key in ['Age', 'Gender']:
+                continue
+            display_name = symptom_names.get(key, key)
+            if value == 1:
+                present_symptoms.append(display_name)
+            else:
+                absent_symptoms.append(display_name)
+        
+        return {
+            'present': present_symptoms,
+            'absent': absent_symptoms,
+            'total_present': len(present_symptoms),
+            'age': symptoms_data.get('Age', 'unknown'),
+            'gender': 'Male' if symptoms_data.get('Gender') == 1 else 'Female' if symptoms_data.get('Gender') == 0 else 'unknown'
+        }
+    
+    def _create_clinical_context(self, symptoms_data, base_result):
+        """Create clinical context for LLM reasoning"""
+        context = {
+            'patient_profile': {
+                'age': symptoms_data.get('Age', 'unknown'),
+                'gender': 'Male' if symptoms_data.get('Gender') == 1 else 'Female',
+                'obesity_status': 'Yes' if symptoms_data.get('Obesity') == 1 else 'No'
+            },
+            'symptom_patterns': {
+                'classic_triad': self._check_classic_triad(symptoms_data),
+                'metabolic_symptoms': self._check_metabolic_symptoms(symptoms_data),
+                'complication_signs': self._check_complication_signs(symptoms_data)
+            },
+            'risk_indicators': {
+                'high_priority_symptoms': self._identify_high_priority_symptoms(symptoms_data),
+                'red_flags': self._identify_red_flags(symptoms_data, base_result)
+            }
+        }
+        
+        return context
+    
+    def _check_classic_triad(self, symptoms_data):
+        """Check for classic diabetes triad: Polyuria, Polydipsia, Polyphagia"""
+        triad = {
+            'polyuria': symptoms_data.get('Polyuria', 0) == 1,
+            'polydipsia': symptoms_data.get('Polydipsia', 0) == 1,
+            'polyphagia': symptoms_data.get('Polyphagia', 0) == 1
+        }
+        triad['present'] = sum(triad.values())
+        triad['complete'] = triad['present'] == 3
+        return triad
+    
+    def _check_metabolic_symptoms(self, symptoms_data):
+        """Check for metabolic symptoms"""
+        return {
+            'weight_loss': symptoms_data.get('sudden weight loss', 0) == 1,
+            'weakness': symptoms_data.get('weakness', 0) == 1,
+            'obesity': symptoms_data.get('Obesity', 0) == 1,
+            'present_count': sum([
+                symptoms_data.get('sudden weight loss', 0) == 1,
+                symptoms_data.get('weakness', 0) == 1,
+                symptoms_data.get('Obesity', 0) == 1
+            ])
+        }
+    
+    def _check_complication_signs(self, symptoms_data):
+        """Check for signs of complications"""
+        return {
+            'vision_problems': symptoms_data.get('visual blurring', 0) == 1,
+            'delayed_healing': symptoms_data.get('delayed healing', 0) == 1,
+            'neuropathy_signs': symptoms_data.get('partial paresis', 0) == 1 or symptoms_data.get('muscle stiffness', 0) == 1,
+            'infections': symptoms_data.get('Genital thrush', 0) == 1 or symptoms_data.get('Itching', 0) == 1,
+            'present_count': sum([
+                symptoms_data.get('visual blurring', 0) == 1,
+                symptoms_data.get('delayed healing', 0) == 1,
+                symptoms_data.get('partial paresis', 0) == 1,
+                symptoms_data.get('muscle stiffness', 0) == 1,
+                symptoms_data.get('Genital thrush', 0) == 1,
+                symptoms_data.get('Itching', 0) == 1
+            ])
+        }
+    
+    def _identify_high_priority_symptoms(self, symptoms_data):
+        """Identify high-priority symptoms that warrant immediate attention"""
+        high_priority = []
+        
+        priority_symptoms = {
+            'Polyuria': 'Classic diabetes symptom - requires evaluation',
+            'Polydipsia': 'Classic diabetes symptom - requires evaluation',
+            'sudden weight loss': 'Concerning symptom - may indicate uncontrolled diabetes',
+            'visual blurring': 'Potential diabetes complication - needs ophthalmologic evaluation',
+            'delayed healing': 'Sign of poor glycemic control or complications'
+        }
+        
+        for symptom, explanation in priority_symptoms.items():
+            if symptoms_data.get(symptom, 0) == 1:
+                high_priority.append({
+                    'symptom': symptom,
+                    'reason': explanation
+                })
+        
+        return high_priority
+    
+    def _identify_red_flags(self, symptoms_data, base_result):
+        """Identify red flags requiring immediate medical attention"""
+        red_flags = []
+        
+        # Check for severe symptom combinations
+        if (symptoms_data.get('Polyuria', 0) == 1 and 
+            symptoms_data.get('Polydipsia', 0) == 1 and 
+            symptoms_data.get('sudden weight loss', 0) == 1):
+            red_flags.append('Complete classic triad present - suggests significant hyperglycemia')
+        
+        if base_result['diabetes_probability'] > 0.8 and base_result['confidence'] > 0.7:
+            red_flags.append('Very high probability with good confidence - immediate evaluation recommended')
+        
+        if symptoms_data.get('visual blurring', 0) == 1 and base_result['diabetes_probability'] > 0.6:
+            red_flags.append('Vision changes with elevated diabetes risk - urgent ophthalmologic evaluation needed')
+        
+        # Check age and multiple symptoms
+        age = symptoms_data.get('Age', 0)
+        symptom_count = sum(1 for k, v in symptoms_data.items() 
+                          if k not in ['Age', 'Gender'] and v == 1)
+        if age > 40 and symptom_count >= 6:
+            red_flags.append('Multiple symptoms in middle-aged/older patient - comprehensive evaluation warranted')
+        
+        return red_flags
 
 # Example usage and testing
 def test_enhanced_system():

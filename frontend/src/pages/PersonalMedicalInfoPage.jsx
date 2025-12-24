@@ -15,7 +15,22 @@ import {
     DialogTitle,
     DialogContent,
     DialogActions,
+    CircularProgress,
+    Stepper,
+    Step,
+    StepLabel,
+    TextField,
+    MenuItem,
+    FormControl,
+    InputLabel,
+    Select,
+    Alert,
+    Fade,
 } from '@mui/material';
+import Autocomplete from '@mui/material/Autocomplete';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import {
     Edit as EditIcon,
     ArrowBack as ArrowBackIcon,
@@ -25,8 +40,9 @@ import {
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axiosInstance.js';
 import dayjs from 'dayjs';
+import { getCurrentUser } from '../utils/auth.js';
 
-const PersonalMedicalInfoPage = () => {
+const PersonalMedicalInfoPage = ({ inModal = false }) => {
     const navigate = useNavigate();
     const [personalInfo, setPersonalInfo] = useState(null);
     const [medicalInfo, setMedicalInfo] = useState(null);
@@ -34,10 +50,45 @@ const PersonalMedicalInfoPage = () => {
     const [personalCompletion, setPersonalCompletion] = useState(0);
     const [medicalCompletion, setMedicalCompletion] = useState(0);
     const [openDialog, setOpenDialog] = useState(false);
+    const [editMode, setEditMode] = useState(false);
+    const [activeStep, setActiveStep] = useState(0);
+    const [savingData, setSavingData] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
+    const [userProfile, setUserProfile] = useState(null);
+    const [formData, setFormData] = useState({
+        fullName: '',
+        date_of_birth: null,
+        gender: '',
+        country: '',
+        country_code: '',
+        phone_number: '',
+        weight: '',
+        height: '',
+        activity_level: '',
+        sleep_hours: '',
+        diabetes_type: '',
+        diagnosis_date: null,
+        previous_diagnosis: '',
+        duration_of_diabetes: '',
+        medications: '',
+        family_history: '',
+        allergies: ''
+    });
 
     useEffect(() => {
         fetchData();
+        loadUserProfile();
     }, []);
+
+    const loadUserProfile = async () => {
+        try {
+            const user = await getCurrentUser();
+            setUserProfile(user);
+        } catch (e) {
+            console.error('Error loading user profile:', e);
+        }
+    };
 
     const fetchData = async () => {
         try {
@@ -48,12 +99,41 @@ const PersonalMedicalInfoPage = () => {
             ]);
 
             if (personalRes.data.success) {
-                setPersonalInfo(personalRes.data.data);
-                calculateCompletion('personal', personalRes.data.data);
+                const personal = personalRes.data.data;
+                setPersonalInfo(personal);
+                calculateCompletion('personal', personal);
+                
+                // Populate form data
+                setFormData(prev => ({
+                    ...prev,
+                    fullName: personal.fullName || '',
+                    date_of_birth: personal.date_of_birth ? dayjs(personal.date_of_birth) : null,
+                    gender: personal.gender || '',
+                    country: personal.country || '',
+                    country_code: personal.country_code || '',
+                    phone_number: personal.phone_number || '',
+                    weight: personal.weight || '',
+                    height: personal.height || '',
+                    activity_level: personal.activity_level || '',
+                    sleep_hours: personal.sleep_hours || ''
+                }));
             }
             if (medicalRes.data.success) {
-                setMedicalInfo(medicalRes.data.data);
-                calculateCompletion('medical', medicalRes.data.data);
+                const medical = medicalRes.data.data;
+                setMedicalInfo(medical);
+                calculateCompletion('medical', medical);
+                
+                // Populate form data
+                setFormData(prev => ({
+                    ...prev,
+                    diabetes_type: medical.diabetes_type || '',
+                    diagnosis_date: medical.diagnosis_date ? dayjs(medical.diagnosis_date) : null,
+                    previous_diagnosis: medical.previous_diagnosis || '',
+                    duration_of_diabetes: medical.duration_of_diabetes || '',
+                    medications: medical.current_medications || '',
+                    family_history: medical.family_history || '',
+                    allergies: medical.allergies || ''
+                }));
             }
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -77,7 +157,387 @@ const PersonalMedicalInfoPage = () => {
     };
 
     const handleEditClick = () => {
-        navigate('/personalized-suggestions', { state: { from: 'summary' } });
+        setEditMode(true);
+        setActiveStep(0);
+    };
+
+    const handleCloseEdit = () => {
+        setEditMode(false);
+        setSuccessMessage('');
+        setErrorMessage('');
+        fetchData(); // Refresh data
+    };
+
+    const handleInputChange = (field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleNext = async () => {
+        if (activeStep < 3) {
+            setActiveStep(prev => prev + 1);
+        } else {
+            await handleSave();
+        }
+    };
+
+    const handleBackStep = () => {
+        setActiveStep(prev => prev - 1);
+    };
+
+    const handleSave = async () => {
+        setSavingData(true);
+        setErrorMessage('');
+        setSuccessMessage('');
+
+        try {
+            const personalData = {
+                date_of_birth: formData.date_of_birth ? formData.date_of_birth.format('YYYY-MM-DD') : null,
+                gender: formData.gender,
+                country: formData.country,
+                country_code: formData.country_code,
+                phone_number: formData.phone_number,
+                weight: parseFloat(formData.weight) || null,
+                height: parseFloat(formData.height) || null,
+                activity_level: formData.activity_level,
+                sleep_hours: parseFloat(formData.sleep_hours) || null
+            };
+
+            const medicalData = {
+                diabetes_type: formData.diabetes_type,
+                current_medications: formData.medications,
+                allergies: formData.allergies,
+                family_history: formData.family_history,
+                diagnosis_date: formData.diagnosis_date ? formData.diagnosis_date.format('YYYY-MM-DD') : null,
+            };
+
+            await Promise.all([
+                axiosInstance.post('/personalized-system/personal-info', personalData),
+                axiosInstance.post('/personalized-system/medical-info', medicalData)
+            ]);
+
+            setSuccessMessage('Your information has been saved successfully! 🎉');
+            await fetchData(); // Refresh data
+            
+            setTimeout(() => {
+                handleCloseEdit();
+            }, 1500);
+
+        } catch (error) {
+            console.error('Error saving data:', error);
+            setErrorMessage(error.response?.data?.message || 'Failed to save information. Please try again.');
+        } finally {
+            setSavingData(false);
+        }
+    };
+
+    const getProgress = () => {
+        return ((activeStep + 1) / 4) * 100;
+    };
+
+    const steps = [
+        { label: 'Basic Info', description: 'Tell us about yourself' },
+        { label: 'Lifestyle Info', description: 'Your daily habits' },
+        { label: 'Medical History', description: 'Health background' },
+        { label: 'Review & Save', description: 'Confirm your details' }
+    ];
+
+    const renderStepContent = () => {
+        switch (activeStep) {
+            case 0:
+                return (
+                    <Grid container spacing={3}>
+                        <Grid item xs={12} md={6}>
+                            <TextField
+                                fullWidth
+                                label="Full Name"
+                                required
+                                value={formData.fullName}
+                                onChange={(e) => handleInputChange('fullName', e.target.value)}
+                                variant="outlined"
+                                placeholder="Enter your full name"
+                                disabled={!!userProfile?.fullName}
+                            />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <Autocomplete
+                                fullWidth
+                                options={["Male", "Female", "Other"]}
+                                value={formData.gender || null}
+                                onChange={(e, newValue) => handleInputChange('gender', newValue || '')}
+                                disableClearable
+                                renderInput={(params) => (
+                                    <TextField {...params} fullWidth label="Gender" placeholder="Select your gender" />
+                                )}
+                            />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <LocalizationProvider dateAdapter={AdapterDayjs}>
+                                <DatePicker
+                                    label="Date of Birth"
+                                    value={formData.date_of_birth}
+                                    onChange={(newValue) => handleInputChange('date_of_birth', newValue)}
+                                    slotProps={{ textField: { fullWidth: true, required: true, variant: "outlined" } }}
+                                    maxDate={dayjs()}
+                                    sx={{ width: '100%' }}
+                                />
+                            </LocalizationProvider>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <TextField
+                                select
+                                fullWidth
+                                required
+                                label="Country / Region"
+                                value={formData.country}
+                                onChange={(e) => {
+                                    const selectedCountry = e.target.value;
+                                    const countryCodes = {
+                                        'Pakistan': '+92', 'India': '+91', 'United States': '+1',
+                                        'United Kingdom': '+44', 'UAE': '+971', 'Saudi Arabia': '+966',
+                                        'Bangladesh': '+880', 'Canada': '+1', 'Australia': '+61', 'Other': ''
+                                    };
+                                    handleInputChange('country', selectedCountry);
+                                    handleInputChange('country_code', countryCodes[selectedCountry] || '');
+                                }}
+                                variant="outlined"
+                            >
+                                <MenuItem value="Pakistan">🇵🇰 Pakistan</MenuItem>
+                                <MenuItem value="India">🇮🇳 India</MenuItem>
+                                <MenuItem value="United States">🇺🇸 United States</MenuItem>
+                                <MenuItem value="United Kingdom">🇬🇧 United Kingdom</MenuItem>
+                                <MenuItem value="UAE">🇦🇪 UAE</MenuItem>
+                                <MenuItem value="Saudi Arabia">🇸🇦 Saudi Arabia</MenuItem>
+                                <MenuItem value="Bangladesh">🇧🇩 Bangladesh</MenuItem>
+                                <MenuItem value="Canada">🇨🇦 Canada</MenuItem>
+                                <MenuItem value="Australia">🇦🇺 Australia</MenuItem>
+                                <MenuItem value="Other">🌍 Other</MenuItem>
+                            </TextField>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <TextField
+                                fullWidth
+                                label="Phone Number"
+                                required
+                                value={formData.phone_number}
+                                onChange={(e) => handleInputChange('phone_number', e.target.value)}
+                                variant="outlined"
+                                placeholder={formData.country_code ? `${formData.country_code} XXXXXXXXXX` : "Enter phone number"}
+                                disabled={!!userProfile?.phone_number}
+                                helperText={formData.country_code ? `Format: ${formData.country_code} followed by your number` : 'Select country first'}
+                            />
+                        </Grid>
+                    </Grid>
+                );
+
+            case 1:
+                return (
+                    <Grid container spacing={3}>
+                        <Grid item xs={12} md={6}>
+                            <TextField
+                                fullWidth
+                                label="Weight (kg)"
+                                type="number"
+                                required
+                                value={formData.weight}
+                                onChange={(e) => handleInputChange('weight', e.target.value)}
+                                variant="outlined"
+                                placeholder="e.g., 70"
+                            />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <TextField
+                                fullWidth
+                                label="Height (cm)"
+                                type="number"
+                                required
+                                value={formData.height}
+                                onChange={(e) => handleInputChange('height', e.target.value)}
+                                variant="outlined"
+                                placeholder="e.g., 170"
+                            />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <Autocomplete
+                                fullWidth
+                                options={['Sedentary', 'Lightly Active', 'Moderately Active', 'Very Active', 'Extremely Active']}
+                                value={formData.activity_level || null}
+                                onChange={(e, newValue) => handleInputChange('activity_level', newValue || '')}
+                                disableClearable
+                                renderInput={(params) => (
+                                    <TextField {...params} fullWidth label="Activity Level" placeholder="Select activity level" />
+                                )}
+                            />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <TextField
+                                fullWidth
+                                label="Sleep Hours (per night)"
+                                type="number"
+                                required
+                                value={formData.sleep_hours}
+                                onChange={(e) => handleInputChange('sleep_hours', e.target.value)}
+                                variant="outlined"
+                                placeholder="e.g., 7"
+                                inputProps={{ min: 0, max: 24, step: 0.5 }}
+                            />
+                        </Grid>
+                    </Grid>
+                );
+
+            case 2:
+                return (
+                    <Grid container spacing={3}>
+                        <Grid item xs={12} md={6}>
+                            <Autocomplete
+                                fullWidth
+                                options={["Type 1", "Type 2", "Gestational", "Prediabetes", "Other"]}
+                                value={formData.diabetes_type || null}
+                                onChange={(e, newValue) => handleInputChange('diabetes_type', newValue || '')}
+                                renderInput={(params) => (
+                                    <TextField {...params} label="Diabetes Type" placeholder="Select type" />
+                                )}
+                            />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <LocalizationProvider dateAdapter={AdapterDayjs}>
+                                <DatePicker
+                                    label="Diagnosis Date"
+                                    value={formData.diagnosis_date}
+                                    onChange={(newVal) => handleInputChange('diagnosis_date', newVal)}
+                                    slotProps={{ textField: { fullWidth: true, variant: 'outlined' } }}
+                                    maxDate={dayjs()}
+                                    sx={{ width: '100%' }}
+                                />
+                            </LocalizationProvider>
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <TextField
+                                fullWidth
+                                label="Current Medications"
+                                multiline
+                                rows={3}
+                                value={formData.medications}
+                                onChange={(e) => handleInputChange('medications', e.target.value)}
+                                variant="outlined"
+                                placeholder="List medications you're taking"
+                            />
+                        </Grid>
+                        <Grid item xs={12} md={6}>
+                            <TextField
+                                fullWidth
+                                label="Family History"
+                                multiline
+                                rows={3}
+                                value={formData.family_history}
+                                onChange={(e) => handleInputChange('family_history', e.target.value)}
+                                variant="outlined"
+                                placeholder="Family health history"
+                            />
+                        </Grid>
+                        <Grid item xs={12}>
+                            <TextField
+                                fullWidth
+                                label="Allergies"
+                                value={formData.allergies}
+                                onChange={(e) => handleInputChange('allergies', e.target.value)}
+                                variant="outlined"
+                                placeholder="List any allergies"
+                            />
+                        </Grid>
+                    </Grid>
+                );
+
+            case 3:
+                return (
+                    <Box>
+                        <Typography variant="h6" gutterBottom fontWeight="bold" color="primary">
+                            Review Your Information
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" paragraph>
+                            Please review your information before saving.
+                        </Typography>
+
+                        <Card variant="outlined" sx={{ mb: 2, p: 2 }}>
+                            <Typography variant="subtitle2" fontWeight="bold" gutterBottom>Basic Information</Typography>
+                            <Grid container spacing={1}>
+                                <Grid item xs={6}>
+                                    <Typography variant="body2" color="text.secondary">Full Name:</Typography>
+                                    <Typography variant="body1">{formData.fullName || 'Not provided'}</Typography>
+                                </Grid>
+                                <Grid item xs={6}>
+                                    <Typography variant="body2" color="text.secondary">Date of Birth:</Typography>
+                                    <Typography variant="body1">
+                                        {formData.date_of_birth ? formData.date_of_birth.format('MMM DD, YYYY') : 'Not provided'}
+                                    </Typography>
+                                </Grid>
+                                <Grid item xs={6}>
+                                    <Typography variant="body2" color="text.secondary">Gender:</Typography>
+                                    <Typography variant="body1">{formData.gender || 'Not provided'}</Typography>
+                                </Grid>
+                                <Grid item xs={6}>
+                                    <Typography variant="body2" color="text.secondary">Phone:</Typography>
+                                    <Typography variant="body1">
+                                        {formData.country_code && formData.phone_number ? `${formData.country_code} ${formData.phone_number}` : formData.phone_number || 'Not provided'}
+                                    </Typography>
+                                </Grid>
+                            </Grid>
+                        </Card>
+
+                        <Card variant="outlined" sx={{ mb: 2, p: 2 }}>
+                            <Typography variant="subtitle2" fontWeight="bold" gutterBottom>Lifestyle Information</Typography>
+                            <Grid container spacing={1}>
+                                <Grid item xs={6}>
+                                    <Typography variant="body2" color="text.secondary">Weight:</Typography>
+                                    <Typography variant="body1">{formData.weight ? `${formData.weight} kg` : 'Not provided'}</Typography>
+                                </Grid>
+                                <Grid item xs={6}>
+                                    <Typography variant="body2" color="text.secondary">Height:</Typography>
+                                    <Typography variant="body1">{formData.height ? `${formData.height} cm` : 'Not provided'}</Typography>
+                                </Grid>
+                                <Grid item xs={6}>
+                                    <Typography variant="body2" color="text.secondary">Activity Level:</Typography>
+                                    <Typography variant="body1">{formData.activity_level || 'Not provided'}</Typography>
+                                </Grid>
+                                <Grid item xs={6}>
+                                    <Typography variant="body2" color="text.secondary">Sleep Hours:</Typography>
+                                    <Typography variant="body1">{formData.sleep_hours ? `${formData.sleep_hours} hrs` : 'Not provided'}</Typography>
+                                </Grid>
+                            </Grid>
+                        </Card>
+
+                        <Card variant="outlined" sx={{ p: 2 }}>
+                            <Typography variant="subtitle2" fontWeight="bold" gutterBottom>Medical History</Typography>
+                            <Grid container spacing={1}>
+                                <Grid item xs={6}>
+                                    <Typography variant="body2" color="text.secondary">Diabetes Type:</Typography>
+                                    <Typography variant="body1">{formData.diabetes_type || 'Not provided'}</Typography>
+                                </Grid>
+                                <Grid item xs={6}>
+                                    <Typography variant="body2" color="text.secondary">Diagnosis Date:</Typography>
+                                    <Typography variant="body1">
+                                        {formData.diagnosis_date ? formData.diagnosis_date.format('MMM DD, YYYY') : 'Not provided'}
+                                    </Typography>
+                                </Grid>
+                                <Grid item xs={12}>
+                                    <Typography variant="body2" color="text.secondary">Medications:</Typography>
+                                    <Typography variant="body1">{formData.medications || 'Not provided'}</Typography>
+                                </Grid>
+                                <Grid item xs={12}>
+                                    <Typography variant="body2" color="text.secondary">Family History:</Typography>
+                                    <Typography variant="body1">{formData.family_history || 'Not provided'}</Typography>
+                                </Grid>
+                                <Grid item xs={12}>
+                                    <Typography variant="body2" color="text.secondary">Allergies:</Typography>
+                                    <Typography variant="body1">{formData.allergies || 'Not provided'}</Typography>
+                                </Grid>
+                            </Grid>
+                        </Card>
+                    </Box>
+                );
+
+            default:
+                return null;
+        }
     };
 
     const handleBack = () => {
@@ -104,48 +564,50 @@ const PersonalMedicalInfoPage = () => {
 
     if (loading) {
         return (
-            <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Typography>Loading...</Typography>
+            <Box sx={{ minHeight: inModal ? '60vh' : '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CircularProgress />
             </Box>
         );
     }
 
     return (
-        <Box sx={{ minHeight: '100vh', bgcolor: '#f5f7fa', py: 4 }}>
+        <Box sx={{ minHeight: inModal ? 'auto' : '100vh', bgcolor: inModal ? 'transparent' : '#f5f7fa', py: inModal ? 2 : 4 }}>
             <Container maxWidth="md">
-                {/* Header */}
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
-                    <Button
-                        startIcon={<ArrowBackIcon />}
-                        onClick={handleBack}
-                        sx={{ mr: 2, textTransform: 'none' }}
-                    >
-                        Back
-                    </Button>
-                    <Box>
-                        <Typography variant="h4" fontWeight="bold" sx={{ color: 'primary.main' }}>
-                            Personal & Medical Information
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                            View and manage your health profile
-                        </Typography>
+                {/* Header - Only show when not in modal */}
+                {!inModal && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 4 }}>
+                        <Button
+                            startIcon={<ArrowBackIcon />}
+                            onClick={handleBack}
+                            sx={{ mr: 2, textTransform: 'none' }}
+                        >
+                            Back
+                        </Button>
+                        <Box>
+                            <Typography variant="h4" fontWeight="bold" sx={{ color: 'primary.main' }}>
+                                Personal & Medical Information
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                View and manage your health profile
+                            </Typography>
+                        </Box>
                     </Box>
-                </Box>
+                )}
 
                 {/* Personal Information Card */}
                 <Card elevation={2} sx={{ mb: 3, borderRadius: 3, overflow: 'hidden' }}>
                     <Box
                         sx={{
-                            bgcolor: '#dbeafe',
+                            bgcolor: '#f0f4ff',
                             p: 3,
-                            borderBottom: '1px solid #bfdbfe',
+                            borderBottom: '1px solid #e5e7eb',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
                         }}
                     >
                         <Box>
-                            <Typography variant="h6" fontWeight="bold" sx={{ color: '#1e40af' }}>
+                            <Typography variant="h6" fontWeight="bold" sx={{ color: '#1f2937' }}>
                                 Personal Information
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
@@ -154,7 +616,7 @@ const PersonalMedicalInfoPage = () => {
                         </Box>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Box sx={{ textAlign: 'right' }}>
-                                <Typography variant="h6" fontWeight="bold" sx={{ color: '#2563eb' }}>
+                                <Typography variant="h6" fontWeight="bold" sx={{ color: '#3b82f6' }}>
                                     {personalCompletion}%
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary">
@@ -177,7 +639,7 @@ const PersonalMedicalInfoPage = () => {
                                 borderRadius: 4,
                                 bgcolor: '#e5e7eb',
                                 '& .MuiLinearProgress-bar': {
-                                    bgcolor: '#2563eb',
+                                    bgcolor: '#60a5fa',
                                     borderRadius: 4,
                                 },
                             }}
@@ -224,16 +686,16 @@ const PersonalMedicalInfoPage = () => {
                 <Card elevation={2} sx={{ mb: 3, borderRadius: 3, overflow: 'hidden' }}>
                     <Box
                         sx={{
-                            bgcolor: '#fce7f3',
+                            bgcolor: '#f0fdf4',
                             p: 3,
-                            borderBottom: '1px solid #fbcfe8',
+                            borderBottom: '1px solid #e5e7eb',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
                         }}
                     >
                         <Box>
-                            <Typography variant="h6" fontWeight="bold" sx={{ color: '#9f1239' }}>
+                            <Typography variant="h6" fontWeight="bold" sx={{ color: '#1f2937' }}>
                                 Medical Information
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
@@ -242,7 +704,7 @@ const PersonalMedicalInfoPage = () => {
                         </Box>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Box sx={{ textAlign: 'right' }}>
-                                <Typography variant="h6" fontWeight="bold" sx={{ color: '#ec4899' }}>
+                                <Typography variant="h6" fontWeight="bold" sx={{ color: '#10b981' }}>
                                     {medicalCompletion}%
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary">
@@ -265,7 +727,7 @@ const PersonalMedicalInfoPage = () => {
                                 borderRadius: 4,
                                 bgcolor: '#e5e7eb',
                                 '& .MuiLinearProgress-bar': {
-                                    bgcolor: '#ec4899',
+                                    bgcolor: '#34d399',
                                     borderRadius: 4,
                                 },
                             }}
@@ -335,6 +797,113 @@ const PersonalMedicalInfoPage = () => {
                     </Button>
                 </Box>
             </Container>
+
+            {/* Edit Dialog */}
+            <Dialog 
+                open={editMode} 
+                onClose={handleCloseEdit}
+                maxWidth="md"
+                fullWidth
+                PaperProps={{
+                    sx: {
+                        borderRadius: 3,
+                        maxHeight: '90vh'
+                    }
+                }}
+            >
+                <DialogTitle sx={{ pb: 1 }}>
+                    <Box>
+                        <Typography variant="h5" fontWeight="bold" color="primary">
+                            Edit Personal & Medical Information
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                            Update your profile information
+                        </Typography>
+                    </Box>
+                </DialogTitle>
+
+                <DialogContent sx={{ pt: 2 }}>
+                    {/* Progress Bar */}
+                    <LinearProgress 
+                        variant="determinate" 
+                        value={getProgress()} 
+                        sx={{ height: 6, borderRadius: 3, mb: 3 }}
+                    />
+
+                    {/* Stepper */}
+                    <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 4 }}>
+                        {steps.map((step) => (
+                            <Step key={step.label}>
+                                <StepLabel>
+                                    <Typography variant="subtitle2" fontWeight="bold">
+                                        {step.label}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        {step.description}
+                                    </Typography>
+                                </StepLabel>
+                            </Step>
+                        ))}
+                    </Stepper>
+
+                    {/* Success/Error Messages */}
+                    {successMessage && (
+                        <Fade in={!!successMessage}>
+                            <Alert severity="success" sx={{ mb: 3 }}>
+                                {successMessage}
+                            </Alert>
+                        </Fade>
+                    )}
+                    {errorMessage && (
+                        <Fade in={!!errorMessage}>
+                            <Alert severity="error" sx={{ mb: 3 }}>
+                                {errorMessage}
+                            </Alert>
+                        </Fade>
+                    )}
+
+                    {/* Step Content */}
+                    <Box sx={{ minHeight: 300 }}>
+                        {renderStepContent()}
+                    </Box>
+                </DialogContent>
+
+                <DialogActions sx={{ p: 3, pt: 2 }}>
+                    <Button 
+                        onClick={handleCloseEdit}
+                        disabled={savingData}
+                        sx={{ textTransform: 'none' }}
+                    >
+                        Cancel
+                    </Button>
+                    {activeStep > 0 && (
+                        <Button 
+                            onClick={handleBackStep}
+                            disabled={savingData}
+                            sx={{ textTransform: 'none' }}
+                        >
+                            Back
+                        </Button>
+                    )}
+                    <Button
+                        variant="contained"
+                        onClick={handleNext}
+                        disabled={savingData}
+                        sx={{ 
+                            textTransform: 'none',
+                            px: 3
+                        }}
+                    >
+                        {savingData ? (
+                            <CircularProgress size={24} color="inherit" />
+                        ) : activeStep === steps.length - 1 ? (
+                            'Save Changes'
+                        ) : (
+                            'Next'
+                        )}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

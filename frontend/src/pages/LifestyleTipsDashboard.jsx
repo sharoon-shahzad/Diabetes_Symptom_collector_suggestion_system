@@ -14,8 +14,10 @@ import {
   Alert,
   CircularProgress,
   Divider,
+  Dialog,
 } from '@mui/material';
 import axiosInstance from '../utils/axiosInstance.js';
+import LifestyleTipsView from './LifestyleTipsView.jsx';
 
 const categoryConfig = {
   sleep_hygiene: { icon: '💤', color: '#6366f1', name: 'Sleep Hygiene' },
@@ -55,7 +57,7 @@ const StatTile = ({ label, value, accent, icon }) => (
   </Box>
 );
 
-const LifestyleTipsDashboard = () => {
+const LifestyleTipsDashboard = ({ inModal = false }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -63,6 +65,7 @@ const LifestyleTipsDashboard = () => {
   const [regionCoverage, setRegionCoverage] = useState(null);
   const [history, setHistory] = useState([]);
   const [selectedTips, setSelectedTips] = useState(null);
+  const [viewingHistoryTips, setViewingHistoryTips] = useState(null);
   const [showGenerator, setShowGenerator] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [generating, setGenerating] = useState(false);
@@ -168,11 +171,12 @@ const LifestyleTipsDashboard = () => {
         <Paper
           elevation={0}
           sx={{
-            background: 'linear-gradient(135deg, #8b5cf6 0%, #a78bfa 50%, #c084fc 100%)',
+            background: 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
             borderRadius: 4,
             p: 4,
             mb: 4,
-            color: '#fff',
+            color: '#1f2937',
+            border: '1px solid #e5e7eb',
             position: 'relative',
             overflow: 'hidden',
             '&::before': {
@@ -202,14 +206,15 @@ const LifestyleTipsDashboard = () => {
                     <Chip
                       label={`Region: ${regionCoverage.region} • ${regionCoverage.coverage}`}
                       sx={{
-                        bgcolor: 'rgba(255,255,255,0.16)',
-                        color: '#fff',
-                        borderColor: 'rgba(255,255,255,0.3)',
+                        bgcolor: '#ffffff',
+                        color: '#8b5cf6',
+                        borderColor: '#f3e8ff',
+                        fontWeight: 600
                       }}
                       variant="outlined"
                     />
                   ) : null}
-                  <Chip label={`History: ${history.length || 0}`} sx={{ bgcolor: 'rgba(255,255,255,0.16)', color: '#fff' }} />
+                  <Chip label={`History: ${history.length || 0}`} sx={{ bgcolor: '#ffffff', color: '#8b5cf6', fontWeight: 600 }} />
                 </Stack>
               </Box>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
@@ -225,8 +230,9 @@ const LifestyleTipsDashboard = () => {
                     fontWeight: 'bold',
                     px: 3.5,
                     py: 1.2,
-                    bgcolor: '#0f172a',
-                    '&:hover': { bgcolor: '#0b1220' },
+                    bgcolor: '#8b5cf6',
+                    color: '#fff',
+                    '&:hover': { bgcolor: '#7c3aed' },
                   }}
                 >
                   Generate Daily Tips
@@ -286,7 +292,7 @@ const LifestyleTipsDashboard = () => {
                 <Button
                   variant="outlined"
                   size="small"
-                  onClick={() => navigate(`/personalized-suggestions/lifestyle-tips-view/${selectedTips._id}`)}
+                  onClick={() => setViewingHistoryTips(selectedTips)}
                 >
                   View Details
                 </Button>
@@ -361,7 +367,7 @@ const LifestyleTipsDashboard = () => {
                     <Paper
                       key={idx}
                       variant="outlined"
-                      onClick={() => navigate(`/personalized-suggestions/lifestyle-tips-view/${tips._id}`)}
+                      onClick={() => setViewingHistoryTips(tips)}
                       sx={{
                         p: 2,
                         borderRadius: 2,
@@ -458,6 +464,36 @@ const LifestyleTipsDashboard = () => {
           </Paper>
         </Box>
       )}
+
+      {/* History Tips View Dialog */}
+      <Dialog
+        open={Boolean(viewingHistoryTips)}
+        onClose={() => setViewingHistoryTips(null)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            maxHeight: '90vh'
+          }
+        }}
+      >
+        {viewingHistoryTips && (
+          <LifestyleTipsView
+            tips={viewingHistoryTips}
+            onBack={() => setViewingHistoryTips(null)}
+            onDelete={async (id) => {
+              try {
+                await axiosInstance.delete(`/lifestyle-tips/${id}`);
+                setViewingHistoryTips(null);
+                fetchInitial();
+              } catch (err) {
+                console.error('Error deleting tips:', err);
+              }
+            }}
+          />
+        )}
+      </Dialog>
     </Box>
   );
 };

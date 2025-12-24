@@ -2,7 +2,9 @@ import { UsersAnswers } from '../models/Users_Answers.js';
 import { Question } from '../models/Question.js';
 import { Symptom } from '../models/Symptom.js';
 import { User } from '../models/User.js';
+import { UserMedicalInfo } from '../models/UserMedicalInfo.js';
 import { assessDiabetesRiskPython } from '../services/mlService.js';
+import hybridRiskService from '../services/hybridRiskService.js';
 
 // Map stored answers to model features expected by EnhancedDiabetesSystem
 function mapAnswersToFeatures(answersByQuestionId, questions) {
@@ -129,28 +131,81 @@ export const assessDiabetes = async (req, res) => {
       .populate({ path: 'answer_id', model: 'Answer' });
 
     console.log('Found user answers:', userAnswers.length);
-    console.log('User answers data:', userAnswers.map(ua => ({
-      question: ua.question_id?.question_text,
-      answer: ua.answer_id?.answer_text,
-      symptom: ua.question_id?.symptom_id?.name
-    })));
 
     const questions = userAnswers.map(ua => ua.question_id).filter(Boolean);
     const answersByQuestionId = new Map(userAnswers.map(ua => [String(ua.question_id?._id), ua]));
 
     console.log('Questions found:', questions.length);
-    console.log('Answers by question ID:', Array.from(answersByQuestionId.entries()));
 
     const features = mapAnswersToFeatures(answersByQuestionId, questions);
     console.log('Mapped features for ML model:', features);
 
-    const result = await assessDiabetesRiskPython(features);
-    console.log('ML model result:', result);
+    // Step 1: Get XGBoost base assessment
+    const xgboostResult = await assessDiabetesRiskPython(features);
+    console.log('XGBoost model result:', xgboostResult);
 
-    // Persist latest assessment summary on the user for dashboard insights
+    // Check if the XGBoost result contains an error
+    if (xgboostResult.error) {
+      console.error('XGBoost model returned error:', xgboostResult.error);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Assessment failed', 
+        error: xgboostResult.error,
+        details: 'The machine learning model encountered an error during processing'
+      });
+    }
+
+    // Step 2: Enhance with LLM (Diabetica 7B) if available
+    let finalResult = xgboostResult;
+    let enhancementStatus = { enhanced: false, reason: 'Not attempted' };
+
     try {
-      const riskLevelRaw = result?.risk_level || 'low';
-      const probabilityRaw = result?.diabetes_probability ?? 0;
+      // Get user context for better LLM assessment
+      const user = await User.findById(userId);
+      const medicalInfo = await UserMedicalInfo.findOne({ user_id: userId });
+      
+      const userContext = {
+        age: features.Age,
+        gender: features.Gender === 1 ? 'Male' : 'Female',
+        diabetesType: user?.diabetes_type || 'Undiagnosed',
+        medications: medicalInfo?.medications || []
+      };
+
+      console.log('Attempting LLM enhancement with Diabetica 7B...');
+      
+      // Check if LLM is available
+      const llmAvailable = await hybridRiskService.checkLLMAvailability();
+      
+      if (llmAvailable) {
+        // Enhance with LLM
+        const enhancedResult = await hybridRiskService.enhanceRiskAssessment(
+          xgboostResult,
+          features,
+          userContext
+        );
+        
+        if (enhancedResult.enhanced) {
+          finalResult = enhancedResult;
+          enhancementStatus = { enhanced: true, reason: 'Successfully enhanced with Diabetica 7B' };
+          console.log('✅ Assessment enhanced with LLM');
+        } else {
+          enhancementStatus = { enhanced: false, reason: enhancedResult.fallbackReason || 'LLM enhancement failed' };
+          console.log('⚠️ LLM enhancement failed, using XGBoost only:', enhancedResult.fallbackReason);
+        }
+      } else {
+        enhancementStatus = { enhanced: false, reason: 'LM Studio not available. Start LM Studio server for enhanced assessments.' };
+        console.log('⚠️ LM Studio not available, using XGBoost only');
+      }
+    } catch (llmError) {
+      // If LLM enhancement fails, continue with XGBoost result
+      enhancementStatus = { enhanced: false, reason: `LLM enhancement error: ${llmError.message}` };
+      console.error('LLM enhancement error (continuing with XGBoost):', llmError.message);
+    }
+
+    // Step 3: Persist latest assessment summary on the user for dashboard insights
+    try {
+      const riskLevelRaw = finalResult?.risk_level || 'low';
+      const probabilityRaw = finalResult?.diabetes_probability ?? 0;
 
       await User.findByIdAndUpdate(userId, {
         last_assessment_risk_level: typeof riskLevelRaw === 'string' ? riskLevelRaw : String(riskLevelRaw),
@@ -163,18 +218,20 @@ export const assessDiabetes = async (req, res) => {
       console.error('Failed to persist latest assessment summary on user:', persistErr);
     }
 
-    // Check if the result contains an error
-    if (result.error) {
-      console.error('ML model returned error:', result.error);
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Assessment failed', 
-        error: result.error,
-        details: 'The machine learning model encountered an error during processing'
-      });
-    }
-
-    return res.status(200).json({ success: true, data: { features, result } });
+    // Return enhanced result with metadata
+    return res.status(200).json({ 
+      success: true, 
+      data: { 
+        features, 
+        result: finalResult,
+        enhancement_status: enhancementStatus,
+        model_info: {
+          primary_model: 'XGBoost (512 records)',
+          enhancement_model: enhancementStatus.enhanced ? 'Diabetica 7B LLM' : 'None',
+          assessment_type: enhancementStatus.enhanced ? 'Hybrid (Statistical + Medical Reasoning)' : 'Statistical Only'
+        }
+      } 
+    });
   } catch (err) {
     console.error('Assessment error:', err);
     return res.status(500).json({ 

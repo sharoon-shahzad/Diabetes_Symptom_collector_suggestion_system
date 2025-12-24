@@ -46,7 +46,7 @@ const StatTile = ({ label, value, accent, icon }) => (
   </Paper>
 );
 
-const ExercisePlanDashboard = () => {
+const ExercisePlanDashboard = ({ inModal = false }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -131,17 +131,18 @@ const ExercisePlanDashboard = () => {
             sx={{
               borderRadius: 4,
               p: { xs: 3, md: 4 },
-              background: 'linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)',
-              color: '#fff',
+              background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+              color: '#1f2937',
               position: 'relative',
-              overflow: 'hidden'
+              overflow: 'hidden',
+              border: '1px solid #e5e7eb'
             }}
           >
-            <Box sx={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 85% 20%, rgba(255,255,255,0.18), transparent 35%)' }} />
+            <Box sx={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 85% 20%, rgba(59,130,246,0.08), transparent 35%)' }} />
             {/* Floating emojis */}
-            <Box sx={{ position: 'absolute', top: 20, right: '10%', fontSize: '2rem', opacity: 0.2, animation: 'float 3s ease-in-out infinite' }}>🏋️</Box>
-            <Box sx={{ position: 'absolute', bottom: 20, left: '5%', fontSize: '2.5rem', opacity: 0.2, animation: 'float 4s ease-in-out infinite', animationDelay: '1s' }}>🧘</Box>
-            <Box sx={{ position: 'absolute', top: '50%', right: '5%', fontSize: '2rem', opacity: 0.15, animation: 'float 3.5s ease-in-out infinite', animationDelay: '0.5s' }}>🎽</Box>
+            <Box sx={{ position: 'absolute', top: 20, right: '10%', fontSize: '2rem', opacity: 0.15, animation: 'float 3s ease-in-out infinite' }}>🏋️</Box>
+            <Box sx={{ position: 'absolute', bottom: 20, left: '5%', fontSize: '2.5rem', opacity: 0.15, animation: 'float 4s ease-in-out infinite', animationDelay: '1s' }}>🧘</Box>
+            <Box sx={{ position: 'absolute', top: '50%', right: '5%', fontSize: '2rem', opacity: 0.12, animation: 'float 3.5s ease-in-out infinite', animationDelay: '0.5s' }}>🎽</Box>
             <style>{`
               @keyframes float {
                 0%, 100% { transform: translateY(0px); }
@@ -158,11 +159,11 @@ const ExercisePlanDashboard = () => {
                   {regionCoverage ? (
                     <Chip
                       label={`Region: ${regionCoverage.region} • ${regionCoverage.coverage}`}
-                      sx={{ bgcolor: 'rgba(255,255,255,0.16)', color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }}
+                      sx={{ bgcolor: '#ffffff', color: '#3b82f6', borderColor: '#dbeafe', fontWeight: 600 }}
                       variant="outlined"
                     />
                   ) : null}
-                  <Chip label={`History: ${history.length || 0}`} sx={{ bgcolor: 'rgba(255,255,255,0.16)', color: '#fff' }} />
+                  <Chip label={`History: ${history.length || 0}`} sx={{ bgcolor: '#ffffff', color: '#3b82f6', fontWeight: 600 }} />
                 </Stack>
               </Box>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
@@ -178,8 +179,9 @@ const ExercisePlanDashboard = () => {
                     fontWeight: 'bold',
                     px: 3.5,
                     py: 1.2,
-                    bgcolor: '#0f172a',
-                    '&:hover': { bgcolor: '#0b1220' }
+                    bgcolor: '#3b82f6',
+                    color: '#fff',
+                    '&:hover': { bgcolor: '#2563eb' }
                   }}
                 >
                   Create Exercise Plan
@@ -191,9 +193,9 @@ const ExercisePlanDashboard = () => {
                   sx={{
                     textTransform: 'none',
                     fontWeight: 'bold',
-                    color: '#fff',
-                    borderColor: 'rgba(255,255,255,0.5)',
-                    '&:hover': { borderColor: '#fff', bgcolor: 'rgba(255,255,255,0.1)' }
+                    color: '#3b82f6',
+                    borderColor: '#3b82f6',
+                    '&:hover': { borderColor: '#2563eb', bgcolor: '#eff6ff' }
                   }}
                 >
                   Refresh

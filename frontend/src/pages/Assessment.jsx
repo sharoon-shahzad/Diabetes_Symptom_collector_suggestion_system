@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -9,42 +9,41 @@ import {
   Button,
   Chip,
   LinearProgress,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemIcon,
-  Divider,
-  IconButton,
-  Tooltip,
-  Paper,
   Container,
-  Stack,
-  Avatar,
-  Badge
+  Paper
 } from '@mui/material';
 import {
   ArrowBack,
   TrendingUp,
-  TrendingDown,
   Assessment as AssessmentIcon,
   HealthAndSafety,
   Warning,
   CheckCircle,
-  Info,
-  Refresh,
-  Download,
-  Share,
-  MoreVert
+  Refresh
 } from '@mui/icons-material';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Chart from 'react-apexcharts';
 import { assessDiabetesRisk } from '../utils/api';
+
+const getRiskColor = (risk) => {
+  const level = (risk || '').toLowerCase();
+  if (level === 'high') return '#ef4444';
+  if (level === 'medium') return '#f59e0b';
+  return '#22c55e';
+};
+
+const getRiskGradient = (risk) => {
+  const level = (risk || '').toLowerCase();
+  if (level === 'high') return 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+  if (level === 'medium') return 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)';
+  return 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)';
+};
 
 const Assessment = () => {
   const navigate = useNavigate();
   const [assessmentData, setAssessmentData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchAssessmentData();
@@ -54,22 +53,15 @@ const Assessment = () => {
     try {
       setLoading(true);
       setError('');
-      
-      console.log('Fetching assessment data...');
+
       const response = await assessDiabetesRisk();
-      console.log('API Response:', response);
-      
-      // The API returns { success: true, data: { features, result } }
       const result = response?.result || {};
       const features = response?.features || {};
-      
-      console.log('Result from ML model:', result);
-      console.log('Features from ML model:', features);
-      
+
       const symptoms_present = Object.entries(features)
         .filter(([k, v]) => !['Age', 'Gender', 'Obesity'].includes(k) && Number(v) === 1)
         .map(([k]) => k);
-      
+
       const feature_importance = {};
       if (result.feature_importance && typeof result.feature_importance === 'object') {
         Object.entries(result.feature_importance).forEach(([k, v]) => {
@@ -78,7 +70,7 @@ const Assessment = () => {
           }
         });
       }
-      
+
       const normalized = {
         risk_level: (result.risk_level || 'low').charAt(0).toUpperCase() + (result.risk_level || 'low').slice(1),
         probability: Number(result.diabetes_probability || 0),
@@ -87,1043 +79,557 @@ const Assessment = () => {
         next_steps: result?.recommendations?.next_steps || [],
         feature_importance,
         symptoms_present,
+        medical_reasoning: result?.llm_insights?.medical_reasoning || '',
+        clinical_notes: result?.llm_insights?.clinical_notes || '',
+        priority_symptoms: result?.llm_insights?.priority_symptoms || [],
+        clinical_actions: result?.llm_insights?.recommended_actions || [],
+        urgency: result?.llm_insights?.urgency_level || 'routine'
       };
-      
-      console.log('Normalized assessment data:', normalized);
+
       setAssessmentData(normalized);
     } catch (err) {
-      console.error('Assessment error:', err);
-      setError('Failed to fetch assessment data: ' + (err.message || 'Unknown error'));
+      console.error('Assessment fetch error:', err);
+      setError(err.response?.data?.message || 'Failed to fetch assessment data');
     } finally {
       setLoading(false);
     }
   };
 
-  const getRiskColor = (risk) => {
-    if (risk === 'Low') return '#4CAF50';
-    if (risk === 'Medium') return '#FF9800';
-    return '#F44336';
-  };
-
-  const getRiskIcon = (risk) => {
-    if (risk === 'Low') return <CheckCircle sx={{ color: '#4CAF50' }} />;
-    if (risk === 'Medium') return <Warning sx={{ color: '#FF9800' }} />;
-    return <HealthAndSafety sx={{ color: '#F44336' }} />;
-  };
-
-  const getRiskGradient = (risk) => {
-    if (risk === 'Low') return 'linear-gradient(135deg, #4CAF50 0%, #66BB6A 100%)';
-    if (risk === 'Medium') return 'linear-gradient(135deg, #FF9800 0%, #FFB74D 100%)';
-    return 'linear-gradient(135deg, #F44336 0%, #EF5350 100%)';
-  };
-
   if (loading) {
     return (
-      <Box
-        sx={{
-          minHeight: '100vh',
-          background: 'linear-gradient(135deg, #0F0F23 0%, #1A1A2E 50%, #16213E 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
-      >
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Box sx={{ textAlign: 'center' }}>
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            >
-              <AssessmentIcon sx={{ fontSize: 60, color: '#FF6B35' }} />
-            </motion.div>
-            <Typography variant="h6" sx={{ color: 'white', mt: 2 }}>
-              Analyzing your health data...
-            </Typography>
-          </Box>
-        </motion.div>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#0a0e27' }}>
+        <Box sx={{ textAlign: 'center' }}>
+          <LinearProgress sx={{ mb: 2, width: 300 }} />
+          <Typography sx={{ color: 'white' }}>Loading assessment...</Typography>
+        </Box>
       </Box>
     );
   }
 
-  if (error) {
+  if (error || !assessmentData) {
     return (
-      <Box
-        sx={{
-          minHeight: '100vh',
-          background: 'linear-gradient(135deg, #0F0F23 0%, #1A1A2E 50%, #16213E 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Card sx={{ maxWidth: 400, background: '#1E1E2E', border: '1px solid #333' }}>
-            <CardContent sx={{ textAlign: 'center', p: 4 }}>
-              <Warning sx={{ fontSize: 60, color: '#F44336', mb: 2 }} />
-              <Typography variant="h6" sx={{ color: 'white', mb: 2 }}>
-                Assessment Error
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#B0B0B0', mb: 3 }}>
-                {error}
-              </Typography>
-              <Button
-                variant="contained"
-                startIcon={<Refresh />}
-                onClick={fetchAssessmentData}
-                sx={{
-                  background: '#FF6B35',
-                  '&:hover': { background: '#E55A2B' }
-                }}
-              >
-                Try Again
-              </Button>
-            </CardContent>
-          </Card>
-        </motion.div>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#0a0e27' }}>
+        <Card sx={{ p: 4, maxWidth: 500 }}>
+          <Typography variant="h6" color="error" gutterBottom>Error Loading Assessment</Typography>
+          <Typography>{error || 'No data available'}</Typography>
+          <Button variant="contained" onClick={() => navigate('/questionnaire')} sx={{ mt: 2 }}>
+            Return to Questionnaire
+          </Button>
+        </Card>
       </Box>
     );
   }
 
-  if (!assessmentData) {
-    return (
-      <Box
-        sx={{
-          minHeight: '100vh',
-          background: 'linear-gradient(135deg, #0F0F23 0%, #1A1A2E 50%, #16213E 100%)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center'
-        }}
-      >
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Card sx={{ maxWidth: 400, background: '#1E1E2E', border: '1px solid #333' }}>
-            <CardContent sx={{ textAlign: 'center', p: 4 }}>
-              <Info sx={{ fontSize: 60, color: '#2196F3', mb: 2 }} />
-              <Typography variant="h6" sx={{ color: 'white', mb: 2 }}>
-                No Assessment Data
-              </Typography>
-              <Typography variant="body2" sx={{ color: '#B0B0B0', mb: 3 }}>
-                Please complete the onboarding process first.
-              </Typography>
-              <Button
-                variant="contained"
-                startIcon={<ArrowBack />}
-                onClick={() => navigate('/onboarding')}
-                sx={{
-                  background: '#FF6B35',
-                  '&:hover': { background: '#E55A2B' }
-                }}
-              >
-                Go to Onboarding
-              </Button>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </Box>
-    );
-  }
+  const {
+    risk_level,
+    probability,
+    confidence,
+    recommendations,
+    next_steps,
+    feature_importance,
+    symptoms_present
+  } = assessmentData;
 
-  const { risk_level, probability, confidence, recommendations, feature_importance, symptoms_present } = assessmentData;
-
-  // Chart configurations
+  // COMPREHENSIVE CHART CONFIGURATIONS
   const gaugeOptions = {
-    chart: {
-      type: 'radialBar',
-      height: 280,
-      background: 'transparent',
-      toolbar: {
-        show: false
-      }
-    },
+    chart: { type: 'radialBar', sparkline: { enabled: false } },
     plotOptions: {
       radialBar: {
-        startAngle: -90,
-        endAngle: 90,
-        track: {
-          background: 'rgba(255,255,255,0.1)',
-          strokeWidth: '90%',
-          margin: 10,
-        },
+        startAngle: -135,
+        endAngle: 135,
+        hollow: { size: '65%' },
+        track: { background: 'rgba(255,255,255,0.1)', strokeWidth: '100%' },
         dataLabels: {
-          name: {
-            show: false
-          },
-          value: {
-            color: 'white',
-            fontSize: '32px',
-            fontWeight: 'bold',
-            offsetY: -5,
-            formatter: function (val) {
-              return val + '%'
-            }
-          }
+          name: { fontSize: '20px', color: '#ffffff', fontWeight: 800, offsetY: -10 },
+          value: { fontSize: '42px', color: '#ffffff', fontWeight: 900, offsetY: 10, formatter: (val) => `${val}%` }
         }
       }
     },
-    fill: {
-      type: 'gradient',
-      gradient: {
-        shade: 'dark',
-        type: 'radial',
-        shadeIntensity: 0.5,
-        gradientToColors: [getRiskColor(risk_level)],
-        inverseColors: false,
-        opacityFrom: 1,
-        opacityTo: 0.8,
-        stops: [0, 100]
-      }
-    },
-    stroke: {
-      lineCap: 'round',
-      width: 8
-    },
+    fill: { type: 'gradient', gradient: { shade: 'dark', type: 'horizontal', gradientToColors: ['#6366f1'], stops: [0, 100] } },
+    stroke: { lineCap: 'round' },
     labels: ['Risk Probability'],
-    colors: [getRiskColor(risk_level)]
+    colors: ['#8b5cf6']
+  };
+
+  const radarOptions = {
+    chart: { type: 'radar', toolbar: { show: false } },
+    xaxis: { 
+      categories: Object.keys(feature_importance).slice(0, 8),
+      labels: { style: { colors: Array(8).fill('#fff'), fontSize: '12px', fontWeight: 600 } }
+    },
+    yaxis: { show: false },
+    fill: { opacity: 0.3 },
+    stroke: { show: true, width: 2 },
+    colors: ['#22c55e'],
+    markers: { size: 4, colors: ['#22c55e'], strokeColor: '#fff', strokeWidth: 2 },
+    legend: { show: false },
+    plotOptions: { radar: { polygons: { strokeColors: 'rgba(255,255,255,0.1)', fill: { colors: ['rgba(255,255,255,0.02)', 'rgba(255,255,255,0.04)'] } } } }
+  };
+
+  const barHorizontalOptions = {
+    chart: { type: 'bar', toolbar: { show: false } },
+    plotOptions: { bar: { borderRadius: 8, horizontal: true, distributed: true, barHeight: '75%' } },
+    colors: ['#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#10b981', '#ec4899', '#f97316', '#14b8a6'],
+    dataLabels: { enabled: true, style: { fontSize: '13px', fontWeight: 900, colors: ['#fff'] }, offsetX: 10 },
+    xaxis: { 
+      categories: Object.keys(feature_importance).slice(0, 8),
+      labels: { style: { colors: '#ffffff', fontSize: '13px', fontWeight: 600 } }
+    },
+    yaxis: { labels: { style: { colors: '#ffffff', fontSize: '12px', fontWeight: 600 } } },
+    grid: { borderColor: 'rgba(255,255,255,0.08)', strokeDashArray: 4 },
+    tooltip: { theme: 'dark', y: { formatter: (val) => val?.toFixed(4) || '0.0000' } },
+    legend: { show: false }
   };
 
   const donutOptions = {
-    chart: {
-      type: 'donut',
-      height: 280,
-      background: 'transparent',
-      toolbar: {
-        show: false
-      }
-    },
+    chart: { type: 'donut' },
+    labels: ['Present', 'Absent'],
+    colors: ['#10b981', 'rgba(255,255,255,0.08)'],
+    legend: { show: true, position: 'bottom', labels: { colors: '#ffffff' }, fontSize: '14px', fontWeight: 700 },
+    dataLabels: { enabled: true, style: { fontSize: '16px', fontWeight: 'bold' } },
     plotOptions: {
       pie: {
         donut: {
-          size: '75%',
+          size: '72%',
           labels: {
             show: true,
-            total: {
-              show: true,
-              label: 'Total Symptoms',
-              color: 'white',
-              fontSize: '18px',
-              fontWeight: 'bold',
-              formatter: function (w) {
-                return '14'
-              }
-            },
-            value: {
-              show: true,
-              color: 'white',
-              fontSize: '24px',
-              fontWeight: 'bold',
-              formatter: function (w) {
-                return w.globals.seriesTotals.reduce((a, b) => a + b, 0)
-              }
-            }
+            name: { fontSize: '18px', color: '#ffffff', fontWeight: 700 },
+            value: { fontSize: '28px', color: '#ffffff', fontWeight: 900 },
+            total: { show: true, label: 'Total', fontSize: '16px', color: '#ffffff', fontWeight: 700, formatter: () => '14' }
           }
         }
       }
     },
-    labels: ['Present', 'Absent'],
-    colors: ['#FF6B35', 'rgba(255,255,255,0.1)'],
-    legend: {
-      show: false
-    },
-    dataLabels: {
-      enabled: true,
-      style: {
-        colors: ['white']
-      },
-      formatter: function (val, opts) {
-        return val.toFixed(0) + '%'
-      }
-    },
-    stroke: {
-      width: 0
-    }
+    stroke: { width: 0 },
+    tooltip: { theme: 'dark' }
   };
 
-  const barOptions = {
-    chart: {
-      type: 'bar',
-      height: 280,
-      background: 'transparent',
-      toolbar: {
-        show: false
-      }
-    },
-    plotOptions: {
-      bar: {
-        horizontal: true,
-        borderRadius: 6,
-        dataLabels: {
-          position: 'top'
-        }
-      }
-    },
-    dataLabels: {
-      enabled: true,
-      textAnchor: 'start',
-      style: {
-        colors: ['white'],
-        fontSize: '14px',
-        fontWeight: 'bold'
-      },
-      formatter: function (val, opt) {
-        return val.toFixed(2)
-      },
-      offsetX: 10
-    },
-    xaxis: {
-      categories: Object.keys(feature_importance),
-      labels: {
-        style: {
-          colors: 'rgba(255,255,255,0.7)',
-          fontSize: '12px'
-        }
-      },
-      axisBorder: {
-        show: false
-      },
-      axisTicks: {
-        show: false
-      }
-    },
-    yaxis: {
-      labels: {
-        style: {
-          colors: 'rgba(255,255,255,0.7)',
-          fontSize: '12px'
-        }
-      }
-    },
-    grid: {
-      borderColor: 'rgba(255,255,255,0.1)',
-      xaxis: {
-        lines: {
-          show: false
-        }
-      },
-      yaxis: {
-        lines: {
-          show: false
-        }
-      }
-    },
-    fill: {
-      type: 'gradient',
-      gradient: {
-        shade: 'dark',
-        type: 'horizontal',
-        shadeIntensity: 0.5,
-        gradientToColors: ['#FF6B35'],
-        inverseColors: false,
-        opacityFrom: 1,
-        opacityTo: 0.8,
-        stops: [0, 100]
-      }
-    },
-    colors: ['#FF6B35']
-  };
-
+  // Series data
   const gaugeSeries = [Math.round(probability * 100)];
+  const radarSeries = [{ name: 'Feature Impact', data: Object.values(feature_importance).slice(0, 8).map(v => (v * 100).toFixed(1)) }];
+  const barHorizontalSeries = [{ name: 'Importance', data: Object.values(feature_importance).slice(0, 8) }];
   const donutSeries = [symptoms_present.length, 14 - symptoms_present.length];
-  const barSeries = [{
-    name: 'Importance',
-    data: Object.values(feature_importance)
-  }];
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0F0F23 0%, #1A1A2E 50%, #16213E 100%)',
-        color: 'white'
-      }}
-    >
-      {/* Header */}
+    <Box sx={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0a0e27 100%)' }}>
+      {/* Fixed Header */}
       <Box
         sx={{
-          background: 'rgba(30, 30, 46, 0.95)',
-          backdropFilter: 'blur(10px)',
-          borderBottom: '1px solid #333',
-          p: 2,
-          position: 'sticky',
+          position: 'fixed',
           top: 0,
-          zIndex: 1000
+          left: 0,
+          right: 0,
+          zIndex: 1200,
+          background: 'rgba(10, 14, 39, 0.95)',
+          backdropFilter: 'blur(20px)',
+          borderBottom: '2px solid rgba(139, 92, 246, 0.2)',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)'
         }}
       >
-        <Container maxWidth="xl">
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <IconButton
-                onClick={() => navigate('/dashboard')}
-                sx={{ color: 'white' }}
-              >
-                <ArrowBack />
-              </IconButton>
-              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                Dashboard / Assessment
-              </Typography>
-            </Box>
-            <Box />
+        <Container maxWidth={false}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 2, px: 2 }}>
+            <Button
+              startIcon={<ArrowBack />}
+              onClick={() => navigate('/dashboard')}
+              sx={{
+                color: 'white',
+                fontWeight: 800,
+                '&:hover': { background: 'rgba(139, 92, 246, 0.15)' }
+              }}
+            >
+              Dashboard
+            </Button>
+            <Typography variant="h6" sx={{ fontWeight: 900, color: 'white', letterSpacing: -0.3 }}>
+              Comprehensive Analytics Dashboard
+            </Typography>
+            <Button
+              startIcon={<Refresh />}
+              onClick={fetchAssessmentData}
+              sx={{
+                background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+                color: 'white',
+                fontWeight: 800,
+                px: 3,
+                '&:hover': { background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }
+              }}
+            >
+              Refresh
+            </Button>
           </Box>
         </Container>
       </Box>
 
-      <Container maxWidth="xl" sx={{ py: 4 }}>
-        {/* Banner under main header */}
-        <Card
-          elevation={6}
-          sx={{
-            mb: 3,
-            borderRadius: 3,
-            overflow: 'hidden',
-            background: 'linear-gradient(135deg, #0d47a1 0%, #152f52 40%, #0b1e36 100%)',
-            border: '1px solid rgba(255,255,255,0.06)'
-          }}
-        >
-          <CardContent sx={{ p: { xs: 2, md: 3 } }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap' }}>
-              <Box>
-                <Typography variant="h4" sx={{ fontWeight: 800, color: '#ffffff' }}>
-                  Diabetes Risk Assessment
-                </Typography>
-                <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)', mt: 0.5 }}>
-                  Professional, transparent, and trustworthy insights based on your responses
-                </Typography>
-                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)' }}>
-                  Generated on {new Date().toLocaleString()}
-                </Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Button
-                  variant="contained"
-                  startIcon={<Download />}
-                  sx={{
-                    background: '#FF6B35',
-                    fontWeight: 700,
-                    borderRadius: 2,
-                    '&:hover': { background: '#E55A2B' }
-                  }}
-                >
-                  Export Report
-                </Button>
-                <Tooltip title="Share">
-                  <IconButton sx={{ color: '#ffffff' }}>
-                    <Share />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="More actions">
-                  <IconButton sx={{ color: '#ffffff' }}>
-                    <MoreVert />
-                  </IconButton>
-                </Tooltip>
-              </Box>
-            </Box>
-          </CardContent>
-        </Card>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          {/* Main Risk Card */}
-          <Card
-            sx={{
-              background: getRiskGradient(risk_level),
-              mb: 4,
-              border: 'none',
-              boxShadow: '0 12px 40px rgba(0,0,0,0.35)',
-              borderRadius: 3
-            }}
-          >
-            <CardContent sx={{ p: 4 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-                <Box>
-                  <Typography variant="h2" sx={{ fontWeight: 'bold', color: 'white', mb: 1 }}>
-                    {Math.round(probability * 100)}%
-                  </Typography>
-                  <Typography variant="h5" sx={{ color: 'rgba(255,255,255,0.9)', mb: 2 }}>
-                    Diabetes Risk Probability
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    {getRiskIcon(risk_level)}
-                    <Typography variant="h6" sx={{ color: 'white', fontWeight: 'bold' }}>
-                      {risk_level} Risk
-                    </Typography>
-                  </Box>
-                </Box>
-                <Box sx={{ textAlign: 'right' }}>
-                  <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.9)', mb: 1 }}>
-                    Confidence Level
-                  </Typography>
-                  <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'white' }}>
-                    {Math.round(confidence * 100)}%
-                  </Typography>
-                  <LinearProgress
-                    variant="determinate"
-                    value={confidence * 100}
-                    sx={{
-                      mt: 1,
-                      height: 8,
-                      borderRadius: 4,
-                      backgroundColor: 'rgba(255,255,255,0.2)',
-                      '& .MuiLinearProgress-bar': {
-                        backgroundColor: 'white',
-                        borderRadius: 4
-                      }
-                    }}
-                  />
-                </Box>
-              </Box>
-            </CardContent>
-          </Card>
+      {/* Main Content */}
+      <Box sx={{ pt: 12, pb: 8 }}>
+        <Container maxWidth="xxl" sx={{ px: { xs: 4, md: 8, lg: 12 } }}>
 
-          {/* Stats Cards */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} md={3}>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.1 }}
-              >
-                <Card
-                  sx={{
-                    background: 'rgba(255,255,255,0.02)',
-                    border: '1px solid rgba(255,255,255,0.06)',
-                    borderRadius: 3,
-                    height: '100%',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: '0 8px 28px rgba(0,0,0,0.28)',
-                      transition: 'all 0.3s ease'
-                    }
-                  }}
-                >
-                  <CardContent sx={{ p: 3 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                      <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'white' }}>
-                        {symptoms_present.length}
-                      </Typography>
-                      <TrendingUp sx={{ color: '#FF6B35', fontSize: 32 }} />
-                    </Box>
-                    <Typography variant="body2" sx={{ color: '#B0B0B0', mb: 2 }}>
-                      Symptoms Present
-                    </Typography>
-                    <LinearProgress
-                      variant="determinate"
-                      value={(symptoms_present.length / 14) * 100}
+          {/* Full-Width Banner */}
+          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+            <Paper
+              sx={{
+                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.18) 0%, rgba(139, 92, 246, 0.12) 100%)',
+                backdropFilter: 'blur(20px)',
+                borderRadius: 4,
+                border: '2px solid rgba(139, 92, 246, 0.25)',
+                p: 5,
+                mb: 6,
+                boxShadow: '0 16px 48px rgba(99, 102, 241, 0.2)'
+              }}
+            >
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5 }}>
+                    <Box
                       sx={{
-                        height: 6,
-                        borderRadius: 3,
-                        backgroundColor: '#2D2D2D',
-                        '& .MuiLinearProgress-bar': {
-                          backgroundColor: '#FF6B35',
-                          borderRadius: 3
-                        }
-                      }}
-                    />
-                    <Typography variant="caption" sx={{ color: '#B0B0B0', mt: 1, display: 'block' }}>
-                      Out of 14 total symptoms
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </Grid>
-
-            <Grid item xs={12} md={3}>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-              >
-                <Card
-                  sx={{
-                    background: 'rgba(255,255,255,0.02)',
-                    border: '1px solid rgba(255,255,255,0.06)',
-                    borderRadius: 3,
-                    height: '100%',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: '0 8px 28px rgba(0,0,0,0.28)',
-                      transition: 'all 0.3s ease'
-                    }
-                  }}
-                >
-                  <CardContent sx={{ p: 3 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                      <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'white' }}>
-                        {Math.round(confidence * 100)}%
-                      </Typography>
-                      <AssessmentIcon sx={{ color: '#4CAF50', fontSize: 32 }} />
-                    </Box>
-                    <Typography variant="body2" sx={{ color: '#B0B0B0', mb: 2 }}>
-                      Model Confidence
-                    </Typography>
-                    <LinearProgress
-                      variant="determinate"
-                      value={confidence * 100}
-                      sx={{
-                        height: 6,
-                        borderRadius: 3,
-                        backgroundColor: '#2D2D2D',
-                        '& .MuiLinearProgress-bar': {
-                          backgroundColor: '#4CAF50',
-                          borderRadius: 3
-                        }
-                      }}
-                    />
-                    <Typography variant="caption" sx={{ color: '#B0B0B0', mt: 1, display: 'block' }}>
-                      High confidence assessment
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </Grid>
-
-            <Grid item xs={12} md={3}>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-              >
-                <Card
-                  sx={{
-                    background: 'rgba(255,255,255,0.02)',
-                    border: '1px solid rgba(255,255,255,0.06)',
-                    borderRadius: 3,
-                    height: '100%',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: '0 8px 28px rgba(0,0,0,0.28)',
-                      transition: 'all 0.3s ease'
-                    }
-                  }}
-                >
-                  <CardContent sx={{ p: 3 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                      <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'white' }}>
-                        {recommendations.length}
-                      </Typography>
-                      <HealthAndSafety sx={{ color: '#2196F3', fontSize: 32 }} />
-                    </Box>
-                    <Typography variant="body2" sx={{ color: '#B0B0B0', mb: 2 }}>
-                      Recommendations
-                    </Typography>
-                    <LinearProgress
-                      variant="determinate"
-                      value={100}
-                      sx={{
-                        height: 6,
-                        borderRadius: 3,
-                        backgroundColor: '#2D2D2D',
-                        '& .MuiLinearProgress-bar': {
-                          backgroundColor: '#2196F3',
-                          borderRadius: 3
-                        }
-                      }}
-                    />
-                    <Typography variant="caption" sx={{ color: '#B0B0B0', mt: 1, display: 'block' }}>
-                      Personalized health tips
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </Grid>
-
-            <Grid item xs={12} md={3}>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-              >
-                <Card
-                  sx={{
-                    background: 'linear-gradient(135deg, #FF6B35 0%, #E55A2B 100%)',
-                    borderRadius: 3,
-                    height: '100%',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: '0 8px 28px rgba(0,0,0,0.28)',
-                      transition: 'all 0.3s ease'
-                    }
-                  }}
-                >
-                  <CardContent sx={{ p: 3, textAlign: 'center' }}>
-                    <Typography variant="h6" sx={{ color: 'white', fontWeight: 'bold', mb: 1 }}>
-                      Pro Health Plan
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.9)', mb: 2 }}>
-                      Get personalized health insights
-                    </Typography>
-                    <Button
-                      variant="contained"
-                      sx={{
-                        background: 'white',
-                        color: '#FF6B35',
-                        fontWeight: 'bold',
-                        '&:hover': {
-                          background: 'rgba(255,255,255,0.9)'
-                        }
+                        width: 70,
+                        height: 70,
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 12px 32px rgba(139, 92, 246, 0.4)'
                       }}
                     >
-                      Upgrade Now
-                    </Button>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </Grid>
-          </Grid>
-
-          {/* Charts Section */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            {/* Risk Gauge */}
-            <Grid item xs={12} md={4}>
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.6, delay: 0.5 }}
-              >
-                <Card
-                  sx={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: 4,
-                    height: '100%',
-                    backdropFilter: 'blur(10px)',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 12px 32px rgba(0,0,0,0.4)',
-                      transition: 'all 0.3s ease'
-                    }
-                  }}
-                >
-                  <CardContent sx={{ p: 3 }}>
-                    <Typography variant="h6" sx={{ color: 'white', mb: 2, fontWeight: 'bold', textAlign: 'center' }}>
-                      Risk Probability
-                    </Typography>
-                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                      <Chart
-                        options={gaugeOptions}
-                        series={gaugeSeries}
-                        type="radialBar"
-                        height={280}
-                        width="100%"
-                      />
+                      <AssessmentIcon sx={{ fontSize: 38, color: 'white' }} />
                     </Box>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </Grid>
-
-            {/* Symptoms Donut */}
-            <Grid item xs={12} md={4}>
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.6, delay: 0.6 }}
-              >
-                <Card
-                  sx={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: 4,
-                    height: '100%',
-                    backdropFilter: 'blur(10px)',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 12px 32px rgba(0,0,0,0.4)',
-                      transition: 'all 0.3s ease'
-                    }
-                  }}
-                >
-                  <CardContent sx={{ p: 3 }}>
-                    <Typography variant="h6" sx={{ color: 'white', mb: 2, fontWeight: 'bold', textAlign: 'center' }}>
-                      Symptoms Distribution
-                    </Typography>
-                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                      <Chart
-                        options={donutOptions}
-                        series={donutSeries}
-                        type="donut"
-                        height={280}
-                        width="100%"
-                      />
-                    </Box>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </Grid>
-
-            {/* Feature Importance */}
-            <Grid item xs={12} md={4}>
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.6, delay: 0.7 }}
-              >
-                <Card
-                  sx={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: 4,
-                    height: '100%',
-                    backdropFilter: 'blur(10px)',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 12px 32px rgba(0,0,0,0.4)',
-                      transition: 'all 0.3s ease'
-                    }
-                  }}
-                >
-                  <CardContent sx={{ p: 3 }}>
-                    <Typography variant="h6" sx={{ color: 'white', mb: 2, fontWeight: 'bold', textAlign: 'center' }}>
-                      Feature Importance
-                    </Typography>
-                    <Box sx={{ height: 280, overflow: 'hidden' }}>
-                      <Chart
-                        options={barOptions}
-                        series={barSeries}
-                        type="bar"
-                        height={280}
-                        width="100%"
-                      />
-                    </Box>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </Grid>
-          </Grid>
-
-          {/* Symptoms and Recommendations */}
-          <Grid container spacing={3} sx={{ mt: 2 }}>
-            {/* Present Symptoms */}
-            <Grid item xs={12} md={6}>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.8 }}
-              >
-                <Card
-                  sx={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: 4,
-                    height: '100%',
-                    backdropFilter: 'blur(10px)',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 12px 32px rgba(0,0,0,0.4)',
-                      transition: 'all 0.3s ease'
-                    }
-                  }}
-                >
-                  <CardContent sx={{ p: 3 }}>
-                    <Box sx={{ textAlign: 'center', mb: 3 }}>
-                      <Typography variant="h6" sx={{ color: 'white', fontWeight: 'bold', mb: 1 }}>
-                        Present Symptoms
+                    <Box>
+                      <Typography variant="h4" sx={{ fontWeight: 900, color: 'white', letterSpacing: -0.5 }}>
+                        Diabetes Risk Assessment Dashboard
                       </Typography>
-                      <Chip 
-                        label={`${symptoms_present.length} of 14 detected`}
-                        sx={{ 
-                          background: 'rgba(76, 175, 80, 0.2)', 
-                          color: '#4CAF50',
-                          border: '1px solid rgba(76, 175, 80, 0.3)',
-                          fontWeight: 'bold'
+                      <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.8)', fontWeight: 600, mt: 0.5 }}>
+                        Comprehensive AI-Powered Health Analytics & Visualization
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ display: 'flex', gap: 2, justifyContent: { xs: 'flex-start', md: 'flex-end' }, flexWrap: 'wrap' }}>
+                    <Chip
+                      icon={<TrendingUp />}
+                      label="Live Analysis"
+                      sx={{
+                        background: 'rgba(16, 185, 129, 0.2)',
+                        color: '#6ee7b7',
+                        fontWeight: 800,
+                        border: '1.5px solid rgba(16, 185, 129, 0.4)',
+                        fontSize: '0.95rem',
+                        height: 38
+                      }}
+                    />
+                    <Chip
+                      icon={<CheckCircle />}
+                      label={`${symptoms_present.length} Symptoms`}
+                      sx={{
+                        background: 'rgba(244, 114, 182, 0.2)',
+                        color: '#f9a8d4',
+                        fontWeight: 800,
+                        border: '1.5px solid rgba(244, 114, 182, 0.4)',
+                        fontSize: '0.95rem',
+                        height: 38
+                      }}
+                    />
+                    <Chip
+                      label={`${Math.round(confidence * 100)}% Confident`}
+                      sx={{
+                        background: 'rgba(6, 182, 212, 0.2)',
+                        color: '#67e8f9',
+                        fontWeight: 800,
+                        border: '1.5px solid rgba(6, 182, 212, 0.4)',
+                        fontSize: '0.95rem',
+                        height: 38
+                      }}
+                    />
+                  </Box>
+                </Grid>
+              </Grid>
+            </Paper>
+          </motion.div>
+
+          {/* Main Risk Card */}
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7 }}>
+            <Card
+              sx={{
+                mb: 6,
+                borderRadius: 4,
+                overflow: 'hidden',
+                background: getRiskGradient(risk_level),
+                border: '2px solid rgba(255,255,255,0.3)',
+                boxShadow: '0 32px 80px rgba(0,0,0,0.5)'
+              }}
+            >
+              <CardContent sx={{ p: 6 }}>
+                <Grid container spacing={3} alignItems="center">
+                  <Grid item xs={12} md={3}>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Box
+                        sx={{
+                          width: 120,
+                          height: 120,
+                          borderRadius: '50%',
+                          background: 'rgba(255,255,255,0.25)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          mx: 'auto',
+                          mb: 2,
+                          border: '3px solid rgba(255,255,255,0.4)'
+                        }}
+                      >
+                        {risk_level === 'High' ? <Warning sx={{ fontSize: 50, color: '#fff' }} /> : 
+                         risk_level === 'Medium' ? <TrendingUp sx={{ fontSize: 50, color: '#fff' }} /> :
+                         <HealthAndSafety sx={{ fontSize: 50, color: '#fff' }} />}
+                      </Box>
+                      <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)', fontWeight: 700, display: 'block', mb: 0.5 }}>
+                        RISK LEVEL
+                      </Typography>
+                      <Typography variant="h2" sx={{ fontWeight: 900, color: '#fff', letterSpacing: -1 }}>
+                        {risk_level}
+                      </Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.85)', fontWeight: 700, display: 'block', mb: 1 }}>
+                        PROBABILITY
+                      </Typography>
+                      <Typography variant="h3" sx={{ fontWeight: 900, color: '#fff', mb: 2 }}>
+                        {Math.round(probability * 100)}%
+                      </Typography>
+                      <LinearProgress
+                        variant="determinate"
+                        value={probability * 100}
+                        sx={{
+                          height: 8,
+                          borderRadius: 4,
+                          backgroundColor: 'rgba(255,255,255,0.2)',
+                          '& .MuiLinearProgress-bar': { backgroundColor: '#fff', borderRadius: 4 }
                         }}
                       />
                     </Box>
-                    {symptoms_present.length > 0 ? (
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                        {symptoms_present.slice(0, 6).map((symptom, index) => (
-                          <motion.div
-                            key={symptom}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.3, delay: index * 0.1 }}
-                          >
-                            <Box sx={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              p: 2,
-                              borderRadius: 2,
-                              background: 'rgba(76, 175, 80, 0.08)',
-                              border: '1px solid rgba(76, 175, 80, 0.15)',
-                              '&:hover': {
-                                background: 'rgba(76, 175, 80, 0.12)',
-                                transform: 'translateY(-1px)',
-                                transition: 'all 0.2s ease'
-                              }
-                            }}>
-                              <CheckCircle sx={{ color: '#4CAF50', fontSize: 18, mr: 2 }} />
-                              <Typography variant="body2" sx={{ color: 'white', fontWeight: 500 }}>
-                                {symptom}
-                              </Typography>
-                            </Box>
-                          </motion.div>
-                        ))}
-                        {symptoms_present.length > 6 && (
-                          <Typography variant="caption" sx={{ 
-                            color: 'rgba(255,255,255,0.6)', 
-                            textAlign: 'center', 
-                            mt: 1,
-                            fontStyle: 'italic'
-                          }}>
-                            +{symptoms_present.length - 6} more symptoms
-                          </Typography>
-                        )}
-                      </Box>
-                    ) : (
-                      <Box sx={{ 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'center', 
-                        justifyContent: 'center',
-                        textAlign: 'center',
-                        py: 6
-                      }}>
-                        <CheckCircle sx={{ color: 'rgba(255,255,255,0.3)', fontSize: 40, mb: 2 }} />
-                        <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)', mb: 1 }}>
-                          No symptoms detected
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)' }}>
-                          Great news! No diabetes symptoms were identified.
-                        </Typography>
-                      </Box>
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </Grid>
-
-            {/* Recommendations */}
-            <Grid item xs={12} md={6}>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.9 }}
-              >
-                <Card
-                  sx={{
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: 4,
-                    height: '100%',
-                    backdropFilter: 'blur(10px)',
-                    '&:hover': {
-                      transform: 'translateY(-2px)',
-                      boxShadow: '0 12px 32px rgba(0,0,0,0.4)',
-                      transition: 'all 0.3s ease'
-                    }
-                  }}
-                >
-                  <CardContent sx={{ p: 3 }}>
-                    <Box sx={{ textAlign: 'center', mb: 3 }}>
-                      <Typography variant="h6" sx={{ color: 'white', fontWeight: 'bold', mb: 1 }}>
-                        Recommendations
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.85)', fontWeight: 700, display: 'block', mb: 1 }}>
+                        CONFIDENCE
                       </Typography>
-                      <Chip 
-                        label={`${recommendations.length} personalized tips`}
-                        sx={{ 
-                          background: 'rgba(33, 150, 243, 0.2)', 
-                          color: '#2196F3',
-                          border: '1px solid rgba(33, 150, 243, 0.3)',
-                          fontWeight: 'bold'
+                      <Typography variant="h3" sx={{ fontWeight: 900, color: '#fff', mb: 2 }}>
+                        {Math.round(confidence * 100)}%
+                      </Typography>
+                      <LinearProgress
+                        variant="determinate"
+                        value={confidence * 100}
+                        sx={{
+                          height: 8,
+                          borderRadius: 4,
+                          backgroundColor: 'rgba(255,255,255,0.2)',
+                          '& .MuiLinearProgress-bar': { backgroundColor: '#fff', borderRadius: 4 }
                         }}
                       />
                     </Box>
-                    {recommendations.length > 0 ? (
-                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                        {recommendations.slice(0, 5).map((rec, index) => (
-                          <motion.div
-                            key={index}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.3, delay: index * 0.1 }}
-                          >
-                            <Box sx={{ 
-                              display: 'flex', 
-                              alignItems: 'flex-start', 
-                              p: 2.5,
-                              borderRadius: 2,
-                              background: 'rgba(33, 150, 243, 0.08)',
-                              border: '1px solid rgba(33, 150, 243, 0.15)',
-                              '&:hover': {
-                                background: 'rgba(33, 150, 243, 0.12)',
-                                transform: 'translateY(-1px)',
-                                transition: 'all 0.2s ease'
-                              }
-                            }}>
-                              <Box sx={{ 
-                                width: 24, 
-                                height: 24, 
-                                borderRadius: '50%', 
-                                background: 'linear-gradient(135deg, #2196F3, #1976D2)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                mr: 2,
-                                mt: 0.5,
-                                flexShrink: 0
-                              }}>
-                                <Typography variant="caption" sx={{ color: 'white', fontWeight: 'bold', fontSize: '0.75rem' }}>
-                                  {index + 1}
-                                </Typography>
-                              </Box>
-                              <Typography variant="body2" sx={{ 
-                                color: 'white', 
-                                fontWeight: 500,
-                                lineHeight: 1.5
-                              }}>
-                                {rec}
-                              </Typography>
-                            </Box>
-                          </motion.div>
-                        ))}
-                        {recommendations.length > 5 && (
-                          <Typography variant="caption" sx={{ 
-                            color: 'rgba(255,255,255,0.6)', 
-                            textAlign: 'center', 
-                            mt: 1,
-                            fontStyle: 'italic'
-                          }}>
-                            +{recommendations.length - 5} more recommendations
-                          </Typography>
-                        )}
-                      </Box>
-                    ) : (
-                      <Box sx={{ 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        alignItems: 'center', 
-                        justifyContent: 'center',
-                        textAlign: 'center',
-                        py: 6
-                      }}>
-                        <Info sx={{ color: 'rgba(255,255,255,0.3)', fontSize: 40, mb: 2 }} />
-                        <Typography variant="body1" sx={{ color: 'rgba(255,255,255,0.7)', mb: 1 }}>
-                          No specific recommendations
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)' }}>
-                          Continue maintaining a healthy lifestyle and regular check-ups.
-                        </Typography>
-                      </Box>
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
+                  </Grid>
+                  <Grid item xs={12} md={3}>
+                    <Box sx={{ textAlign: 'center' }}>
+                      <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.85)', fontWeight: 700, display: 'block', mb: 1 }}>
+                        SYMPTOMS
+                      </Typography>
+                      <Typography variant="h3" sx={{ fontWeight: 900, color: '#fff' }}>
+                        {symptoms_present.length}/14
+                      </Typography>
+                    </Box>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Three Chart Row */}
+          <Grid container spacing={6} sx={{ mb: 6 }}>
+            <Grid item xs={12} md={4}>
+              <Card
+                sx={{
+                  background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(168, 85, 247, 0.1) 100%)',
+                  border: '2px solid rgba(139, 92, 246, 0.2)',
+                  borderRadius: 4,
+                  backdropFilter: 'blur(16px)',
+                  boxShadow: '0 12px 36px rgba(139, 92, 246, 0.25)',
+                  height: '100%'
+                }}
+              >
+                <CardContent sx={{ p: 5 }}>
+                  <Typography variant="h6" sx={{ color: 'white', mb: 3, fontWeight: 900, textAlign: 'center' }}>
+                    Risk Probability Gauge
+                  </Typography>
+                  <Chart options={gaugeOptions} series={gaugeSeries} type="radialBar" height={320} />
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={12} md={4}>
+              <Card
+                sx={{
+                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(52, 211, 153, 0.1) 100%)',
+                  border: '2px solid rgba(16, 185, 129, 0.2)',
+                  borderRadius: 4,
+                  backdropFilter: 'blur(16px)',
+                  boxShadow: '0 12px 36px rgba(16, 185, 129, 0.25)',
+                  height: '100%'
+                }}
+              >
+                <CardContent sx={{ p: 5 }}>
+                  <Typography variant="h6" sx={{ color: 'white', mb: 3, fontWeight: 900, textAlign: 'center' }}>
+                    Symptoms Distribution
+                  </Typography>
+                  <Chart options={donutOptions} series={donutSeries} type="donut" height={320} />
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={12} md={4}>
+              <Card
+                sx={{
+                  background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(74, 222, 128, 0.1) 100%)',
+                  border: '2px solid rgba(34, 197, 94, 0.2)',
+                  borderRadius: 4,
+                  backdropFilter: 'blur(16px)',
+                  boxShadow: '0 12px 36px rgba(34, 197, 94, 0.25)',
+                  height: '100%'
+                }}
+              >
+                <CardContent sx={{ p: 5 }}>
+                  <Typography variant="h6" sx={{ color: 'white', mb: 3, fontWeight: 900, textAlign: 'center' }}>
+                    Feature Impact Radar
+                  </Typography>
+                  <Chart options={radarOptions} series={radarSeries} type="radar" height={320} />
+                </CardContent>
+              </Card>
             </Grid>
           </Grid>
-        </motion.div>
-      </Container>
+
+          {/* Three Column Section: Feature Importance, Present Symptoms, Recommendations */}
+          <Grid container spacing={6} sx={{ alignItems: 'stretch' }}>
+            <Grid item xs={12} sm={12} md={4}>
+              <Card
+                sx={{
+                  background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(251, 146, 60, 0.08) 100%)',
+                  border: '2px solid rgba(245, 158, 11, 0.2)',
+                  borderRadius: 4,
+                  backdropFilter: 'blur(20px)',
+                  boxShadow: '0 16px 48px rgba(245, 158, 11, 0.25)',
+                  height: 380,
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}
+              >
+                <CardContent sx={{ p: 2.5, flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <Typography variant="subtitle1" sx={{ color: 'white', mb: 2, fontWeight: 800, textAlign: 'center', fontSize: '0.95rem' }}>
+                    Feature Importance
+                  </Typography>
+                  <Box sx={{ flex: 1 }}>
+                    <Chart options={barHorizontalOptions} series={barHorizontalSeries} type="bar" height={280} />
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={12} sm={12} md={4}>
+              <Card
+                sx={{
+                  background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.15) 0%, rgba(34, 211, 238, 0.1) 100%)',
+                  border: '2px solid rgba(6, 182, 212, 0.2)',
+                  borderRadius: 4,
+                  backdropFilter: 'blur(16px)',
+                  boxShadow: '0 12px 36px rgba(6, 182, 212, 0.25)',
+                  height: 380,
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}
+              >
+                <CardContent sx={{ p: 2.5, flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <Typography variant="subtitle1" sx={{ color: 'white', mb: 2, fontWeight: 800, textAlign: 'center', fontSize: '0.95rem' }}>
+                    Present Symptoms ({symptoms_present.length})
+                  </Typography>
+                  <Box sx={{ flex: 1, overflowY: 'auto' }}>
+                    {symptoms_present.slice(0, 8).map((symptom, i) => (
+                      <Box
+                        key={i}
+                        sx={{
+                          p: 1.5,
+                          mb: 1,
+                          background: 'rgba(6, 182, 212, 0.1)',
+                          border: '1px solid rgba(6, 182, 212, 0.2)',
+                          borderRadius: 1.5,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1.5
+                        }}
+                      >
+                        <CheckCircle sx={{ color: '#67e8f9', fontSize: 16 }} />
+                        <Typography sx={{ color: 'white', fontWeight: 600, fontSize: '0.8rem' }}>{symptom}</Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            <Grid item xs={12} sm={12} md={4}>
+              <Card
+                sx={{
+                  background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(192, 132, 252, 0.1) 100%)',
+                  border: '2px solid rgba(168, 85, 247, 0.2)',
+                  borderRadius: 4,
+                  backdropFilter: 'blur(16px)',
+                  boxShadow: '0 12px 36px rgba(168, 85, 247, 0.25)',
+                  height: 380,
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}
+              >
+                <CardContent sx={{ p: 2.5, flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  <Typography variant="subtitle1" sx={{ color: 'white', mb: 2, fontWeight: 800, textAlign: 'center', fontSize: '0.95rem' }}>
+                    Recommendations ({recommendations.length})
+                  </Typography>
+                  <Box sx={{ flex: 1, overflowY: 'auto' }}>
+                    {recommendations.slice(0, 6).map((rec, i) => (
+                      <Box
+                        key={i}
+                        sx={{
+                          p: 1.5,
+                          mb: 1,
+                          background: 'rgba(168, 85, 247, 0.1)',
+                          border: '1px solid rgba(168, 85, 247, 0.2)',
+                          borderRadius: 1.5,
+                          display: 'flex',
+                          gap: 1
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: 20,
+                            height: 20,
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #a78bfa, #8b5cf6)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}
+                        >
+                          <Typography sx={{ color: 'white', fontWeight: 900, fontSize: '0.65rem' }}>
+                            {i + 1}
+                          </Typography>
+                        </Box>
+                        <Typography sx={{ color: 'white', fontWeight: 600, lineHeight: 1.4, fontSize: '0.8rem' }}>{rec}</Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        </Container>
+      </Box>
     </Box>
   );
 };

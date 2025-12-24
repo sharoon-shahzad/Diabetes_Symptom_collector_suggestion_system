@@ -1,6 +1,53 @@
 import { processQuery } from './queryService.js';
 
 /**
+ * Retrieve medical context for risk assessment symptoms
+ * Used by hybrid risk assessment service
+ */
+export const retrieveSymptomMedicalContext = async (symptoms, topK = 5) => {
+    try {
+        if (!symptoms || symptoms.length === 0) {
+            return [];
+        }
+
+        // Build query focused on diabetes symptoms and risk factors
+        const symptomQuery = `Diabetes symptoms risk factors diagnosis: ${symptoms.join(', ')}. Clinical guidelines for diabetes screening and assessment.`;
+        
+        console.log(`[RAG-Risk] Retrieving medical context for symptoms:`, symptoms);
+        
+        // Query with filter for guidelines and clinical materials
+        const results = await processQuery(symptomQuery, {
+            topK,
+            minScore: 0.55, // Slightly lower threshold for medical guidelines
+            filter: {
+                doc_type: { $in: ['guideline', 'clinical_material'] }
+            }
+        });
+        
+        if (results && results.results && results.results.length > 0) {
+            console.log(`[RAG-Risk] Retrieved ${results.results.length} relevant medical documents`);
+            
+            // Format results for risk assessment
+            return results.results.map(doc => ({
+                content: doc.text,
+                filename: doc.chunk_metadata?.title || 'Medical Database',
+                source: doc.chunk_metadata?.source || 'N/A',
+                country: doc.chunk_metadata?.country || 'Global',
+                page: doc.chunk_metadata?.page_no || 'N/A',
+                similarity: doc.similarity_score
+            }));
+        }
+        
+        console.log(`[RAG-Risk] No relevant medical documents found above threshold`);
+        return [];
+        
+    } catch (error) {
+        console.error('[RAG-Risk] Error retrieving symptom medical context:', error);
+        return [];
+    }
+};
+
+/**
  * Detect query intent and categorize
  * Returns: { intent: string, needsRetrieval: boolean }
  */

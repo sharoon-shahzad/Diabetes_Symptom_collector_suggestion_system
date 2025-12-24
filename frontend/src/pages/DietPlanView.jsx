@@ -108,21 +108,22 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
         <Paper
           elevation={3}
           sx={{
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
             borderRadius: 2,
             p: 4,
             mb: 3,
-            color: 'white'
+            color: '#1f2937',
+            border: '1px solid #e5e7eb'
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <IconButton 
               onClick={onBack} 
               sx={{ 
-                color: 'white',
-                bgcolor: 'rgba(255,255,255,0.1)',
+                color: '#10b981',
+                bgcolor: '#f0fdf4',
                 '&:hover': { 
-                  bgcolor: 'rgba(255,255,255,0.2)'
+                  bgcolor: '#dcfce7'
                 }
               }}
             >
@@ -143,10 +144,10 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
               <Stack direction="row" spacing={1} flexWrap="wrap">
                 {isToday && (
                   <Chip 
-                    icon={<TodayIcon sx={{ color: 'white !important' }} />}
+                    icon={<TodayIcon sx={{ color: '#10b981 !important' }} />}
                     label="Today" 
                     size="small"
-                    sx={{ bgcolor: 'rgba(255,255,255,0.2)', color: 'white', fontWeight: 600 }}
+                    sx={{ bgcolor: '#dcfce7', color: '#10b981', fontWeight: 600 }}
                   />
                 )}
                 {isFuture && !isToday && (
@@ -185,7 +186,7 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
             variant="contained"
             startIcon={<DownloadIcon />}
             onClick={handleDownloadPDF}
-            sx={{ bgcolor: '#1976d2', '&:hover': { bgcolor: '#1565c0' } }}
+            sx={{ bgcolor: '#3b82f6', color: '#fff', '&:hover': { bgcolor: '#2563eb' }, textTransform: 'none', fontWeight: 600 }}
           >
             Download PDF
           </Button>
@@ -193,7 +194,7 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
             variant="contained"
             startIcon={<ShoppingCartIcon />}
             onClick={handleShoppingList}
-            sx={{ bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' } }}
+            sx={{ bgcolor: '#10b981', color: '#fff', '&:hover': { bgcolor: '#059669' }, textTransform: 'none', fontWeight: 600 }}
           >
             Shopping List
           </Button>
@@ -201,7 +202,7 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
 
         {/* Nutrition Summary */}
         <Paper elevation={2} sx={{ mb: 3, p: 4, bgcolor: 'white', borderRadius: 2 }}>
-          <Typography variant="h5" fontWeight="bold" sx={{ mb: 3, color: '#1976d2' }}>
+          <Typography variant="h5" fontWeight="bold" sx={{ mb: 3, color: '#1f2937' }}>
             Daily Nutrition Summary
           </Typography>
           
@@ -212,15 +213,15 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
                 sx={{ 
                   p: 3, 
                   textAlign: 'center',
-                  bgcolor: '#e3f2fd',
-                  border: '2px solid #1976d2',
+                  bgcolor: '#eff6ff',
+                  border: '2px solid #dbeafe',
                   borderRadius: 2
                 }}
               >
-                <Typography variant="h4" fontWeight="bold" color="primary">
+                <Typography variant="h4" fontWeight="bold" sx={{ color: '#3b82f6' }}>
                   {actualTotals.calories}
                 </Typography>
-                <Typography variant="body2" color="primary" sx={{ mt: 0.5, fontWeight: 600 }}>
+                <Typography variant="body2" sx={{ color: '#3b82f6', mt: 0.5, fontWeight: 600 }}>
                   Calories (kcal)
                 </Typography>
               </Paper>
@@ -231,15 +232,15 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
                 sx={{ 
                   p: 3, 
                   textAlign: 'center',
-                  bgcolor: '#e8f5e9',
-                  border: '2px solid #2e7d32',
+                  bgcolor: '#f0fdf4',
+                  border: '2px solid #d1fae5',
                   borderRadius: 2
                 }}
               >
-                <Typography variant="h4" fontWeight="bold" sx={{ color: '#2e7d32' }}>
+                <Typography variant="h4" fontWeight="bold" sx={{ color: '#10b981' }}>
                   {actualTotals.carbs}g
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#2e7d32', mt: 0.5, fontWeight: 600 }}>
+                <Typography variant="body2" sx={{ color: '#10b981', mt: 0.5, fontWeight: 600 }}>
                   Carbohydrates
                 </Typography>
               </Paper>
@@ -250,15 +251,15 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
                 sx={{ 
                   p: 3, 
                   textAlign: 'center',
-                  bgcolor: '#f3e5f5',
-                  border: '2px solid #9c27b0',
+                  bgcolor: '#fdf4ff',
+                  border: '2px solid #f3e8ff',
                   borderRadius: 2
                 }}
               >
-                <Typography variant="h4" fontWeight="bold" sx={{ color: '#9c27b0' }}>
+                <Typography variant="h4" fontWeight="bold" sx={{ color: '#a855f7' }}>
                   {actualTotals.protein}g
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#9c27b0', mt: 0.5, fontWeight: 600 }}>
+                <Typography variant="body2" sx={{ color: '#a855f7', mt: 0.5, fontWeight: 600 }}>
                   Protein
                 </Typography>
               </Paper>
@@ -269,15 +270,15 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
                 sx={{ 
                   p: 3, 
                   textAlign: 'center',
-                  bgcolor: '#fff3e0',
-                  border: '2px solid #ed6c02',
+                  bgcolor: '#fff7ed',
+                  border: '2px solid #fed7aa',
                   borderRadius: 2
                 }}
               >
-                <Typography variant="h4" fontWeight="bold" sx={{ color: '#ed6c02' }}>
+                <Typography variant="h4" fontWeight="bold" sx={{ color: '#f97316' }}>
                   {actualTotals.fat}g
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#ed6c02', mt: 0.5, fontWeight: 600 }}>
+                <Typography variant="body2" sx={{ color: '#f97316', mt: 0.5, fontWeight: 600 }}>
                   Fat
                 </Typography>
               </Paper>
@@ -288,7 +289,7 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
             <Box mt={3} textAlign="center">
               <Chip 
                 label={`Fiber: ${actualTotals.fiber}g`} 
-                sx={{ bgcolor: '#4caf50', color: 'white', fontWeight: 600, px: 2, py: 2.5 }}
+                sx={{ bgcolor: '#10b981', color: 'white', fontWeight: 600, px: 2, py: 2.5 }}
               />
             </Box>
           )}
