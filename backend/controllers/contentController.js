@@ -204,8 +204,17 @@ export const createContent = async (req, res) => {
       });
     }
 
+    // Generate slug from title
+    const slug = title
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+
     const newContent = new Content({
       title,
+      slug,
       excerpt,
       content,
       featuredImage,
@@ -299,7 +308,17 @@ export const updateContent = async (req, res) => {
     }
 
     // Update fields
-    if (title) existingContent.title = title;
+    if (title) {
+      existingContent.title = title;
+      // Generate new slug from title
+      const newSlug = title
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-');
+      existingContent.slug = newSlug;
+    }
     if (excerpt) existingContent.excerpt = excerpt;
     if (content) existingContent.content = content;
     if (featuredImage) existingContent.featuredImage = featuredImage;

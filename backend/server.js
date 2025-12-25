@@ -1,7 +1,9 @@
+// Load environment variables FIRST, before any other imports
+import dotenv from 'dotenv';
+dotenv.config();
 
 import express from 'express';
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { connectDB } from './config/db.js';
@@ -27,9 +29,10 @@ import exercisePlanRoutes from './routes/exercisePlanRoutes.js';
 import lifestyleTipsRoutes from './routes/lifestyleTipsRoutes.js';
 import feedbackRoutes from './routes/feedbackRoutes.js';
 import adminFeedbackRoutes from './routes/adminFeedbackRoutes.js';
+import auditRoutes from './routes/auditRoutes.js';
+import { captureAuditContext } from './middlewares/auditMiddleware.js';
+import AuditLog from './models/AuditLog.js';
 import os from 'os';
-
-dotenv.config();
 
 const app = express();
 
@@ -62,6 +65,9 @@ app.use((req, res, next) => {
   console.log(`${req.method} ${req.path}`);
   next();
 });
+
+// Add audit context capture middleware globally
+app.use(captureAuditContext);
 
 // Server info endpoint for mobile app auto-discovery
 app.get('/api/v1/server-info', (req, res) => {
@@ -139,6 +145,7 @@ app.use('/api/v1/exercise-plan', exercisePlanRoutes);
 app.use('/api/v1/lifestyle-tips', lifestyleTipsRoutes);
 app.use('/api/v1/feedback', feedbackRoutes);
 app.use('/api/v1/admin/feedback', adminFeedbackRoutes);
+app.use('/api/v1/admin/audit-logs', auditRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);

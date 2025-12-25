@@ -1,11 +1,11 @@
 import jwt from "jsonwebtoken";
 
-// Generate access token (short-lived - 15 minutes)
+// Generate access token (short-lived - 1 hour)
 export const generateAccessToken = (userId, email) => {
   return jwt.sign(
     { userId, email }, 
     process.env.JWT_SECRET, 
-    { expiresIn: "15m" }
+    { expiresIn: "1h" }
   );
 };
 

@@ -8,6 +8,7 @@ import {
     verifyRefreshToken 
 } from '../utils/generateJWT.js';
 import { sendActivationEmail, sendResetPasswordEmail } from '../services/emailService.js';
+import { createAuditLog } from '../middlewares/auditMiddleware.js';
 
 // Helper: Generate and store tokens
 const generateAccessAndRefreshTokens = async (userId, email) => {
@@ -83,6 +84,20 @@ export const register = async (req, res) => {
         });
         
         await user.save();
+        
+        // Log user creation to audit trail
+        try {
+            await createAuditLog('CREATE', 'User', req, res, user._id, {
+                before: null,
+                after: {
+                    email: user.email,
+                    fullName: user.fullName,
+                    role: 'user'
+                }
+            });
+        } catch (auditErr) {
+            console.error('Failed to log user creation to audit trail:', auditErr);
+        }
         
         // Assign 'user' role to the new user
         try {

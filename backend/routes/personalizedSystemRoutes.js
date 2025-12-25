@@ -7,11 +7,13 @@ import {
     updateDiabetesDiagnosis,
 } from '../controllers/personalizedSystemController.js';
 import { verifyAccessTokenMiddleware } from '../middlewares/authMiddleware.js';
+import { captureAuditContext } from '../middlewares/auditMiddleware.js';
 
 const router = express.Router();
 
-// All routes require authentication
+// All routes require authentication and audit logging
 router.use(verifyAccessTokenMiddleware);
+router.use(captureAuditContext);
 
 // Personal information routes
 router.get('/personal-info', getPersonalInfo);

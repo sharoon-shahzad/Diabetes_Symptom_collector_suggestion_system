@@ -88,6 +88,7 @@ export default function Dashboard() {
   const [showAssessmentPopup, setShowAssessmentPopup] = useState(false);
   const [showFeedbackForm, setShowFeedbackForm] = useState(false);
   const [personalInfoCompletion, setPersonalInfoCompletion] = useState(0);
+  const [refreshTrigger, setRefreshTrigger] = useState(0); // Trigger to refresh data
   const [personalInfo, setPersonalInfo] = useState(null);
   const [medicalInfo, setMedicalInfo] = useState(null);
   const [dietHistory, setDietHistory] = useState(null);
@@ -354,7 +355,7 @@ export default function Dashboard() {
     };
 
     fetchCompletion();
-  }, [currentSection, user]);
+  }, [currentSection, user, refreshTrigger]);
 
   // Check if user came from feedback page to show feedback form
   useEffect(() => {
@@ -4400,7 +4401,13 @@ export default function Dashboard() {
             >
               {openCardModal === 'personal-medical' && (
                 <Box sx={{ height: '100%' }}>
-                  <PersonalMedicalInfoPage inModal={true} />
+                  <PersonalMedicalInfoPage 
+                    inModal={true} 
+                    onDataSaved={() => {
+                      // Refresh completion percentage and data
+                      setRefreshTrigger(prev => prev + 1);
+                    }}
+                  />
                 </Box>
               )}
 

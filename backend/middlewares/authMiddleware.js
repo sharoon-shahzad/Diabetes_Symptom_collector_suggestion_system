@@ -1,5 +1,6 @@
 import { verifyAccessToken } from '../utils/generateJWT.js';
 import { User } from '../models/User.js';
+import { UsersRoles } from '../models/User_Role.js';
 
 export const verifyAccessTokenMiddleware = async (req, res, next) => {
     try {
@@ -29,6 +30,10 @@ export const verifyAccessTokenMiddleware = async (req, res, next) => {
                 code: "USER_NOT_FOUND"
             });
         }
+
+        // Get user roles for audit logging
+        const userRoles = await UsersRoles.find({ user_id: user._id }).populate('role_id');
+        user.roles = userRoles.map(ur => ur.role_id?.name || 'user');
 
         // Check if user is activated
         // if (!user.isActivated) {

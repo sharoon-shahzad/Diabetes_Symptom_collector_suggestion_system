@@ -42,7 +42,7 @@ import axiosInstance from '../utils/axiosInstance.js';
 import dayjs from 'dayjs';
 import { getCurrentUser } from '../utils/auth.js';
 
-const PersonalMedicalInfoPage = ({ inModal = false }) => {
+const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
     const navigate = useNavigate();
     const [personalInfo, setPersonalInfo] = useState(null);
     const [medicalInfo, setMedicalInfo] = useState(null);
@@ -55,6 +55,7 @@ const PersonalMedicalInfoPage = ({ inModal = false }) => {
     const [savingData, setSavingData] = useState(false);
     const [successMessage, setSuccessMessage] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
+    const [fetchError, setFetchError] = useState('');
     const [userProfile, setUserProfile] = useState(null);
     const [formData, setFormData] = useState({
         fullName: '',
@@ -93,6 +94,7 @@ const PersonalMedicalInfoPage = ({ inModal = false }) => {
     const fetchData = async () => {
         try {
             setLoading(true);
+            setFetchError(''); // Clear any previous errors
             const [personalRes, medicalRes] = await Promise.all([
                 axiosInstance.get('/personalized-system/personal-info'),
                 axiosInstance.get('/personalized-system/medical-info'),
@@ -137,6 +139,7 @@ const PersonalMedicalInfoPage = ({ inModal = false }) => {
             }
         } catch (error) {
             console.error('Error fetching data:', error);
+            setFetchError('Failed to load your information. Please try again or contact support.');
         } finally {
             setLoading(false);
         }
@@ -165,6 +168,7 @@ const PersonalMedicalInfoPage = ({ inModal = false }) => {
         setEditMode(false);
         setSuccessMessage('');
         setErrorMessage('');
+        setFetchError('');
         fetchData(); // Refresh data
     };
 
@@ -204,27 +208,47 @@ const PersonalMedicalInfoPage = ({ inModal = false }) => {
 
             const medicalData = {
                 diabetes_type: formData.diabetes_type,
-                current_medications: formData.medications,
-                allergies: formData.allergies,
-                family_history: formData.family_history,
+                current_medications: Array.isArray(formData.medications) && formData.medications.length > 0 ? formData.medications : [],
+                allergies: Array.isArray(formData.allergies) && formData.allergies.length > 0 ? formData.allergies : [],
+                family_history: Array.isArray(formData.family_history) && formData.family_history.length > 0 ? formData.family_history : [],
                 diagnosis_date: formData.diagnosis_date ? formData.diagnosis_date.format('YYYY-MM-DD') : null,
             };
 
-            await Promise.all([
+            console.log('💾 Saving personal data:', personalData);
+            console.log('💾 Saving medical data:', medicalData);
+
+            const [personalResponse, medicalResponse] = await Promise.all([
                 axiosInstance.post('/personalized-system/personal-info', personalData),
                 axiosInstance.post('/personalized-system/medical-info', medicalData)
             ]);
 
+            console.log('✅ Personal info saved:', personalResponse.data);
+            console.log('✅ Medical info saved:', medicalResponse.data);
+
             setSuccessMessage('Your information has been saved successfully! 🎉');
             await fetchData(); // Refresh data
+            
+            // Notify parent component that data was saved
+            if (onDataSaved && typeof onDataSaved === 'function') {
+                onDataSaved();
+            }
             
             setTimeout(() => {
                 handleCloseEdit();
             }, 1500);
 
         } catch (error) {
-            console.error('Error saving data:', error);
-            setErrorMessage(error.response?.data?.message || 'Failed to save information. Please try again.');
+            console.error('❌ Error saving data:', error);
+            console.error('❌ Error response:', error.response?.data);
+            console.error('❌ Error message:', error.message);
+            
+            const errorMsg = error.response?.data?.message 
+                || error.message 
+                || 'Failed to save information. Please try again.';
+            
+            setErrorMessage(errorMsg);
+            
+            // Keep the dialog open so user can see the error
         } finally {
             setSavingData(false);
         }
@@ -590,6 +614,59 @@ const PersonalMedicalInfoPage = ({ inModal = false }) => {
         return (
             <Box sx={{ minHeight: inModal ? '60vh' : '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <CircularProgress />
+            </Box>
+        );
+    }
+
+    // Show error message if data fetch failed
+    if (fetchError) {
+        return (
+            <Box sx={{ minHeight: inModal ? '60vh' : '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: inModal ? 'transparent' : '#f5f7fa' }}>
+                <Container maxWidth="md">
+                    <Card elevation={2} sx={{ borderRadius: 3, p: 4, textAlign: 'center' }}>
+                        <WarningIcon sx={{ fontSize: 64, color: '#dc2626', mb: 2 }} />
+                        <Typography variant="h5" fontWeight="bold" gutterBottom>
+                            {fetchError}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" paragraph>
+                            Please try to refresh the page or go back to the dashboard.
+                        </Typography>
+                        {!inModal && (
+                            <Button
+                                variant="contained"
+                                onClick={() => navigate('/personalized-suggestions/dashboard', { replace: true })}
+                                sx={{ mt: 2 }}
+                            >
+                                Go to Dashboard
+                            </Button>
+                        )}
+                    </Card>
+                </Container>
+            </Box>
+        );
+    }
+
+    // Show message if no data is available
+    if (!personalInfo && !medicalInfo && !inModal) {
+        return (
+            <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#f5f7fa' }}>
+                <Container maxWidth="md">
+                    <Card elevation={2} sx={{ borderRadius: 3, p: 4, textAlign: 'center' }}>
+                        <Typography variant="h5" fontWeight="bold" gutterBottom>
+                            No Information Found
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" paragraph>
+                            Please fill out your personal and medical information first.
+                        </Typography>
+                        <Button
+                            variant="contained"
+                            onClick={() => navigate('/personalized-suggestions', { replace: true })}
+                            sx={{ mt: 2 }}
+                        >
+                            Fill Information
+                        </Button>
+                    </Card>
+                </Container>
             </Box>
         );
     }

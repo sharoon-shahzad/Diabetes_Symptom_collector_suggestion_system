@@ -5,6 +5,7 @@ import { User } from '../models/User.js';
 import { UserMedicalInfo } from '../models/UserMedicalInfo.js';
 import { assessDiabetesRiskPython } from '../services/mlService.js';
 import hybridRiskService from '../services/hybridRiskService.js';
+import { createAuditLog } from '../middlewares/auditMiddleware.js';
 
 // Map stored answers to model features expected by EnhancedDiabetesSystem
 function mapAnswersToFeatures(answersByQuestionId, questions) {
@@ -216,6 +217,21 @@ export const assessDiabetes = async (req, res) => {
       });
     } catch (persistErr) {
       console.error('Failed to persist latest assessment summary on user:', persistErr);
+    }
+
+    // Log assessment to audit trail
+    try {
+      await createAuditLog('CREATE', 'Assessment', req, res, userId, {
+        before: null,
+        after: {
+          risk_level: finalResult?.risk_level || 'low',
+          probability: finalResult?.diabetes_probability ?? 0,
+          enhanced: enhancementStatus.enhanced,
+          model_used: enhancementStatus.enhanced ? 'Hybrid (XGBoost + Diabetica 7B)' : 'XGBoost'
+        }
+      });
+    } catch (auditErr) {
+      console.error('Failed to log assessment to audit trail:', auditErr);
     }
 
     // Return enhanced result with metadata

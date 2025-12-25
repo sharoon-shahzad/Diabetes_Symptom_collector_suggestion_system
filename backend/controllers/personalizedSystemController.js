@@ -1,14 +1,23 @@
 import { UserPersonalInfo } from '../models/UserPersonalInfo.js';
 import { UserMedicalInfo } from '../models/UserMedicalInfo.js';
 import { User } from '../models/User.js';
+import { createAuditLog } from '../middlewares/auditMiddleware.js';
 
 // Get user's personal information
 export const getPersonalInfo = async (req, res) => {
     try {
         const userId = req.user._id;
         
+        console.log('📥 getPersonalInfo called for user:', userId);
+        
         const personalInfo = await UserPersonalInfo.findOne({ user_id: userId });
         const user = await User.findById(userId).select('fullName country country_code phone_number');
+        
+        console.log('👤 User data:', {
+            country: user?.country,
+            country_code: user?.country_code,
+            phone_number: user?.phone_number ? String(user.phone_number).substring(0, 50) + '...' : 'none'
+        });
         
         if (!personalInfo) {
             // Return user data even if personal info doesn't exist yet
@@ -23,21 +32,40 @@ export const getPersonalInfo = async (req, res) => {
             });
         }
         
-        // Merge user data (country, phone) with personal info
+        console.log('📋 Personal info found - merging with user data');
+        
+        // Don't use toObject() - it bypasses decryption middleware
+        // Access properties directly from the Mongoose document (already decrypted)
         const responseData = {
-            ...personalInfo.toObject(),
-            fullName: user?.fullName || personalInfo.fullName || '',
+            _id: personalInfo._id,
+            user_id: personalInfo.user_id,
+            date_of_birth: personalInfo.date_of_birth,
+            gender: personalInfo.gender,
+            height: personalInfo.height,
+            weight: personalInfo.weight,
+            activity_level: personalInfo.activity_level,
+            dietary_preference: personalInfo.dietary_preference,
+            smoking_status: personalInfo.smoking_status,
+            alcohol_use: personalInfo.alcohol_use,
+            sleep_hours: personalInfo.sleep_hours,
+            emergency_contact: personalInfo.emergency_contact,
+            address: personalInfo.address,
+            fullName: user?.fullName || '',
             country: user?.country || '',
             country_code: user?.country_code || '',
-            phone_number: user?.phone_number || ''
+            phone_number: user?.phone_number || '',
+            createdAt: personalInfo.createdAt,
+            updatedAt: personalInfo.updatedAt
         };
+        
+        console.log('✅ Sending response with decrypted data');
         
         return res.status(200).json({
             success: true,
             data: responseData,
         });
     } catch (err) {
-        console.error('Error fetching personal info:', err);
+        console.error('❌ Error fetching personal info:', err);
         return res.status(500).json({
             success: false,
             message: 'Server error.',
@@ -91,14 +119,30 @@ export const upsertPersonalInfo = async (req, res) => {
         // Log what we're about to save
         console.log('💾 Attempting to save country data:', { country, country_code, phone_number });
         
-        // Update User model with country and phone
-        const updatedUser = await User.findByIdAndUpdate(userId, {
-            country,
-            country_code,
-            phone_number
-        }, { new: true });
+        // Update User model with country and phone - use .save() to trigger encryption middleware
+        const oldUser = await User.findById(userId);
+        let userUpdated = false;
         
-        console.log('✅ User updated with country:', updatedUser.country, updatedUser.country_code, updatedUser.phone_number);
+        if (oldUser) {
+            const userBefore = { country: oldUser.country, country_code: oldUser.country_code, phone_number: oldUser.phone_number };
+            
+            // Only update if values are provided
+            if (country !== undefined) oldUser.country = country;
+            if (country_code !== undefined) oldUser.country_code = country_code;
+            if (phone_number !== undefined) oldUser.phone_number = phone_number;
+            
+            await oldUser.save(); // Triggers pre-save encryption middleware
+            
+            console.log('✅ User updated with country:', oldUser.country, oldUser.country_code, oldUser.phone_number);
+            
+            await createAuditLog('UPDATE', 'User', req, res, userId, {
+                before: userBefore,
+                after: { country: oldUser.country, country_code: oldUser.country_code, phone_number: oldUser.phone_number }
+            });
+            userUpdated = true;
+        }
+        
+        const updatedUser = await User.findById(userId);
         
         const personalInfoData = {
             user_id: userId,
@@ -115,12 +159,29 @@ export const upsertPersonalInfo = async (req, res) => {
             address,
         };
         
-        // Update or create
-        const personalInfo = await UserPersonalInfo.findOneAndUpdate(
-            { user_id: userId },
-            personalInfoData,
-            { upsert: true, new: true, runValidators: true }
-        );
+        // Update or create - use findOne + save to trigger encryption middleware
+        let personalInfo = await UserPersonalInfo.findOne({ user_id: userId });
+        
+        if (personalInfo) {
+            // Update existing document
+            const oldPersonalInfo = JSON.parse(JSON.stringify(personalInfo.toObject()));
+            Object.assign(personalInfo, personalInfoData);
+            personalInfo = await personalInfo.save(); // Triggers pre-save encryption middleware
+            
+            await createAuditLog('UPDATE', 'UserPersonalInfo', req, res, userId, {
+                before: { date_of_birth: oldPersonalInfo.date_of_birth, gender: oldPersonalInfo.gender, height: oldPersonalInfo.height, weight: oldPersonalInfo.weight },
+                after: { date_of_birth: personalInfo.date_of_birth, gender: personalInfo.gender, height: personalInfo.height, weight: personalInfo.weight }
+            });
+        } else {
+            // Create new document
+            personalInfo = new UserPersonalInfo(personalInfoData);
+            personalInfo = await personalInfo.save(); // Triggers pre-save encryption middleware
+            
+            await createAuditLog('CREATE', 'UserPersonalInfo', req, res, userId, {
+                before: null,
+                after: { date_of_birth: personalInfo.date_of_birth, gender: personalInfo.gender, height: personalInfo.height, weight: personalInfo.weight }
+            });
+        }
         
         return res.status(200).json({
             success: true,
@@ -128,10 +189,15 @@ export const upsertPersonalInfo = async (req, res) => {
             data: personalInfo,
         });
     } catch (err) {
-        console.error('Error saving personal info:', err);
+        console.error('❌ Error saving personal info:', err);
+        console.error('❌ Error stack:', err.stack);
+        console.error('❌ Error name:', err.name);
+        console.error('❌ Error message:', err.message);
+        
         return res.status(500).json({
             success: false,
-            message: 'Server error.',
+            message: err.message || 'Server error while saving personal information.',
+            error: process.env.NODE_ENV === 'development' ? err.message : undefined
         });
     }
 };
@@ -192,21 +258,38 @@ export const upsertMedicalInfo = async (req, res) => {
             user_id: userId,
             diabetes_type,
             diagnosis_date,
-            current_medications,
-            allergies,
-            chronic_conditions,
-            family_history,
+            current_medications: Array.isArray(current_medications) ? current_medications : [],
+            allergies: Array.isArray(allergies) ? allergies : [],
+            chronic_conditions: Array.isArray(chronic_conditions) ? chronic_conditions : [],
+            family_history: Array.isArray(family_history) ? family_history : [],
             recent_lab_results,
             blood_pressure,
             last_medical_checkup,
         };
         
-        // Update or create
-        const medicalInfo = await UserMedicalInfo.findOneAndUpdate(
-            { user_id: userId },
-            medicalInfoData,
-            { upsert: true, new: true, runValidators: true }
-        );
+        // Update or create - use findOne + save to trigger encryption middleware
+        let medicalInfo = await UserMedicalInfo.findOne({ user_id: userId });
+        
+        if (medicalInfo) {
+            // Update existing document
+            const oldMedicalInfo = JSON.parse(JSON.stringify(medicalInfo.toObject()));
+            Object.assign(medicalInfo, medicalInfoData);
+            medicalInfo = await medicalInfo.save(); // Triggers pre-save encryption middleware
+            
+            await createAuditLog('UPDATE', 'UserMedicalInfo', req, res, userId, {
+                before: { diabetes_type: oldMedicalInfo.diabetes_type, diagnosis_date: oldMedicalInfo.diagnosis_date, current_medications: oldMedicalInfo.current_medications },
+                after: { diabetes_type: medicalInfo.diabetes_type, diagnosis_date: medicalInfo.diagnosis_date, current_medications: medicalInfo.current_medications }
+            });
+        } else {
+            // Create new document
+            medicalInfo = new UserMedicalInfo(medicalInfoData);
+            medicalInfo = await medicalInfo.save(); // Triggers pre-save encryption middleware
+            
+            await createAuditLog('CREATE', 'UserMedicalInfo', req, res, userId, {
+                before: null,
+                after: { diabetes_type: medicalInfo.diabetes_type, diagnosis_date: medicalInfo.diagnosis_date, current_medications: medicalInfo.current_medications }
+            });
+        }
         
         return res.status(200).json({
             success: true,
@@ -214,10 +297,15 @@ export const upsertMedicalInfo = async (req, res) => {
             data: medicalInfo,
         });
     } catch (err) {
-        console.error('Error saving medical info:', err);
+        console.error('❌ Error saving medical info:', err);
+        console.error('❌ Error stack:', err.stack);
+        console.error('❌ Error name:', err.name);
+        console.error('❌ Error message:', err.message);
+        
         return res.status(500).json({
             success: false,
-            message: 'Server error.',
+            message: err.message || 'Server error while saving medical information.',
+            error: process.env.NODE_ENV === 'development' ? err.message : undefined
         });
     }
 };

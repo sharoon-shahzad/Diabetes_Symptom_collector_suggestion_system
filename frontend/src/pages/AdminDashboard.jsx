@@ -22,6 +22,8 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import DocumentUpload from '../admin/DocumentUpload';
 import ForumIcon from '@mui/icons-material/Forum';
 import AdminFeedback from '../admin/AdminFeedback';
+import HistoryIcon from '@mui/icons-material/History';
+import AuditLogs from '../admin/AuditLogs';
 import { getCurrentUser, logout } from '../utils/auth';
 import { useNavigate } from 'react-router-dom';
 import ThemeToggle from '../components/Common/ThemeToggle';
@@ -107,7 +109,8 @@ export default function AdminDashboard() {
     if (userRoles.includes('super_admin') || userRoles.includes('admin')) {
       baseSections.push(
         { label: 'Content Management', icon: <ArticleIcon />, component: <CMSManagement /> },
-        { label: 'Feedback (Admin)', icon: <ForumIcon />, component: <AdminFeedback /> }
+        { label: 'Feedback (Admin)', icon: <ForumIcon />, component: <AdminFeedback /> },
+        { label: 'Audit Logs', icon: <HistoryIcon />, component: <AuditLogs /> }
       );
     }
 
