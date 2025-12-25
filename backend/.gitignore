@@ -62,3 +62,10 @@ uploads/
 chroma_db/
 *.txt
 !uploads/README.md
+
+# Markdown documentation
+*.md
+
+node_modules/
+*.sqlite3
+.DS_Store

@@ -27,22 +27,31 @@ import exercisePlanRoutes from './routes/exercisePlanRoutes.js';
 import lifestyleTipsRoutes from './routes/lifestyleTipsRoutes.js';
 import feedbackRoutes from './routes/feedbackRoutes.js';
 import adminFeedbackRoutes from './routes/adminFeedbackRoutes.js';
+import os from 'os';
 
 dotenv.config();
 
 const app = express();
 
+// Helper function to get local IP address
+function getLocalIPAddress() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      // Skip internal (i.e. 127.0.0.1) and non-ipv4 addresses
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return 'localhost';
+}
+
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://192.168.1.19:8081', // Expo dev server
-    'exp://192.168.1.19:8081', // Expo protocol
-    process.env.FRONTEND_URL
-  ].filter(Boolean),
+  origin: true, // Accept all origins (for mobile app development)
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -52,6 +61,22 @@ app.use(cors({
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.path}`);
   next();
+});
+
+// Server info endpoint for mobile app auto-discovery
+app.get('/api/v1/server-info', (req, res) => {
+  const localIP = getLocalIPAddress();
+  const port = process.env.PORT || 5000;
+  res.json({
+    success: true,
+    data: {
+      ip: localIP,
+      port: port,
+      apiUrl: `http://${localIP}:${port}/api/v1`,
+      timestamp: new Date().toISOString(),
+      version: '1.0.0'
+    }
+  });
 });
 
 // Connect to database and ensure roles exist
@@ -83,8 +108,11 @@ const startServer = async () => {
         
         // Start the server
         const PORT = process.env.PORT || 5000;
-        app.listen(PORT, () => {
+        const localIP = getLocalIPAddress();
+        app.listen(PORT, '0.0.0.0', () => {
             console.log(`✅ Server running on port ${PORT}`);
+            console.log(`🌐 Local IP: ${localIP}`);
+            console.log(`📱 Mobile API URL: http://${localIP}:${PORT}/api/v1`);
         });
     } catch (error) {
         console.error('❌ Failed to start server:', error);
