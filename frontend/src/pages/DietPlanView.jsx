@@ -102,194 +102,205 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: '#f8f9fa', py: 4 }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#fafafa', py: { xs: 2, md: 4 } }}>
       <Container maxWidth="lg">
         {/* Header */}
-        <Paper
-          elevation={3}
-          sx={{
-            background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
-            borderRadius: 2,
-            p: 4,
-            mb: 3,
-            color: '#1f2937',
-            border: '1px solid #e5e7eb'
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box sx={{ mb: 4 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
             <IconButton 
               onClick={onBack} 
               sx={{ 
-                color: '#10b981',
-                bgcolor: '#f0fdf4',
+                color: '#1e293b',
+                bgcolor: 'white',
+                border: '1px solid #e2e8f0',
                 '&:hover': { 
-                  bgcolor: '#dcfce7'
+                  bgcolor: '#f8fafc',
+                  borderColor: '#cbd5e1'
                 }
               }}
             >
               <ArrowBackIcon />
             </IconButton>
             <Box sx={{ flex: 1 }}>
-              <Typography variant="h4" fontWeight="bold" sx={{ mb: 1 }}>
-                Diet Plan
+              <Typography variant="h4" fontWeight="700" sx={{ mb: 0.5, color: '#1e293b', fontSize: { xs: '1.5rem', md: '2rem' } }}>
+                Diet Plan Details
               </Typography>
-              <Typography variant="body1" sx={{ mb: 1, opacity: 0.95 }}>
+              <Typography variant="body1" sx={{ color: '#64748b', fontSize: '0.95rem' }}>
                 {targetDate.toLocaleDateString('en-US', {
                   weekday: 'long',
-                  month: 'long',
+                  month: 'short',
                   day: 'numeric',
                   year: 'numeric'
                 })}
               </Typography>
-              <Stack direction="row" spacing={1} flexWrap="wrap">
-                {isToday && (
-                  <Chip 
-                    icon={<TodayIcon sx={{ color: '#10b981 !important' }} />}
-                    label="Today" 
-                    size="small"
-                    sx={{ bgcolor: '#dcfce7', color: '#10b981', fontWeight: 600 }}
-                  />
-                )}
-                {isFuture && !isToday && (
-                  <Chip 
-                    icon={<EventIcon sx={{ color: 'white !important' }} />}
-                    label="Upcoming" 
-                    size="small"
-                    color="default"
-                  />
-                )}
-                <Chip 
-                  icon={<PublicIcon />} 
-                  label={plan.region} 
-                  size="small"
-                  variant="outlined"
-                />
-              </Stack>
             </Box>
             <IconButton 
               onClick={() => onDelete(plan._id)}
               sx={{ 
-                color: 'error.main',
+                color: '#ef4444',
+                bgcolor: 'white',
+                border: '1px solid #fecaca',
                 '&:hover': { 
-                  bgcolor: 'error.lighter'
+                  bgcolor: '#fef2f2',
+                  borderColor: '#fca5a5'
                 }
               }}
             >
               <DeleteIcon />
             </IconButton>
           </Box>
-        </Paper>
+          <Stack direction="row" spacing={1} flexWrap="wrap">
+            {isToday && (
+              <Chip 
+                label="Today" 
+                size="small"
+                sx={{ bgcolor: '#ecfdf5', color: '#10b981', fontWeight: 600, border: '1px solid #d1fae5' }}
+              />
+            )}
+            {isFuture && !isToday && (
+              <Chip 
+                label="Upcoming" 
+                size="small"
+                sx={{ bgcolor: '#f1f5f9', color: '#64748b', fontWeight: 600 }}
+              />
+            )}
+            <Chip 
+              icon={<PublicIcon sx={{ fontSize: 16 }} />} 
+              label={plan.region} 
+              size="small"
+              sx={{ bgcolor: '#eff6ff', color: '#3b82f6', fontWeight: 600, border: '1px solid #dbeafe' }}
+            />
+          </Stack>
+        </Box>
 
         {/* Action Buttons */}
-        <Stack direction="row" spacing={2} mb={3}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} mb={3}>
           <Button
-            variant="contained"
+            variant="outlined"
             startIcon={<DownloadIcon />}
             onClick={handleDownloadPDF}
-            sx={{ bgcolor: '#3b82f6', color: '#fff', '&:hover': { bgcolor: '#2563eb' }, textTransform: 'none', fontWeight: 600 }}
+            sx={{ 
+              color: '#64748b', 
+              borderColor: '#e2e8f0',
+              bgcolor: 'white',
+              '&:hover': { 
+                bgcolor: '#f8fafc',
+                borderColor: '#cbd5e1'
+              }, 
+              textTransform: 'none', 
+              fontWeight: 600,
+              boxShadow: 'none'
+            }}
           >
             Download PDF
           </Button>
           <Button
-            variant="contained"
+            variant="outlined"
             startIcon={<ShoppingCartIcon />}
             onClick={handleShoppingList}
-            sx={{ bgcolor: '#10b981', color: '#fff', '&:hover': { bgcolor: '#059669' }, textTransform: 'none', fontWeight: 600 }}
+            sx={{ 
+              color: '#64748b', 
+              borderColor: '#e2e8f0',
+              bgcolor: 'white',
+              '&:hover': { 
+                bgcolor: '#f8fafc',
+                borderColor: '#cbd5e1'
+              }, 
+              textTransform: 'none', 
+              fontWeight: 600,
+              boxShadow: 'none'
+            }}
           >
             Shopping List
           </Button>
         </Stack>
 
         {/* Nutrition Summary */}
-        <Paper elevation={2} sx={{ mb: 3, p: 4, bgcolor: 'white', borderRadius: 2 }}>
-          <Typography variant="h5" fontWeight="bold" sx={{ mb: 3, color: '#1f2937' }}>
-            Daily Nutrition Summary
+        <Paper elevation={0} sx={{ mb: 3, p: { xs: 2.5, md: 3 }, bgcolor: 'white', borderRadius: 2, border: '1px solid #e2e8f0' }}>
+          <Typography variant="h6" fontWeight="600" sx={{ mb: 3, color: '#1e293b' }}>
+            Nutritional Summary
           </Typography>
           
           <Grid container spacing={2}>
             <Grid item xs={6} sm={3}>
-              <Paper 
-                elevation={0}
+              <Box 
                 sx={{ 
-                  p: 3, 
-                  textAlign: 'center',
-                  bgcolor: '#eff6ff',
-                  border: '2px solid #dbeafe',
-                  borderRadius: 2
-                }}
-              >
-                <Typography variant="h4" fontWeight="bold" sx={{ color: '#3b82f6' }}>
-                  {actualTotals.calories}
-                </Typography>
-                <Typography variant="body2" sx={{ color: '#3b82f6', mt: 0.5, fontWeight: 600 }}>
-                  Calories (kcal)
-                </Typography>
-              </Paper>
-            </Grid>
-            <Grid item xs={6} sm={3}>
-              <Paper 
-                elevation={0}
-                sx={{ 
-                  p: 3, 
-                  textAlign: 'center',
-                  bgcolor: '#f0fdf4',
-                  border: '2px solid #d1fae5',
-                  borderRadius: 2
-                }}
-              >
-                <Typography variant="h4" fontWeight="bold" sx={{ color: '#10b981' }}>
-                  {actualTotals.carbs}g
-                </Typography>
-                <Typography variant="body2" sx={{ color: '#10b981', mt: 0.5, fontWeight: 600 }}>
-                  Carbohydrates
-                </Typography>
-              </Paper>
-            </Grid>
-            <Grid item xs={6} sm={3}>
-              <Paper 
-                elevation={0}
-                sx={{ 
-                  p: 3, 
-                  textAlign: 'center',
-                  bgcolor: '#fdf4ff',
-                  border: '2px solid #f3e8ff',
-                  borderRadius: 2
-                }}
-              >
-                <Typography variant="h4" fontWeight="bold" sx={{ color: '#a855f7' }}>
-                  {actualTotals.protein}g
-                </Typography>
-                <Typography variant="body2" sx={{ color: '#a855f7', mt: 0.5, fontWeight: 600 }}>
-                  Protein
-                </Typography>
-              </Paper>
-            </Grid>
-            <Grid item xs={6} sm={3}>
-              <Paper 
-                elevation={0}
-                sx={{ 
-                  p: 3, 
+                  p: 2.5, 
                   textAlign: 'center',
                   bgcolor: '#fff7ed',
-                  border: '2px solid #fed7aa',
-                  borderRadius: 2
+                  borderRadius: 2,
+                  border: '1px solid #fed7aa'
                 }}
               >
-                <Typography variant="h4" fontWeight="bold" sx={{ color: '#f97316' }}>
-                  {actualTotals.fat}g
+                <Typography variant="h4" fontWeight="700" sx={{ color: '#ea580c', mb: 0.5 }}>
+                  {actualTotals.calories}
                 </Typography>
-                <Typography variant="body2" sx={{ color: '#f97316', mt: 0.5, fontWeight: 600 }}>
-                  Fat
+                <Typography variant="caption" sx={{ color: '#9a3412', fontWeight: 600, fontSize: '0.75rem' }}>
+                  kcal
                 </Typography>
-              </Paper>
+              </Box>
+            </Grid>
+            <Grid item xs={6} sm={3}>
+              <Box 
+                sx={{ 
+                  p: 2.5, 
+                  textAlign: 'center',
+                  bgcolor: '#f0fdf4',
+                  borderRadius: 2,
+                  border: '1px solid #d1fae5'
+                }}
+              >
+                <Typography variant="h4" fontWeight="700" sx={{ color: '#10b981', mb: 0.5 }}>
+                  {actualTotals.protein}
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#065f46', fontWeight: 600, fontSize: '0.75rem' }}>
+                  Protein (g)
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={6} sm={3}>
+              <Box 
+                sx={{ 
+                  p: 2.5, 
+                  textAlign: 'center',
+                  bgcolor: '#eff6ff',
+                  borderRadius: 2,
+                  border: '1px solid #dbeafe'
+                }}
+              >
+                <Typography variant="h4" fontWeight="700" sx={{ color: '#3b82f6', mb: 0.5 }}>
+                  {actualTotals.carbs}
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#1e40af', fontWeight: 600, fontSize: '0.75rem' }}>
+                  Carbs (g)
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={6} sm={3}>
+              <Box 
+                sx={{ 
+                  p: 2.5, 
+                  textAlign: 'center',
+                  bgcolor: '#fef2f2',
+                  borderRadius: 2,
+                  border: '1px solid #fecaca'
+                }}
+              >
+                <Typography variant="h4" fontWeight="700" sx={{ color: '#ef4444', mb: 0.5 }}>
+                  {actualTotals.fat}
+                </Typography>
+                <Typography variant="caption" sx={{ color: '#991b1b', fontWeight: 600, fontSize: '0.75rem' }}>
+                  Fats (g)
+                </Typography>
+              </Box>
             </Grid>
           </Grid>
 
           {actualTotals.fiber > 0 && (
-            <Box mt={3} textAlign="center">
+            <Box mt={2.5} textAlign="center">
               <Chip 
                 label={`Fiber: ${actualTotals.fiber}g`} 
-                sx={{ bgcolor: '#10b981', color: 'white', fontWeight: 600, px: 2, py: 2.5 }}
+                sx={{ bgcolor: '#ecfdf5', color: '#10b981', fontWeight: 600, border: '1px solid #d1fae5', fontSize: '0.875rem' }}
               />
             </Box>
           )}
@@ -310,49 +321,50 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
           return (
             <Paper 
               key={index} 
-              elevation={1}
+              elevation={0}
               sx={{ 
                 mb: 2,
-                borderRadius: 1,
+                borderRadius: 2,
                 overflow: 'hidden',
-                bgcolor: 'white'
+                bgcolor: 'white',
+                border: '1px solid #e2e8f0'
               }}
             >
               {/* Meal Header */}
               <Box 
                 sx={{
-                  p: 3,
+                  p: 2.5,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 2,
-                  borderLeft: `5px solid ${borderColor}`,
-                  bgcolor: `${borderColor}08`,
                   '&:hover': {
-                    bgcolor: `${borderColor}15`
-                  }
+                    bgcolor: '#f8fafc'
+                  },
+                  transition: 'background-color 0.2s'
                 }}
                 onClick={() => toggleMeal(index)}
               >
                 <Box sx={{ flex: 1 }}>
-                  <Typography variant="h6" fontWeight="bold" sx={{ mb: 0.5, color: borderColor }}>
+                  <Typography variant="h6" fontWeight="600" sx={{ mb: 0.5, color: '#1e293b', fontSize: '1.125rem' }}>
                     {meal.name}
                   </Typography>
                   {meal.timing && (
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="caption" sx={{ color: '#64748b', fontSize: '0.875rem' }}>
                       {meal.timing}
                     </Typography>
                   )}
                 </Box>
                 <Chip 
                   label={`${Math.round(mealCalories)} kcal`}
-                  sx={{ bgcolor: borderColor, color: 'white', fontWeight: 600 }}
+                  sx={{ bgcolor: '#f0fdf4', color: '#10b981', fontWeight: 600, border: '1px solid #d1fae5', fontSize: '0.875rem' }}
                 />
                 <IconButton
                   size="small"
                   sx={{
                     transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.3s'
+                    transition: 'transform 0.2s',
+                    color: '#64748b'
                   }}
                 >
                   <ExpandMoreIcon />
@@ -361,85 +373,59 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
 
               {/* Collapsible Meal Items */}
               <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                <Box sx={{ p: 2, pt: 0 }}>
+                <Box sx={{ p: 2.5, pt: 0, bgcolor: '#fafafa' }}>
                   <Divider sx={{ mb: 2 }} />
                   {meal.items && meal.items.map((item, itemIndex) => (
-                    <Paper 
+                    <Box 
                       key={itemIndex} 
-                      elevation={0} 
                       sx={{ 
-                        p: 2, 
+                        p: 2.5, 
                         mb: 2, 
-                        bgcolor: '#fafafa',
-                        border: '1px solid #e0e0e0',
-                        borderRadius: 1,
-                        '&:hover': {
-                          bgcolor: '#f5f5f5'
-                        }
+                        bgcolor: 'white',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 1.5,
+                        '&:last-child': { mb: 0 }
                       }}
                     >
                       <Box sx={{ mb: 2 }}>
-                        <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 0.5 }}>
+                        <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 0.5, color: '#1e293b' }}>
                           {item.food}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Portion: {item.portion}
+                        <Typography variant="caption" sx={{ color: '#64748b' }}>
+                          {item.portion}
                         </Typography>
                       </Box>
 
-                      <Grid container spacing={2}>
-                        <Grid item xs={6} sm={3}>
-                          <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: '#e3f2fd', borderRadius: 1, border: '2px solid #1976d2' }}>
-                            <Typography variant="caption" sx={{ color: '#1976d2', fontWeight: 600, mb: 0.5, display: 'block' }}>
-                              Calories
-                            </Typography>
-                            <Typography variant="h6" fontWeight="bold" color="primary">
-                              {item.calories}
-                            </Typography>
-                          </Box>
-                        </Grid>
-                        <Grid item xs={6} sm={3}>
-                          <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: '#e8f5e9', borderRadius: 1, border: '2px solid #2e7d32' }}>
-                            <Typography variant="caption" sx={{ color: '#2e7d32', fontWeight: 600, mb: 0.5, display: 'block' }}>
-                              Carbs
-                            </Typography>
-                            <Typography variant="h6" fontWeight="bold" sx={{ color: '#2e7d32' }}>
-                              {item.carbs}g
-                            </Typography>
-                          </Box>
-                        </Grid>
-                        <Grid item xs={6} sm={3}>
-                          <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: '#f3e5f5', borderRadius: 1, border: '2px solid #9c27b0' }}>
-                            <Typography variant="caption" sx={{ color: '#9c27b0', fontWeight: 600, mb: 0.5, display: 'block' }}>
-                              Protein
-                            </Typography>
-                            <Typography variant="h6" fontWeight="bold" sx={{ color: '#9c27b0' }}>
-                              {item.protein}g
-                            </Typography>
-                          </Box>
-                        </Grid>
-                        <Grid item xs={6} sm={3}>
-                          <Box sx={{ textAlign: 'center', p: 1.5, bgcolor: '#fff3e0', borderRadius: 1, border: '2px solid #ed6c02' }}>
-                            <Typography variant="caption" sx={{ color: '#ed6c02', fontWeight: 600, mb: 0.5, display: 'block' }}>
-                              Fat
-                            </Typography>
-                            <Typography variant="h6" fontWeight="bold" sx={{ color: '#ed6c02' }}>
-                              {item.fat}g
-                            </Typography>
-                          </Box>
-                        </Grid>
+                      <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+                        <Chip 
+                          label={`${item.calories} kcal`}
+                          size="small"
+                          sx={{ bgcolor: '#fff7ed', color: '#ea580c', fontWeight: 600, border: '1px solid #fed7aa' }}
+                        />
+                        <Chip 
+                          label={`${item.protein}g protein`}
+                          size="small"
+                          sx={{ bgcolor: '#f0fdf4', color: '#10b981', fontWeight: 600, border: '1px solid #d1fae5' }}
+                        />
+                        <Chip 
+                          label={`${item.carbs}g carbs`}
+                          size="small"
+                          sx={{ bgcolor: '#eff6ff', color: '#3b82f6', fontWeight: 600, border: '1px solid #dbeafe' }}
+                        />
+                        <Chip 
+                          label={`${item.fat}g fat`}
+                          size="small"
+                          sx={{ bgcolor: '#fef2f2', color: '#ef4444', fontWeight: 600, border: '1px solid #fecaca' }}
+                        />
                         {item.fiber > 0 && (
-                          <Grid item xs={12}>
-                            <Box sx={{ textAlign: 'center', p: 1.5 }}>
-                              <Chip 
-                                label={`Fiber: ${item.fiber}g`}
-                                sx={{ bgcolor: '#4caf50', color: 'white', fontWeight: 600 }}
-                              />
-                            </Box>
-                          </Grid>
+                          <Chip 
+                            label={`${item.fiber}g fiber`}
+                            size="small"
+                            sx={{ bgcolor: '#ecfdf5', color: '#10b981', fontWeight: 600, border: '1px solid #d1fae5' }}
+                          />
                         )}
-                      </Grid>
-                    </Paper>
+                      </Stack>
+                    </Box>
                   ))}
                 </Box>
               </Collapse>
@@ -451,33 +437,35 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
         {/* Personalized Tips */}
         {plan.tips && plan.tips.length > 0 && (
           <Paper 
-            elevation={2}
+            elevation={0}
             sx={{ 
               mb: 3, 
-              p: 4,
-              bgcolor: 'white',
+              p: { xs: 2.5, md: 3 },
+              bgcolor: '#fffbeb',
               borderRadius: 2,
-              borderLeft: '5px solid #1976d2'
+              border: '1px solid #fef3c7'
             }}
           >
-            <Typography variant="h5" fontWeight="bold" sx={{ mb: 3, color: '#1976d2' }}>
+            <Typography variant="h6" fontWeight="600" sx={{ mb: 2, color: '#78350f' }}>
               Personalized Tips
             </Typography>
-            <Stack spacing={2}>
+            <Stack spacing={1.5}>
               {plan.tips.map((tip, index) => (
-                <Box 
+                <Typography 
                   key={index}
-                  sx={{
-                    p: 2,
-                    bgcolor: '#e3f2fd',
-                    borderRadius: 1,
-                    borderLeft: '3px solid #1976d2'
+                  variant="body2"
+                  sx={{ color: '#78350f', lineHeight: 1.6, pl: 2, position: 'relative',
+                    '&::before': {
+                      content: '"•"',
+                      position: 'absolute',
+                      left: 0,
+                      color: '#f59e0b',
+                      fontWeight: 'bold'
+                    }
                   }}
                 >
-                  <Typography variant="body1">
-                    {tip}
-                  </Typography>
-                </Box>
+                  {tip}
+                </Typography>
               ))}
             </Stack>
           </Paper>
@@ -486,16 +474,16 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
         {/* Sources */}
         {plan.sources && plan.sources.length > 0 && (
           <Paper 
-            elevation={2}
+            elevation={0}
             sx={{ 
               mb: 3,
-              p: 4,
+              p: { xs: 2.5, md: 3 },
               bgcolor: 'white',
               borderRadius: 2,
-              borderLeft: '5px solid #2e7d32'
+              border: '1px solid #e2e8f0'
             }}
           >
-            <Typography variant="h5" fontWeight="bold" sx={{ mb: 3, color: '#2e7d32' }}>
+            <Typography variant="h6" fontWeight="600" sx={{ mb: 2, color: '#1e293b' }}>
               Evidence-Based Guidelines
             </Typography>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -503,12 +491,12 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
                 <Chip
                   key={index}
                   label={`${source.title} (${source.country})`}
+                  size="small"
                   sx={{ 
-                    mb: 1,
-                    bgcolor: '#e8f5e9',
-                    color: '#2e7d32',
+                    bgcolor: '#f0fdf4',
+                    color: '#10b981',
                     fontWeight: 600,
-                    border: '2px solid #2e7d32'
+                    border: '1px solid #d1fae5'
                   }}
                 />
               ))}
@@ -518,67 +506,63 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
 
         {/* Important Notes */}
         <Paper 
-          elevation={2}
+          elevation={0}
           sx={{ 
-            p: 4,
-            bgcolor: 'white',
+            p: { xs: 2.5, md: 3 },
+            bgcolor: '#eff6ff',
             borderRadius: 2,
             mb: 3,
-            borderLeft: '5px solid #ed6c02'
+            border: '1px solid #dbeafe'
           }}
         >
-          <Typography variant="h5" fontWeight="bold" sx={{ mb: 3, color: '#ed6c02' }}>
+          <Typography variant="h6" fontWeight="600" sx={{ mb: 2, color: '#1e40af' }}>
             Important Reminders
           </Typography>
-          <Stack spacing={2}>
-            <Box 
-              sx={{
-                p: 2,
-                bgcolor: '#fff3e0',
-                borderRadius: 1,
-                borderLeft: '3px solid #ed6c02'
-              }}
-            >
-              <Typography variant="body1">
-                This plan may adjust based on your glucose readings (when glucose monitoring is enabled)
-              </Typography>
-            </Box>
-            <Box 
-              sx={{
-                p: 2,
-                bgcolor: '#fff3e0',
-                borderRadius: 1,
-                borderLeft: '3px solid #ed6c02'
-              }}
-            >
-              <Typography variant="body1">
-                Drink 8-10 glasses of water throughout the day
-              </Typography>
-            </Box>
-            <Box 
-              sx={{
-                p: 2,
-                bgcolor: '#fff3e0',
-                borderRadius: 1,
-                borderLeft: '3px solid #ed6c02'
-              }}
-            >
-              <Typography variant="body1">
-                Check blood glucose before meals and 2 hours after meals as recommended
-              </Typography>
-            </Box>
-            <Box 
-              sx={{
-                p: 2,
-                bgcolor: '#fff3e0',
-                borderRadius: 1,
-                borderLeft: '3px solid #ed6c02'
-              }}
-            >
-              <Typography variant="body1">
-                Consult your doctor before making major dietary changes
-              </Typography>
-            </Box>
+          <Stack spacing={1.5}>
+            <Typography variant="body2" sx={{ color: '#1e40af', lineHeight: 1.6, pl: 2, position: 'relative',
+              '&::before': {
+                content: '"•"',
+                position: 'absolute',
+                left: 0,
+                color: '#3b82f6',
+                fontWeight: 'bold'
+              }
+            }}>
+              This plan may adjust based on your glucose readings (when glucose monitoring is enabled)
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#1e40af', lineHeight: 1.6, pl: 2, position: 'relative',
+              '&::before': {
+                content: '"•"',
+                position: 'absolute',
+                left: 0,
+                color: '#3b82f6',
+                fontWeight: 'bold'
+              }
+            }}>
+              Drink 8-10 glasses of water throughout the day
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#1e40af', lineHeight: 1.6, pl: 2, position: 'relative',
+              '&::before': {
+                content: '"•"',
+                position: 'absolute',
+                left: 0,
+                color: '#3b82f6',
+                fontWeight: 'bold'
+              }
+            }}>
+              Check blood glucose before meals and 2 hours after meals as recommended
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#1e40af', lineHeight: 1.6, pl: 2, position: 'relative',
+              '&::before': {
+                content: '"•"',
+                position: 'absolute',
+                left: 0,
+                color: '#3b82f6',
+                fontWeight: 'bold'
+              }
+            }}>
+              Consult your doctor before making major dietary changes
+            </Typography>
           </Stack>
         </Paper>
       </Container>

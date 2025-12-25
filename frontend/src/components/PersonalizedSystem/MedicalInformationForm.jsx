@@ -14,8 +14,7 @@ import {
 } from '@mui/material';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import AddIcon from '@mui/icons-material/Add';
-import DeleteIcon from '@mui/icons-material/Delete';
+
 import axiosInstance from '../../utils/axiosInstance';
 
 const MedicalInformationForm = () => {
@@ -303,7 +302,7 @@ const MedicalInformationForm = () => {
                         <Divider sx={{ my: 2 }} />
                         <Box display="flex" justifyContent="space-between" alignItems="center">
                             <Typography variant="h6">Current Medications</Typography>
-                            <Button startIcon={<AddIcon />} onClick={addMedication} size="small">
+                            <Button onClick={addMedication} size="small">
                                 Add Medication
                             </Button>
                         </Box>
@@ -336,7 +335,7 @@ const MedicalInformationForm = () => {
                             </Grid>
                             <Grid item xs={12} md={1}>
                                 <IconButton onClick={() => removeMedication(index)} color="error">
-                                    <DeleteIcon />
+                                    Delete
                                 </IconButton>
                             </Grid>
                         </React.Fragment>
@@ -347,7 +346,7 @@ const MedicalInformationForm = () => {
                         <Divider sx={{ my: 2 }} />
                         <Box display="flex" justifyContent="space-between" alignItems="center">
                             <Typography variant="h6">Allergies</Typography>
-                            <Button startIcon={<AddIcon />} onClick={addAllergy} size="small">
+                            <Button onClick={addAllergy} size="small">
                                 Add Allergy
                             </Button>
                         </Box>
@@ -372,7 +371,7 @@ const MedicalInformationForm = () => {
                             </Grid>
                             <Grid item xs={12} md={1}>
                                 <IconButton onClick={() => removeAllergy(index)} color="error">
-                                    <DeleteIcon />
+                                    Delete
                                 </IconButton>
                             </Grid>
                         </React.Fragment>
@@ -383,7 +382,7 @@ const MedicalInformationForm = () => {
                         <Divider sx={{ my: 2 }} />
                         <Box display="flex" justifyContent="space-between" alignItems="center">
                             <Typography variant="h6">Chronic Conditions</Typography>
-                            <Button startIcon={<AddIcon />} onClick={addChronicCondition} size="small">
+                            <Button onClick={addChronicCondition} size="small">
                                 Add Condition
                             </Button>
                         </Box>
@@ -414,7 +413,7 @@ const MedicalInformationForm = () => {
                             </Grid>
                             <Grid item xs={12} md={1}>
                                 <IconButton onClick={() => removeChronicCondition(index)} color="error">
-                                    <DeleteIcon />
+                                    Delete
                                 </IconButton>
                             </Grid>
                         </React.Fragment>
@@ -425,7 +424,7 @@ const MedicalInformationForm = () => {
                         <Divider sx={{ my: 2 }} />
                         <Box display="flex" justifyContent="space-between" alignItems="center">
                             <Typography variant="h6">Family History</Typography>
-                            <Button startIcon={<AddIcon />} onClick={addFamilyHistory} size="small">
+                            <Button onClick={addFamilyHistory} size="small">
                                 Add Family History
                             </Button>
                         </Box>
@@ -450,7 +449,7 @@ const MedicalInformationForm = () => {
                             </Grid>
                             <Grid item xs={12} md={1}>
                                 <IconButton onClick={() => removeFamilyHistory(index)} color="error">
-                                    <DeleteIcon />
+                                    Delete
                                 </IconButton>
                             </Grid>
                         </React.Fragment>

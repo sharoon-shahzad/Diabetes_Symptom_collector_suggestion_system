@@ -545,16 +545,40 @@ const PersonalMedicalInfoPage = ({ inModal = false }) => {
     };
 
     const renderField = (label, value, isEmpty = false) => (
-        <Box sx={{ mb: 2 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase' }}>
+        <Box 
+            sx={{ 
+                p: 2.5,
+                borderRadius: 2,
+                bgcolor: isEmpty ? '#f9fafb' : '#ffffff',
+                border: '1px solid',
+                borderColor: isEmpty ? '#e5e7eb' : '#e2e8f0',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                    borderColor: isEmpty ? '#d1d5db' : '#cbd5e1',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                }
+            }}
+        >
+            <Typography 
+                variant="caption" 
+                sx={{ 
+                    fontWeight: 700, 
+                    textTransform: 'uppercase',
+                    color: '#64748b',
+                    letterSpacing: 0.5,
+                    fontSize: '0.7rem'
+                }}
+            >
                 {label}
             </Typography>
             <Typography
                 variant="body1"
                 sx={{
-                    mt: 0.5,
-                    color: isEmpty ? '#999' : 'text.primary',
+                    mt: 1,
+                    color: isEmpty ? '#9ca3af' : '#1e293b',
                     fontStyle: isEmpty ? 'italic' : 'normal',
+                    fontWeight: isEmpty ? 400 : 600,
+                    fontSize: '0.95rem'
                 }}
             >
                 {isEmpty ? 'Not provided' : value}
@@ -595,59 +619,67 @@ const PersonalMedicalInfoPage = ({ inModal = false }) => {
                 )}
 
                 {/* Personal Information Card */}
-                <Card elevation={2} sx={{ mb: 3, borderRadius: 3, overflow: 'hidden' }}>
+                <Card elevation={0} sx={{ mb: 3, borderRadius: 3, overflow: 'hidden', border: '1px solid #e2e8f0' }}>
                     <Box
                         sx={{
-                            bgcolor: '#f0f4ff',
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                             p: 3,
-                            borderBottom: '1px solid #e5e7eb',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
                         }}
                     >
                         <Box>
-                            <Typography variant="h6" fontWeight="bold" sx={{ color: '#1f2937' }}>
+                            <Typography variant="h5" fontWeight={700} sx={{ color: '#ffffff', mb: 0.5 }}>
                                 Personal Information
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
+                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
                                 Basic profile details
                             </Typography>
                         </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Box sx={{ textAlign: 'right' }}>
-                                <Typography variant="h6" fontWeight="bold" sx={{ color: '#3b82f6' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <Box 
+                                sx={{ 
+                                    textAlign: 'right',
+                                    bgcolor: 'rgba(255,255,255,0.15)',
+                                    backdropFilter: 'blur(10px)',
+                                    px: 2.5,
+                                    py: 1,
+                                    borderRadius: 2
+                                }}
+                            >
+                                <Typography variant="h5" fontWeight={700} sx={{ color: '#ffffff' }}>
                                     {personalCompletion}%
                                 </Typography>
-                                <Typography variant="caption" color="text.secondary">
+                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.85)' }}>
                                     Complete
                                 </Typography>
                             </Box>
                             {personalCompletion === 100 && (
-                                <CheckCircleIcon sx={{ color: '#10b981', fontSize: 32 }} />
+                                <CheckCircleIcon sx={{ color: '#10b981', fontSize: 36, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }} />
                             )}
                         </Box>
                     </Box>
 
                     {/* Progress Bar */}
-                    <Box sx={{ px: 3, pt: 2 }}>
+                    <Box sx={{ px: 4, pt: 3, pb: 1 }}>
                         <LinearProgress
                             variant="determinate"
                             value={personalCompletion}
                             sx={{
-                                height: 8,
-                                borderRadius: 4,
+                                height: 10,
+                                borderRadius: 5,
                                 bgcolor: '#e5e7eb',
                                 '& .MuiLinearProgress-bar': {
-                                    bgcolor: '#60a5fa',
-                                    borderRadius: 4,
+                                    background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
+                                    borderRadius: 5,
                                 },
                             }}
                         />
                     </Box>
 
-                    <CardContent sx={{ p: 3 }}>
-                        <Grid container spacing={3}>
+                    <CardContent sx={{ p: 4 }}>
+                        <Grid container spacing={2.5}>
                             <Grid item xs={12} sm={6}>
                                 {renderField('Full Name', personalInfo?.fullName, !personalInfo?.fullName)}
                             </Grid>
@@ -683,59 +715,67 @@ const PersonalMedicalInfoPage = ({ inModal = false }) => {
                 </Card>
 
                 {/* Medical Information Card */}
-                <Card elevation={2} sx={{ mb: 3, borderRadius: 3, overflow: 'hidden' }}>
+                <Card elevation={0} sx={{ mb: 3, borderRadius: 3, overflow: 'hidden', border: '1px solid #e2e8f0' }}>
                     <Box
                         sx={{
-                            bgcolor: '#f0fdf4',
+                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                             p: 3,
-                            borderBottom: '1px solid #e5e7eb',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
                         }}
                     >
                         <Box>
-                            <Typography variant="h6" fontWeight="bold" sx={{ color: '#1f2937' }}>
+                            <Typography variant="h5" fontWeight={700} sx={{ color: '#ffffff', mb: 0.5 }}>
                                 Medical Information
                             </Typography>
-                            <Typography variant="caption" color="text.secondary">
+                            <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
                                 Health history and current status
                             </Typography>
                         </Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Box sx={{ textAlign: 'right' }}>
-                                <Typography variant="h6" fontWeight="bold" sx={{ color: '#10b981' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <Box 
+                                sx={{ 
+                                    textAlign: 'right',
+                                    bgcolor: 'rgba(255,255,255,0.15)',
+                                    backdropFilter: 'blur(10px)',
+                                    px: 2.5,
+                                    py: 1,
+                                    borderRadius: 2
+                                }}
+                            >
+                                <Typography variant="h5" fontWeight={700} sx={{ color: '#ffffff' }}>
                                     {medicalCompletion}%
                                 </Typography>
-                                <Typography variant="caption" color="text.secondary">
+                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.85)' }}>
                                     Complete
                                 </Typography>
                             </Box>
                             {medicalCompletion === 100 && (
-                                <CheckCircleIcon sx={{ color: '#10b981', fontSize: 32 }} />
+                                <CheckCircleIcon sx={{ color: '#ffffff', fontSize: 36, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }} />
                             )}
                         </Box>
                     </Box>
 
                     {/* Progress Bar */}
-                    <Box sx={{ px: 3, pt: 2 }}>
+                    <Box sx={{ px: 4, pt: 3, pb: 1 }}>
                         <LinearProgress
                             variant="determinate"
                             value={medicalCompletion}
                             sx={{
-                                height: 8,
-                                borderRadius: 4,
+                                height: 10,
+                                borderRadius: 5,
                                 bgcolor: '#e5e7eb',
                                 '& .MuiLinearProgress-bar': {
-                                    bgcolor: '#34d399',
-                                    borderRadius: 4,
+                                    background: 'linear-gradient(90deg, #10b981 0%, #059669 100%)',
+                                    borderRadius: 5,
                                 },
                             }}
                         />
                     </Box>
 
-                    <CardContent sx={{ p: 3 }}>
-                        <Grid container spacing={3}>
+                    <CardContent sx={{ p: 4 }}>
+                        <Grid container spacing={2.5}>
                             <Grid item xs={12} sm={6}>
                                 {renderField('Diabetes Type', medicalInfo?.diabetes_type, !medicalInfo?.diabetes_type)}
                             </Grid>
@@ -748,28 +788,28 @@ const PersonalMedicalInfoPage = ({ inModal = false }) => {
                                     !medicalInfo?.diagnosis_date
                                 )}
                             </Grid>
-                            <Grid item xs={12}>
+                            <Grid item xs={12} sm={6}>
                                 {renderField(
                                     'Previous Diagnosis',
                                     medicalInfo?.previous_diagnosis,
                                     !medicalInfo?.previous_diagnosis
                                 )}
                             </Grid>
-                            <Grid item xs={12}>
+                            <Grid item xs={12} sm={6}>
                                 {renderField(
                                     'Current Medications',
                                     medicalInfo?.medications,
                                     !medicalInfo?.medications
                                 )}
                             </Grid>
-                            <Grid item xs={12}>
+                            <Grid item xs={12} sm={6}>
                                 {renderField(
                                     'Allergies',
                                     medicalInfo?.allergies,
                                     !medicalInfo?.allergies
                                 )}
                             </Grid>
-                            <Grid item xs={12}>
+                            <Grid item xs={12} sm={6}>
                                 {renderField(
                                     'Family History',
                                     medicalInfo?.family_history,
@@ -789,8 +829,18 @@ const PersonalMedicalInfoPage = ({ inModal = false }) => {
                         sx={{
                             textTransform: 'none',
                             fontSize: '1rem',
-                            px: 4,
+                            px: 5,
                             py: 1.5,
+                            borderRadius: 2,
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+                            fontWeight: 600,
+                            '&:hover': {
+                                background: 'linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%)',
+                                boxShadow: '0 6px 16px rgba(102, 126, 234, 0.4)',
+                                transform: 'translateY(-2px)',
+                            },
+                            transition: 'all 0.3s ease'
                         }}
                     >
                         Edit Information

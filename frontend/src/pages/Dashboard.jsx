@@ -28,7 +28,7 @@ import ScienceIcon from '@mui/icons-material/Science';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import MenuIcon from '@mui/icons-material/Menu';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import { Person as PersonIcon, Restaurant as RestaurantIcon, FitnessCenter as FitnessCenterIcon, Lightbulb as LightbulbIcon, EmojiEvents as EmojiEventsIcon, Chat as ChatIcon, SelfImprovement as SelfImprovementIcon, NightlightRound as NightlightRoundIcon, LocalDrink as LocalDrinkIcon, DirectionsWalk as DirectionsWalkIcon, LocalHospital as LocalHospitalIcon, Info as InfoIcon, ArrowBack as ArrowBackIcon } from '@mui/icons-material';
+import { Person as PersonIcon, Restaurant as RestaurantIcon, FitnessCenter as FitnessCenterIcon, Lightbulb as LightbulbIcon, EmojiEvents as EmojiEventsIcon, Chat as ChatIcon, SelfImprovement as SelfImprovementIcon, NightlightRound as NightlightRoundIcon, LocalDrink as LocalDrinkIcon, DirectionsWalk as DirectionsWalkIcon, Info as InfoIcon, ArrowBack as ArrowBackIcon, ChevronLeft as ChevronLeftIcon, ChevronRight as ChevronRightIcon } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { logout, getCurrentUser } from '../utils/auth';
 import { fetchMyDiseaseData, updateUserProfile, assessDiabetesRisk } from '../utils/api';
@@ -59,6 +59,7 @@ import ChatAssistant from './ChatAssistant';
 import dashboardTheme from '../theme/dashboardTheme';
 
 const drawerWidth = 220;
+const miniDrawerWidth = 64;
 
 const undiagnosedSections = [
   { label: 'Insights', icon: <InsightsIcon /> },
@@ -95,6 +96,8 @@ export default function Dashboard() {
   const [assessmentSummary, setAssessmentSummary] = useState(null);
   const [assessmentLoading, setAssessmentLoading] = useState(false);
   const [openCardModal, setOpenCardModal] = useState(null); // Track which card modal is open
+  const [sidebarOpen, setSidebarOpen] = useState(true); // Sidebar collapse state
+  const [mobileOpen, setMobileOpen] = useState(false); // Mobile drawer state
 
   // Enhanced dynamic features state
   const [chartTimeRange, setChartTimeRange] = useState(() => {
@@ -621,12 +624,46 @@ export default function Dashboard() {
       const dietPlan = dietMap.get(day.key) || null;
       const exercisePlan = exerciseMap.get(day.key) || null;
 
-      const dietCalories = dietPlan
-        ? Number(dietPlan?.nutritional_totals?.calories ?? dietPlan?.total_calories ?? 0) || 0
-        : null;
-      const dietCarbs = dietPlan
-        ? Number(dietPlan?.nutritional_totals?.carbs ?? 0) || 0
-        : null;
+      // Calculate diet calories with priority: meals > nutritional_totals > total_calories
+      let dietCalories = null;
+      let dietCarbs = null;
+      
+      if (dietPlan) {
+        // Priority 1: Sum from meals
+        if (dietPlan.meals && Array.isArray(dietPlan.meals) && dietPlan.meals.length > 0) {
+          const mealTotal = dietPlan.meals.reduce((sum, meal) => {
+            if (typeof meal.total_calories === 'number' && meal.total_calories > 0) {
+              return sum + meal.total_calories;
+            }
+            // Fall back to summing items
+            if (meal.items && Array.isArray(meal.items)) {
+              const itemSum = meal.items.reduce((mealSum, item) => {
+                return mealSum + (Number(item.calories) || 0);
+              }, 0);
+              return sum + itemSum;
+            }
+            return sum;
+          }, 0);
+          
+          if (mealTotal > 0) {
+            dietCalories = Math.round(mealTotal);
+          }
+        }
+        
+        // Priority 2: Check nutritional_totals.calories
+        if (dietCalories === null && dietPlan.nutritional_totals && typeof dietPlan.nutritional_totals.calories === 'number' && dietPlan.nutritional_totals.calories > 0) {
+          dietCalories = Math.round(dietPlan.nutritional_totals.calories);
+        }
+        
+        // Priority 3: Fall back to total_calories (target value)
+        if (dietCalories === null && dietPlan.total_calories) {
+          dietCalories = Math.round(dietPlan.total_calories);
+        }
+        
+        // Get carbs from nutritional_totals
+        dietCarbs = Number(dietPlan?.nutritional_totals?.carbs ?? 0) || 0;
+      }
+      
       const exerciseMinutes = exercisePlan
         ? Number(exercisePlan?.totals?.duration_total_min ?? 0) || 0
         : null;
@@ -685,6 +722,110 @@ export default function Dashboard() {
       avgExerciseCalories: exCount ? Math.round(exCaloriesSum / exCount) : null,
     };
   }, [dietHistory, exerciseHistory, lifestyleHistory, chartTimeRange]);
+
+  // Calculate macronutrient balance from recent diet plans
+  const macronutrientBalance = useMemo(() => {
+    if (!dietHistory || dietHistory.length === 0) {
+      return { carbs: 45, protein: 30, fat: 20, fiber: 5 }; // Default values
+    }
+
+    // Get last 7 days of diet plans
+    const recentPlans = dietHistory.slice(0, 7);
+    let totalCarbs = 0, totalProtein = 0, totalFat = 0, totalFiber = 0;
+
+    recentPlans.forEach(plan => {
+      if (plan.nutritional_totals) {
+        totalCarbs += Number(plan.nutritional_totals.carbs) || 0;
+        totalProtein += Number(plan.nutritional_totals.protein) || 0;
+        totalFat += Number(plan.nutritional_totals.fat) || 0;
+        totalFiber += Number(plan.nutritional_totals.fiber) || 0;
+      }
+    });
+
+    const totalGrams = totalCarbs + totalProtein + totalFat + totalFiber;
+    if (totalGrams === 0) {
+      return { carbs: 45, protein: 30, fat: 20, fiber: 5 };
+    }
+
+    return {
+      carbs: Math.round((totalCarbs / totalGrams) * 100),
+      protein: Math.round((totalProtein / totalGrams) * 100),
+      fat: Math.round((totalFat / totalGrams) * 100),
+      fiber: Math.round((totalFiber / totalGrams) * 100)
+    };
+  }, [dietHistory]);
+
+  // Calculate meal-wise distribution from today's or most recent diet plan
+  const mealWiseDistribution = useMemo(() => {
+    if (!dietHistory || dietHistory.length === 0) {
+      return [
+        { meal: 'Breakfast', calories: 420, protein: 18 },
+        { meal: 'Lunch', calories: 650, protein: 32 },
+        { meal: 'Snack', calories: 200, protein: 8 },
+        { meal: 'Dinner', calories: 580, protein: 28 }
+      ];
+    }
+
+    // Get today's plan or the most recent one
+    const today = new Date().toISOString().split('T')[0];
+    const todayPlan = dietHistory.find(p => p.target_date?.split('T')[0] === today) || dietHistory[0];
+
+    if (!todayPlan || !todayPlan.meals || todayPlan.meals.length === 0) {
+      return [
+        { meal: 'Breakfast', calories: 420, protein: 18 },
+        { meal: 'Lunch', calories: 650, protein: 32 },
+        { meal: 'Snack', calories: 200, protein: 8 },
+        { meal: 'Dinner', calories: 580, protein: 28 }
+      ];
+    }
+
+    // Map meals to chart data (combine snacks into one)
+    const mealGroups = {
+      breakfast: { name: 'Breakfast', calories: 0, protein: 0 },
+      lunch: { name: 'Lunch', calories: 0, protein: 0 },
+      snack: { name: 'Snack', calories: 0, protein: 0 },
+      dinner: { name: 'Dinner', calories: 0, protein: 0 }
+    };
+
+    todayPlan.meals.forEach(meal => {
+      const mealName = (meal.name || '').toLowerCase();
+      let calories = Number(meal.total_calories) || 0;
+      let protein = 0;
+
+      // Sum protein from items
+      if (meal.items && Array.isArray(meal.items)) {
+        protein = meal.items.reduce((sum, item) => sum + (Number(item.protein) || 0), 0);
+        
+        // If total_calories not available, sum from items
+        if (!calories) {
+          calories = meal.items.reduce((sum, item) => sum + (Number(item.calories) || 0), 0);
+        }
+      }
+
+      // Categorize meal
+      if (mealName.includes('breakfast')) {
+        mealGroups.breakfast.calories += calories;
+        mealGroups.breakfast.protein += protein;
+      } else if (mealName.includes('lunch')) {
+        mealGroups.lunch.calories += calories;
+        mealGroups.lunch.protein += protein;
+      } else if (mealName.includes('dinner')) {
+        mealGroups.dinner.calories += calories;
+        mealGroups.dinner.protein += protein;
+      } else {
+        // Snacks (mid-morning, evening snacks)
+        mealGroups.snack.calories += calories;
+        mealGroups.snack.protein += protein;
+      }
+    });
+
+    return [
+      { meal: mealGroups.breakfast.name, calories: Math.round(mealGroups.breakfast.calories), protein: Math.round(mealGroups.breakfast.protein) },
+      { meal: mealGroups.lunch.name, calories: Math.round(mealGroups.lunch.calories), protein: Math.round(mealGroups.lunch.protein) },
+      { meal: mealGroups.snack.name, calories: Math.round(mealGroups.snack.calories), protein: Math.round(mealGroups.snack.protein) },
+      { meal: mealGroups.dinner.name, calories: Math.round(mealGroups.dinner.calories), protein: Math.round(mealGroups.dinner.protein) }
+    ].filter(m => m.calories > 0); // Only show meals with data
+  }, [dietHistory]);
 
   // Consistency score calculation
   const consistencyScore = useMemo(() => {
@@ -1104,12 +1245,17 @@ export default function Dashboard() {
       background: '#e8eaf6'
     }}>
       <CssBaseline />
-      {/* Sidebar - Enhanced Professional Design */}
+      {/* Sidebar - Enhanced Professional Design with Mini Variant - Responsive */}
+      {/* Mobile Drawer */}
       <Drawer
-        variant="permanent"
+        variant="temporary"
+        open={mobileOpen}
+        onClose={() => setMobileOpen(false)}
+        ModalProps={{
+          keepMounted: true, // Better open performance on mobile
+        }}
         sx={{
-          width: drawerWidth,
-          flexShrink: 0,
+          display: { xs: 'block', md: 'none' },
           '& .MuiDrawer-paper': {
             width: drawerWidth,
             boxSizing: 'border-box',
@@ -1120,12 +1266,114 @@ export default function Dashboard() {
             justifyContent: 'space-between',
             background: '#ffffff',
             borderRight: '1px solid #e5e7eb',
-            boxShadow: 'none',
-            // Hide scrollbar in sidebar but keep it scrollable
+            overflowX: 'hidden',
             overflowY: 'auto',
-            scrollbarWidth: 'none', // Firefox
-            '-ms-overflow-style': 'none', // IE/Edge legacy
-            '&::-webkit-scrollbar': { display: 'none' }, // WebKit
+            scrollbarWidth: 'none',
+            '-ms-overflow-style': 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
+          },
+        }}
+      >
+        <Box>
+          {/* User Profile Header - Mobile */}
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: 1.5, 
+              px: 2,
+              py: 2.5,
+              mb: 3,
+              borderRadius: 2,
+              background: (t) => alpha(t.palette.primary.main, 0.04),
+              border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.12)}`,
+            }}
+          >\n            <Avatar 
+              sx={{ 
+                width: 44,
+                height: 44,
+                background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
+                fontWeight: 700,
+                fontSize: '1.2rem',
+              }}
+            >
+              {user?.fullName?.[0]?.toUpperCase() || 'U'}
+            </Avatar>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="body2" fontWeight={700} sx={{ color: 'text.primary', mb: 0.25 }}>
+                {user?.fullName || 'User'}
+              </Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                Dashboard
+              </Typography>
+            </Box>
+          </Box>
+          
+          {/* Navigation Menu - Mobile */}
+          <List sx={{ px: 0 }}>
+            {sections.map((sec, index) => (
+              <ListItem 
+                button 
+                key={sec.label} 
+                selected={selectedIndex === index} 
+                onClick={() => {
+                  setSelectedIndex(index);
+                  if (index !== 4) setShowFeedbackForm(false);
+                  setMobileOpen(false);
+                }} 
+                sx={{ 
+                  borderRadius: 2,
+                  mb: 1,
+                  px: 2,
+                  py: 1.5,
+                  '&.Mui-selected': {
+                    bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
+                    '& .MuiListItemIcon-root': { color: 'primary.main' },
+                    '& .MuiListItemText-primary': { color: 'primary.main', fontWeight: 700 },
+                  },
+                }}
+              >
+                <ListItemIcon sx={{ minWidth: 40 }}>{sec.icon}</ListItemIcon>
+                <ListItemText primary={sec.label} primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9rem' }} />
+              </ListItem>
+            ))}
+          </List>
+        </Box>
+        <Box sx={{ px: 0.5 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 2, mb: 1 }}>
+            <ThemeToggle size="medium" />
+          </Box>
+          <Button fullWidth variant="outlined" color="error" startIcon={<LogoutIcon />} onClick={handleLogout} sx={{ borderRadius: 2, fontWeight: 700, py: 1.5 }}>
+            Logout
+          </Button>
+        </Box>
+      </Drawer>
+      
+      {/* Desktop/Tablet Drawer */}
+      <Drawer
+        variant="permanent"
+        sx={{
+          display: { xs: 'none', md: 'block' },
+          width: sidebarOpen ? drawerWidth : miniDrawerWidth,
+          flexShrink: 0,
+          transition: 'width 0.3s ease',
+          '& .MuiDrawer-paper': {
+            width: sidebarOpen ? drawerWidth : miniDrawerWidth,
+            boxSizing: 'border-box',
+            py: 3,
+            px: sidebarOpen ? 2 : 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            background: '#ffffff',
+            borderRight: '1px solid #e5e7eb',
+            boxShadow: 'none',
+            transition: 'width 0.3s ease, padding 0.3s ease',
+            overflowX: 'hidden',
+            overflowY: 'auto',
+            scrollbarWidth: 'none',
+            '-ms-overflow-style': 'none',
+            '&::-webkit-scrollbar': { display: 'none' },
           },
         }}
       >
@@ -1135,8 +1383,9 @@ export default function Dashboard() {
             sx={{ 
               display: 'flex', 
               alignItems: 'center', 
+              justifyContent: sidebarOpen ? 'flex-start' : 'center',
               gap: 1.5, 
-              px: 2,
+              px: sidebarOpen ? 2 : 0,
               py: 2.5,
               mb: 3,
               borderRadius: 2,
@@ -1163,113 +1412,120 @@ export default function Dashboard() {
             >
               {user?.fullName?.[0]?.toUpperCase() || 'U'}
             </Avatar>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography 
-                variant="body2" 
-                fontWeight={700}
-                sx={{ 
-                  color: 'text.primary',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  mb: 0.25,
-                  fontSize: '0.9rem',
-                }}
-              >
-                {user?.fullName || 'User'}
-              </Typography>
-              <Typography 
-                variant="caption" 
-                sx={{ 
-                  color: 'text.secondary',
-                  fontWeight: 600,
-                  fontSize: '0.7rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.5,
-                }}
-              >
-                Dashboard
-              </Typography>
-            </Box>
+            {sidebarOpen && (
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography 
+                  variant="body2" 
+                  fontWeight={700}
+                  sx={{ 
+                    color: 'text.primary',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    mb: 0.25,
+                    fontSize: '0.9rem',
+                  }}
+                >
+                  {user?.fullName || 'User'}
+                </Typography>
+                <Typography 
+                  variant="caption" 
+                  sx={{ 
+                    color: 'text.secondary',
+                    fontWeight: 600,
+                    fontSize: '0.7rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.5,
+                  }}
+                >
+                  Dashboard
+                </Typography>
+              </Box>
+            )}
           </Box>
           
           {/* Navigation Menu - Premium Design */}
           <List sx={{ px: 0 }}>
             {sections.map((sec, index) => (
-              <ListItem 
-                button 
-                key={sec.label} 
-                selected={selectedIndex === index} 
-                onClick={() => {
-                  setSelectedIndex(index);
-                  // Reset feedback form flag when switching sections
-                  if (index !== 4) {
-                    setShowFeedbackForm(false);
-                  }
-                }} 
-                sx={{ 
-                  borderRadius: 2,
-                  mb: 1,
-                  px: 2,
-                  py: 1.5,
-                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: '4px',
-                    background: (t) => `linear-gradient(180deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
-                    opacity: 0,
-                    transition: 'opacity 0.2s ease',
-                  },
-                  '&.Mui-selected': {
-                    bgcolor: (t) => t.palette.mode === 'dark' 
-                      ? alpha(t.palette.primary.main, 0.12)
-                      : alpha(t.palette.primary.main, 0.08),
-                    border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.2)}`,
-                    '&::before': {
-                      opacity: 1,
-                    },
-                    '& .MuiListItemIcon-root': {
-                      color: 'primary.main',
-                      transform: 'scale(1.1)',
-                    },
-                    '& .MuiListItemText-primary': {
-                      color: 'primary.main',
-                      fontWeight: 700,
-                    },
-                  },
-                  '&:hover': {
-                    bgcolor: (t) => t.palette.mode === 'dark' 
-                      ? alpha(t.palette.primary.main, 0.08)
-                      : alpha(t.palette.primary.main, 0.04),
-                    transform: 'translateX(4px)',
-                  }
-                }}
-              >
-                <ListItemIcon 
+              <Tooltip title={!sidebarOpen ? sec.label : ''} placement="right" key={sec.label}>
+                <ListItem 
+                  button 
+                  selected={selectedIndex === index} 
+                  onClick={() => {
+                    setSelectedIndex(index);
+                    // Reset feedback form flag when switching sections
+                    if (index !== 4) {
+                      setShowFeedbackForm(false);
+                    }
+                  }} 
                   sx={{ 
-                    minWidth: 40,
-                    color: 'text.secondary',
-                    transition: 'all 0.2s ease',
+                    borderRadius: 2,
+                    mb: 1,
+                    px: sidebarOpen ? 2 : 1,
+                    py: 1.5,
+                    justifyContent: sidebarOpen ? 'flex-start' : 'center',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: '4px',
+                      background: (t) => `linear-gradient(180deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
+                      opacity: 0,
+                      transition: 'opacity 0.2s ease',
+                    },
+                    '&.Mui-selected': {
+                      bgcolor: (t) => t.palette.mode === 'dark' 
+                        ? alpha(t.palette.primary.main, 0.12)
+                        : alpha(t.palette.primary.main, 0.08),
+                      border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.2)}`,
+                      '&::before': {
+                        opacity: 1,
+                      },
+                      '& .MuiListItemIcon-root': {
+                        color: 'primary.main',
+                        transform: 'scale(1.1)',
+                      },
+                      '& .MuiListItemText-primary': {
+                        color: 'primary.main',
+                        fontWeight: 700,
+                      },
+                    },
+                    '&:hover': {
+                      bgcolor: (t) => t.palette.mode === 'dark' 
+                        ? alpha(t.palette.primary.main, 0.08)
+                        : alpha(t.palette.primary.main, 0.04),
+                      transform: sidebarOpen ? 'translateX(4px)' : 'none',
+                    }
                   }}
                 >
-                  {sec.icon}
-                </ListItemIcon>
-                <ListItemText 
-                  primary={sec.label}
-                  primaryTypographyProps={{
-                    fontWeight: 600,
-                    fontSize: '0.9rem',
-                    color: 'text.secondary',
-                    transition: 'all 0.2s ease',
-                  }}
-                />
-              </ListItem>
+                  <ListItemIcon 
+                    sx={{ 
+                      minWidth: sidebarOpen ? 40 : 'auto',
+                      color: 'text.secondary',
+                      transition: 'all 0.2s ease',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {sec.icon}
+                  </ListItemIcon>
+                  {sidebarOpen && (
+                    <ListItemText 
+                      primary={sec.label}
+                      primaryTypographyProps={{
+                        fontWeight: 600,
+                        fontSize: '0.9rem',
+                        color: 'text.secondary',
+                        transition: 'all 0.2s ease',
+                      }}
+                    />
+                  )}
+                </ListItem>
+              </Tooltip>
             ))}
           </List>
         </Box>
@@ -1289,43 +1545,117 @@ export default function Dashboard() {
           </Box>
           
           {/* Logout Button - Premium */}
-          <Button
-            fullWidth
-            variant="outlined"
-            color="error"
-            startIcon={<LogoutIcon />}
-            onClick={handleLogout}
-            sx={{ 
-              borderRadius: 2, 
-              fontWeight: 700,
-              py: 1.5,
-              px: 2,
-              justifyContent: 'flex-start',
-              textTransform: 'none',
-              borderColor: (t) => alpha(t.palette.error.main, 0.3),
-              color: 'error.main',
-              transition: 'all 0.2s ease',
-              '&:hover': {
-                bgcolor: (t) => alpha(t.palette.error.main, 0.1),
-                borderColor: 'error.main',
-                transform: 'translateY(-2px)',
-                boxShadow: (t) => `0 4px 12px ${alpha(t.palette.error.main, 0.25)}`,
-              }
-            }}
-          >
-            Logout
-          </Button>
+          <Tooltip title={!sidebarOpen ? 'Logout' : ''} placement="right">
+            <Button
+              fullWidth
+              variant="outlined"
+              color="error"
+              startIcon={sidebarOpen ? <LogoutIcon /> : null}
+              onClick={handleLogout}
+              sx={{ 
+                borderRadius: 2, 
+                fontWeight: 700,
+                py: 1.5,
+                px: sidebarOpen ? 2 : 1,
+                justifyContent: sidebarOpen ? 'flex-start' : 'center',
+                textTransform: 'none',
+                borderColor: (t) => alpha(t.palette.error.main, 0.3),
+                color: 'error.main',
+                transition: 'all 0.2s ease',
+                minWidth: sidebarOpen ? 'auto' : '48px',
+                '&:hover': {
+                  bgcolor: (t) => alpha(t.palette.error.main, 0.1),
+                  borderColor: 'error.main',
+                  transform: 'translateY(-2px)',
+                  boxShadow: (t) => `0 4px 12px ${alpha(t.palette.error.main, 0.25)}`,
+                }
+              }}
+            >
+              {sidebarOpen ? 'Logout' : <LogoutIcon />}
+            </Button>
+          </Tooltip>
+          
+          {/* Collapse Button */}
+          <Tooltip title={sidebarOpen ? 'Collapse Sidebar' : 'Expand Sidebar'} placement="right">
+            <Button
+              fullWidth
+              variant="text"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              sx={{ 
+                borderRadius: 2, 
+                fontWeight: 600,
+                py: 1.5,
+                px: sidebarOpen ? 2 : 1,
+                mt: 1,
+                justifyContent: sidebarOpen ? 'flex-start' : 'center',
+                textTransform: 'none',
+                color: 'text.secondary',
+                minWidth: sidebarOpen ? 'auto' : '48px',
+                '&:hover': {
+                  bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
+                  color: 'primary.main',
+                }
+              }}
+            >
+              {sidebarOpen ? (
+                <>
+                  <ChevronLeftIcon sx={{ mr: 1 }} />
+                  Collapse
+                </>
+              ) : (
+                <ChevronRightIcon />
+              )}
+            </Button>
+          </Tooltip>
         </Box>
       </Drawer>
       {/* Main Content */}
-      <Box component="main" sx={{ flexGrow: 1, ml: 0, mt: 0, minHeight: '100vh', background: 'transparent' }}>
+      <Box component="main" sx={{ 
+        flexGrow: 1, 
+        ml: 0, 
+        mt: 0, 
+        minHeight: '100vh', 
+        bgcolor: '#f8fafb',
+        position: 'relative',
+        transition: 'margin 0.3s ease',
+        width: { xs: '100%', md: `calc(100% - ${sidebarOpen ? drawerWidth : miniDrawerWidth}px)` }
+      }}>
+        {/* Mobile Menu Button */}
+        <IconButton
+          onClick={() => setMobileOpen(true)}
+          sx={{
+            display: { xs: 'flex', md: 'none' },
+            position: 'fixed',
+            top: 16,
+            left: 16,
+            zIndex: 1200,
+            bgcolor: 'background.paper',
+            boxShadow: 3,
+            '&:hover': {
+              bgcolor: 'primary.main',
+              color: 'white',
+            }
+          }}
+        >
+          <MenuIcon />
+        </IconButton>
         {/* Content container */}
-        <Box sx={{ px: { xs: 2, md: 6 }, pt: { xs: 3, md: 5 }, pb: 6, display: 'flex', justifyContent: 'center' }}>
+        <Box sx={{ 
+          px: currentSection === 'Chat Assistant' ? 0 : { xs: 2, sm: 3, md: 4 }, 
+          pt: currentSection === 'Chat Assistant' ? 0 : { xs: 3, md: 5 }, 
+          pb: currentSection === 'Chat Assistant' ? 0 : 6, 
+          display: 'flex', 
+          justifyContent: 'center', 
+          position: 'relative', 
+          zIndex: 1,
+          height: currentSection === 'Chat Assistant' ? '100vh' : 'auto'
+        }}>
           <Box sx={{ 
             width: '100%', 
             maxWidth: selectedIndex === 2 
-              ? 'clamp(1400px, 95vw, 1920px)' 
-              : 'clamp(1200px, 90vw, 1440px)'
+              ? '100%'
+              : { xs: '100%', sm: '100%', md: 'clamp(1200px, 90vw, 1440px)' },
+            height: currentSection === 'Chat Assistant' ? '100%' : 'auto'
           }}>
             {currentSection === 'Insights' && (
               <Box>
@@ -1335,11 +1665,37 @@ export default function Dashboard() {
                     <Grid container spacing={3}>
                       {/* Page Header with Key Metrics */}
                       <Grid item xs={12}>
-                        <Box sx={{ mb: 4 }}>
-                          <Typography variant="h4" fontWeight={800} sx={{ mb: 1, color: 'text.primary', letterSpacing: -0.5 }}>
+                        <Box sx={{ 
+                          mb: 5, 
+                          pb: 3, 
+                          borderBottom: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`
+                        }}>
+                          <Typography 
+                            variant="h3" 
+                            fontWeight={900} 
+                            sx={{ 
+                              mb: 1.5, 
+                              color: 'text.primary', 
+                              letterSpacing: -1,
+                              fontSize: { xs: '1.875rem', md: '2.5rem' },
+                              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                              WebkitBackgroundClip: 'text',
+                              WebkitTextFillColor: 'transparent',
+                              backgroundClip: 'text'
+                            }}
+                          >
                             Health Analytics Dashboard
                           </Typography>
-                          <Typography variant="body1" color="text.secondary" sx={{ fontSize: '0.95rem', lineHeight: 1.6 }}>
+                          <Typography 
+                            variant="body1" 
+                            sx={{ 
+                              color: 'text.secondary', 
+                              fontSize: { xs: '0.938rem', md: '1.063rem' }, 
+                              lineHeight: 1.7,
+                              maxWidth: '800px',
+                              fontWeight: 400
+                            }}
+                          >
                             Comprehensive insights from your personalized diet, exercise, and lifestyle data
                           </Typography>
                         </Box>
@@ -1347,24 +1703,64 @@ export default function Dashboard() {
                     </Grid>
 
                     {/* === SECTION 1: NUTRITION ANALYTICS === */}
-                    <Box sx={{ mt: 4, mb: 3 }}>
-                      <Box sx={{ mb: 3, pb: 1.5, borderBottom: (t) => `2px solid ${alpha(t.palette.primary.main, 0.1)}` }}>
-                        <Typography variant="h5" fontWeight={700} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, color: 'text.primary', letterSpacing: -0.3 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: 2, bgcolor: (t) => alpha(t.palette.primary.main, 0.1) }}>
-                            <RestaurantIcon color="primary" sx={{ fontSize: 24 }} />
-                          </Box>
-                          Nutrition Analytics
-                        </Typography>
+                    <Box sx={{ mt: 0, mb: 4 }}>
+                      <Box sx={{ 
+                        mb: 4, 
+                        pb: 2, 
+                        borderBottom: (t) => `3px solid ${alpha('#667eea', 0.15)}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2
+                      }}>
+                        <Box sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          width: 56, 
+                          height: 56, 
+                          borderRadius: 3, 
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          boxShadow: '0 8px 16px rgba(102, 126, 234, 0.25)'
+                        }}>
+                          <RestaurantIcon sx={{ color: '#fff', fontSize: 28 }} />
+                        </Box>
+                        <Box>
+                          <Typography variant="h4" fontWeight={800} sx={{ 
+                            color: 'text.primary', 
+                            letterSpacing: -0.5, 
+                            fontSize: { xs: '1.5rem', md: '1.875rem' },
+                            mb: 0.5
+                          }}>
+                            Nutrition Analytics
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
+                            Track your daily nutritional intake and trends
+                          </Typography>
+                        </Box>
                       </Box>
                     </Box>
 
-                    <Grid container spacing={3}>
+                    <Grid container spacing={{ xs: 2, sm: 2, md: 2.5 }}>
 
                       {/* Daily Calorie Tracking */}
-                      <Grid item xs={12} md={6}>
-                        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`, height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha(t.palette.primary.main, 0.08)}`, borderColor: (t) => alpha(t.palette.primary.main, 0.2) } }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, flexWrap: 'wrap', gap: 1, minWidth: '400px' }}>
-                            <Typography variant="subtitle1" fontWeight={700} sx={{ fontSize: '1rem' }}>Calorie Distribution</Typography>
+                      <Grid item xs={12} sm={6}>
+                        <Paper elevation={0} sx={{ 
+                          p: { xs: 2.5, sm: 3, md: 4 }, 
+                          borderRadius: 4, 
+                          border: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`,
+                          background: (t) => t.palette.background.paper,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                          height: '100%',
+                          minWidth: { xs: '100%', sm: 550 },
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
+                          '&:hover': { 
+                            transform: 'translateY(-6px)', 
+                            boxShadow: '0 12px 28px rgba(102, 126, 234, 0.15)',
+                            borderColor: (t) => alpha('#667eea', 0.3)
+                          } 
+                        }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, flexWrap: 'wrap', gap: 1 }}>
+                            <Typography variant="subtitle1" fontWeight={700} sx={{ fontSize: { xs: '0.9rem', sm: '1rem', md: '1.1rem' } }}>Calorie Distribution</Typography>
                             <ToggleButtonGroup
                               value={nutritionTimeRange}
                               exclusive
@@ -1377,7 +1773,7 @@ export default function Dashboard() {
                               <ToggleButton value="monthly" sx={{ px: 1.5, py: 0.5, fontSize: '0.75rem', textTransform: 'none' }}>Monthly</ToggleButton>
                             </ToggleButtonGroup>
                           </Box>
-                          <ResponsiveContainer width="100%" height={220}>
+                          <ResponsiveContainer width="100%" height={300}>
                             <AreaChart data={Array.isArray(planUsageAnalytics?.dailySeries) ? planUsageAnalytics.dailySeries.slice(
                               nutritionTimeRange === 'daily' ? -7 : nutritionTimeRange === 'weekly' ? -14 : -30
                             ) : []}>
@@ -1408,10 +1804,24 @@ export default function Dashboard() {
                       </Grid>
 
                       {/* Carbohydrate Tracking */}
-                      <Grid item xs={12} md={6}>
-                        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`, height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha(t.palette.warning.main, 0.08)}`, borderColor: (t) => alpha(t.palette.warning.main, 0.2) } }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, flexWrap: 'wrap', gap: 1, minWidth: '400px' }}>
-                            <Typography variant="subtitle1" fontWeight={700} sx={{ fontSize: '1rem' }}>Carbohydrate Trends</Typography>
+                      <Grid item xs={12} sm={6}>
+                        <Paper elevation={0} sx={{ 
+                          p: { xs: 2.5, sm: 3, md: 4 }, 
+                          borderRadius: 4, 
+                          border: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`,
+                          background: (t) => t.palette.background.paper,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                          height: '100%',
+                          minWidth: { xs: '100%', sm: 550 },
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
+                          '&:hover': { 
+                            transform: 'translateY(-6px)', 
+                            boxShadow: '0 12px 28px rgba(251, 146, 60, 0.15)',
+                            borderColor: (t) => alpha('#fb923c', 0.3)
+                          } 
+                        }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, flexWrap: 'wrap', gap: 1 }}>
+                            <Typography variant="subtitle1" fontWeight={700} sx={{ fontSize: { xs: '0.9rem', sm: '1rem', md: '1.1rem' } }}>Carbohydrate Trends</Typography>
                             <ToggleButtonGroup
                               value={nutritionTimeRange}
                               exclusive
@@ -1424,7 +1834,7 @@ export default function Dashboard() {
                               <ToggleButton value="monthly" sx={{ px: 1.5, py: 0.5, fontSize: '0.75rem', textTransform: 'none' }}>Monthly</ToggleButton>
                             </ToggleButtonGroup>
                           </Box>
-                          <ResponsiveContainer width="100%" height={220}>
+                          <ResponsiveContainer width="100%" height={300}>
                             <AreaChart data={Array.isArray(planUsageAnalytics?.dailySeries) ? planUsageAnalytics.dailySeries.slice(
                               nutritionTimeRange === 'daily' ? -7 : nutritionTimeRange === 'weekly' ? -14 : -30
                             ) : []}>
@@ -1455,54 +1865,79 @@ export default function Dashboard() {
                       </Grid>
 
                       {/* Macronutrient Distribution Pie Chart */}
-                      <Grid item xs={12} md={6}>
-                        <Paper elevation={0} sx={{ p: 4, borderRadius: 3, border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`, height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha(t.palette.primary.main, 0.08)}`, borderColor: (t) => alpha(t.palette.primary.main, 0.2) } }}>
-                          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 3, fontSize: '1.1rem' }}>Macronutrient Balance</Typography>
-                          <Box sx={{ display: 'grid', gap: 2.5, minWidth: '390px' }}>
+                      <Grid item xs={12} sm={6}>
+                        <Paper elevation={0} sx={{ 
+                          p: { xs: 2.5, sm: 3, md: 4 }, 
+                          borderRadius: 4, 
+                          border: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`,
+                          background: (t) => t.palette.background.paper,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                          height: '100%',
+                          minHeight: { xs: 'auto', sm: 400 },
+                          minWidth: { xs: '100%', sm: 550 },
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
+                          '&:hover': { 
+                            transform: 'translateY(-6px)', 
+                            boxShadow: '0 12px 28px rgba(102, 126, 234, 0.15)',
+                            borderColor: (t) => alpha('#667eea', 0.3)
+                          } 
+                        }}>
+                          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 3, fontSize: { xs: '0.9rem', sm: '1rem', md: '1.1rem' } }}>Macronutrient Balance</Typography>
+                          <Box sx={{ display: 'grid', gap: 2.5 }}>
                             <Box>
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                                 <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.95rem', fontWeight: 500 }}>Carbohydrates</Typography>
-                                <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.95rem' }}>45%</Typography>
+                                <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.95rem' }}>{macronutrientBalance.carbs}%</Typography>
                               </Box>
-                              <LinearProgress variant="determinate" value={45} sx={{ height: 14, borderRadius: 2, bgcolor: alpha('#f97316', 0.12), '& .MuiLinearProgress-bar': { bgcolor: '#f97316', borderRadius: 2, transition: 'transform 0.4s ease' } }} />
+                              <LinearProgress variant="determinate" value={macronutrientBalance.carbs} sx={{ height: 14, borderRadius: 2, bgcolor: alpha('#f97316', 0.12), '& .MuiLinearProgress-bar': { bgcolor: '#f97316', borderRadius: 2, transition: 'transform 0.4s ease' } }} />
                             </Box>
                             <Box>
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                                 <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.95rem', fontWeight: 500 }}>Proteins</Typography>
-                                <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.95rem' }}>30%</Typography>
+                                <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.95rem' }}>{macronutrientBalance.protein}%</Typography>
                               </Box>
-                              <LinearProgress variant="determinate" value={30} sx={{ height: 14, borderRadius: 2, bgcolor: alpha('#3b82f6', 0.12), '& .MuiLinearProgress-bar': { bgcolor: '#3b82f6', borderRadius: 2, transition: 'transform 0.4s ease' } }} />
+                              <LinearProgress variant="determinate" value={macronutrientBalance.protein} sx={{ height: 14, borderRadius: 2, bgcolor: alpha('#3b82f6', 0.12), '& .MuiLinearProgress-bar': { bgcolor: '#3b82f6', borderRadius: 2, transition: 'transform 0.4s ease' } }} />
                             </Box>
                             <Box>
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                                 <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.95rem', fontWeight: 500 }}>Fats</Typography>
-                                <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.95rem' }}>20%</Typography>
+                                <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.95rem' }}>{macronutrientBalance.fat}%</Typography>
                               </Box>
-                              <LinearProgress variant="determinate" value={20} sx={{ height: 14, borderRadius: 2, bgcolor: alpha('#eab308', 0.12), '& .MuiLinearProgress-bar': { bgcolor: '#eab308', borderRadius: 2, transition: 'transform 0.4s ease' } }} />
+                              <LinearProgress variant="determinate" value={macronutrientBalance.fat} sx={{ height: 14, borderRadius: 2, bgcolor: alpha('#eab308', 0.12), '& .MuiLinearProgress-bar': { bgcolor: '#eab308', borderRadius: 2, transition: 'transform 0.4s ease' } }} />
                             </Box>
                             <Box>
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                                 <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.95rem', fontWeight: 500 }}>Fiber</Typography>
-                                <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.95rem' }}>5%</Typography>
+                                <Typography variant="caption" fontWeight={700} sx={{ fontSize: '0.95rem' }}>{macronutrientBalance.fiber}%</Typography>
                               </Box>
-                              <LinearProgress variant="determinate" value={5} sx={{ height: 14, borderRadius: 2, bgcolor: alpha('#10b981', 0.12), '& .MuiLinearProgress-bar': { bgcolor: '#10b981', borderRadius: 2, transition: 'transform 0.4s ease' } }} />
+                              <LinearProgress variant="determinate" value={macronutrientBalance.fiber} sx={{ height: 14, borderRadius: 2, bgcolor: alpha('#10b981', 0.12), '& .MuiLinearProgress-bar': { bgcolor: '#10b981', borderRadius: 2, transition: 'transform 0.4s ease' } }} />
                             </Box>
                           </Box>
                         </Paper>
                       </Grid>
 
                       {/* Meal-Wise Calorie Distribution */}
-                      <Grid item xs={12} md={6}>
-                        <Paper elevation={0} sx={{ p: 4, borderRadius: 3, border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`, height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha(t.palette.primary.main, 0.08)}`, borderColor: (t) => alpha(t.palette.primary.main, 0.2) } }}>
-                          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 3, fontSize: '1.1rem' }}>Meal-Wise Distribution (Today)</Typography>
-                          <Box sx={{ minWidth: '390px' }}>
-                            <ResponsiveContainer width="100%" height={220}>
-                            <ComposedChart data={[
-                              { meal: 'Breakfast', calories: 420, protein: 18 },
-                              { meal: 'Lunch', calories: 650, protein: 32 },
-                              { meal: 'Snack', calories: 200, protein: 8 },
-                              { meal: 'Dinner', calories: 580, protein: 28 }
-                            ]}>
+                      <Grid item xs={12} sm={6}>
+                        <Paper elevation={0} sx={{ 
+                          p: { xs: 2.5, sm: 3, md: 4 }, 
+                          borderRadius: 4, 
+                          border: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`,
+                          background: (t) => t.palette.background.paper,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                          height: '100%',
+                          minHeight: { xs: 'auto', sm: 400 },
+                          minWidth: { xs: '100%', sm: 550 },
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
+                          '&:hover': { 
+                            transform: 'translateY(-6px)', 
+                            boxShadow: '0 12px 28px rgba(16, 185, 129, 0.15)',
+                            borderColor: (t) => alpha('#10b981', 0.3)
+                          } 
+                        }}>
+                          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 3, fontSize: { xs: '0.9rem', sm: '1rem', md: '1.1rem' } }}>Meal-Wise Distribution (Today)</Typography>
+                          <Box>
+                            <ResponsiveContainer width="100%" height={280}>
+                            <ComposedChart data={mealWiseDistribution}>
                               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                               <XAxis dataKey="meal" tick={{ fontSize: 11 }} />
                               <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
@@ -1518,464 +1953,363 @@ export default function Dashboard() {
                       </Grid>
                     </Grid>
 
-                    {/* === SECTION 2: EXERCISE ANALYTICS === */}
-                    <Box sx={{ mt: 5, mb: 3 }}>
-                      <Box sx={{ mb: 3, pb: 1.5, borderBottom: (t) => `2px solid ${alpha(t.palette.info.main, 0.1)}` }}>
-                        <Typography variant="h5" fontWeight={700} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, color: 'text.primary', letterSpacing: -0.3 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: 2, bgcolor: (t) => alpha(t.palette.info.main, 0.1) }}>
-                            <FitnessCenterIcon color="info" sx={{ fontSize: 24 }} />
-                          </Box>
-                          Exercise & Activity Analytics
-                        </Typography>
-                      </Box>
-                    </Box>
-
-                    <Grid container spacing={3}>
-
-                      {/* Exercise Duration Tracking */}
-                      <Grid item xs={12} lg={6}>
-                        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`, height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha(t.palette.info.main, 0.08)}`, borderColor: (t) => alpha(t.palette.info.main, 0.2) } }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5 }}>
-                            <Typography variant="subtitle1" fontWeight={700} sx={{ fontSize: '1rem' }}>Exercise Duration</Typography>
-                            <ToggleButtonGroup
-                              value={exerciseTimeRange}
-                              exclusive
-                              onChange={(e, newValue) => {
-                                if (newValue !== null) {
-                                  setExerciseTimeRange(newValue);
-                                }
-                              }}
-                              size="small"
-                              sx={{ height: 32 }}
-                            >
-                              <ToggleButton value="daily" sx={{ px: 1.5, py: 0.5, fontSize: '0.75rem' }}>Daily</ToggleButton>
-                              <ToggleButton value="weekly" sx={{ px: 1.5, py: 0.5, fontSize: '0.75rem' }}>Weekly</ToggleButton>
-                              <ToggleButton value="monthly" sx={{ px: 1.5, py: 0.5, fontSize: '0.75rem' }}>Monthly</ToggleButton>
-                            </ToggleButtonGroup>
-                          </Box>
-                          <ResponsiveContainer width="100%" height={220}>
-                            <AreaChart data={Array.isArray(planUsageAnalytics?.dailySeries) ? planUsageAnalytics.dailySeries.slice(exerciseTimeRange === 'daily' ? -7 : exerciseTimeRange === 'weekly' ? -14 : -30) : []}>
-                              <defs>
-                                <linearGradient id="colorExercise" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                                </linearGradient>
-                              </defs>
-                              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                              <YAxis tick={{ fontSize: 11 }} />
-                              <ReTooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                              <Area type="monotone" dataKey="exerciseMinutes" stroke="#3b82f6" fill="url(#colorExercise)" strokeWidth={2} />
-                            </AreaChart>
-                          </ResponsiveContainer>
-                          <Box sx={{ mt: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <TrendingUpIcon fontSize="small" color="info" />
-                            <Typography variant="caption" color="text.secondary">
-                              Avg: {planUsageAnalytics?.dailySeries?.length > 0 ? Math.round(planUsageAnalytics.dailySeries.slice(exerciseTimeRange === 'daily' ? -7 : exerciseTimeRange === 'weekly' ? -14 : -30).reduce((sum, d) => sum + (d.exerciseMinutes || 0), 0) / planUsageAnalytics.dailySeries.slice(exerciseTimeRange === 'daily' ? -7 : exerciseTimeRange === 'weekly' ? -14 : -30).length) : 0} min/day
-                            </Typography>
-                          </Box>
-                        </Paper>
-                      </Grid>
-
-                      {/* Exercise Type Distribution */}
-                      <Grid item xs={12} lg={6}>
-                        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`, height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha(t.palette.success.main, 0.08)}`, borderColor: (t) => alpha(t.palette.success.main, 0.2) } }}>
-                          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2.5, fontSize: '1rem' }}>Exercise Type Distribution</Typography>
-                          <Box sx={{ display: 'grid', gap: 1.5, mb: 1 }}>
-                            {[
-                              { type: 'Walking', percentage: 40, color: '#10b981' },
-                              { type: 'Cardio', percentage: 30, color: '#3b82f6' },
-                              { type: 'Strength', percentage: 20, color: '#f97316' },
-                              { type: 'Flexibility', percentage: 10, color: '#eab308' }
-                            ].map((item) => (
-                              <Box key={item.type}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                                  <Typography variant="caption" color="text.secondary">{item.type}</Typography>
-                                  <Typography variant="caption" fontWeight={600}>{item.percentage}%</Typography>
-                                </Box>
-                                <LinearProgress 
-                                  variant="determinate" 
-                                  value={item.percentage} 
-                                  sx={{ 
-                                    height: 8, 
-                                    borderRadius: 1, 
-                                    bgcolor: alpha(item.color, 0.1), 
-                                    '& .MuiLinearProgress-bar': { bgcolor: item.color, borderRadius: 1 } 
-                                  }} 
-                                />
-                              </Box>
-                            ))}
-                          </Box>
-                        </Paper>
-                      </Grid>
-                    </Grid>
-
-                    {/* === SECTION 3: PERSONAL & MEDICAL PROFILE === */}
-                    <Box sx={{ mt: 5, mb: 3 }}>
-                      <Box sx={{ mb: 3, pb: 1.5, borderBottom: (t) => `2px solid ${alpha(t.palette.success.main, 0.1)}` }}>
-                        <Typography variant="h5" fontWeight={700} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, color: 'text.primary', letterSpacing: -0.3 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: 2, bgcolor: (t) => alpha(t.palette.success.main, 0.1) }}>
-                            <PersonIcon color="success" sx={{ fontSize: 24 }} />
-                          </Box>
-                          Personal & Medical Profile
-                        </Typography>
-                      </Box>
-                    </Box>
-
-                    <Grid container spacing={3}>
-
-                      {/* BMI & Weight Analytics */}
-                      <Grid item xs={12} md={4}>
-                        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`, height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha(t.palette.success.main, 0.08)}`, borderColor: (t) => alpha(t.palette.success.main, 0.2) } }}>
-                          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2.5, fontSize: '1rem' }}>Body Mass Index</Typography>
-                          {bmiAnalytics ? (
+                    {/* === SECTIONS 2 & 3: EXERCISE & PERSONAL/MEDICAL PROFILE SIDE-BY-SIDE === */}
+                    <Box sx={{ mt: 6, mb: 4 }}>
+                      <Grid container spacing={3}>
+                        
+                        {/* Left Column: Exercise Analytics */}
+                        <Grid item xs={12} lg={6}>
+                          {/* Section Header */}
+                          <Box sx={{ 
+                            mb: 4, 
+                            pb: 2, 
+                            borderBottom: (t) => `3px solid ${alpha('#3b82f6', 0.15)}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2
+                          }}>
+                            <Box sx={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'center', 
+                              width: 56, 
+                              height: 56, 
+                              borderRadius: 3, 
+                              background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                              boxShadow: '0 8px 16px rgba(59, 130, 246, 0.25)'
+                            }}>
+                              <FitnessCenterIcon sx={{ color: '#fff', fontSize: 28 }} />
+                            </Box>
                             <Box>
-                              <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 1 }}>
-                                <Typography variant="h3" fontWeight={700}>{bmiAnalytics.value}</Typography>
-                                <Chip 
-                                  label={bmiAnalytics.label} 
-                                  size="small" 
-                                  color={bmiAnalytics.severity === 'success' ? 'success' : bmiAnalytics.severity === 'warning' ? 'warning' : 'error'}
-                                  sx={{ fontSize: '0.7rem' }}
-                                />
-                              </Box>
-                              <Box sx={{ mt: 2 }}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                                  <Typography variant="caption" color="text.secondary">BMI Progress</Typography>
-                                  <Typography variant="caption" fontWeight={600}>{bmiAnalytics.pct}%</Typography>
-                                </Box>
-                                <LinearProgress 
-                                  variant="determinate" 
-                                  value={bmiAnalytics.pct} 
-                                  sx={{ 
-                                    height: 10, 
-                                    borderRadius: 1, 
-                                    bgcolor: alpha(bmiAnalytics.severity === 'success' ? '#10b981' : bmiAnalytics.severity === 'warning' ? '#eab308' : '#ef4444', 0.1),
-                                    '& .MuiLinearProgress-bar': { 
-                                      bgcolor: bmiAnalytics.severity === 'success' ? '#10b981' : bmiAnalytics.severity === 'warning' ? '#eab308' : '#ef4444',
-                                      borderRadius: 1 
-                                    } 
-                                  }} 
-                                />
-                              </Box>
-                              <Divider sx={{ my: 1.5 }} />
-                              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
-                                <Box>
-                                  <Typography variant="caption" color="text.secondary">Height</Typography>
-                                  <Typography variant="body2" fontWeight={600}>{personalInfo?.height || 'N/A'} cm</Typography>
-                                </Box>
-                                <Box>
-                                  <Typography variant="caption" color="text.secondary">Weight</Typography>
-                                  <Typography variant="body2" fontWeight={600}>{personalInfo?.weight || 'N/A'} kg</Typography>
-                                </Box>
-                              </Box>
-                            </Box>
-                          ) : (
-                            <Typography variant="body2" color="text.secondary">No BMI data available</Typography>
-                          )}
-                        </Paper>
-                      </Grid>
-
-                      {/* Profile Completion Gauge */}
-                      <Grid item xs={12} md={4}>
-                        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`, height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha(t.palette.primary.main, 0.08)}`, borderColor: (t) => alpha(t.palette.primary.main, 0.2) } }}>
-                          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2.5, fontSize: '1rem' }}>Profile Completion</Typography>
-                          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 2 }}>
-                            <Box sx={{ position: 'relative', display: 'inline-flex', mb: 2 }}>
-                              <CircularProgress
-                                variant="determinate"
-                                value={personalInfoCompletion}
-                                size={100}
-                                thickness={6}
-                                sx={{
-                                  color: personalInfoCompletion === 100 ? '#10b981' : '#3b82f6',
-                                  '& .MuiCircularProgress-circle': {
-                                    strokeLinecap: 'round',
-                                  },
-                                }}
-                              />
-                              <Box
-                                sx={{
-                                  top: 0,
-                                  left: 0,
-                                  bottom: 0,
-                                  right: 0,
-                                  position: 'absolute',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                              >
-                                <Typography variant="h5" fontWeight={700} color="text.primary">
-                                  {personalInfoCompletion}%
-                                </Typography>
-                              </Box>
-                            </Box>
-                            <Typography variant="caption" color="text.secondary" align="center">
-                              {personalInfoCompletion === 100 ? 'Profile Complete' : `${100 - personalInfoCompletion}% remaining`}
-                            </Typography>
-                          </Box>
-                          <Divider sx={{ my: 1.5 }} />
-                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <CheckCircleIcon fontSize="small" sx={{ color: '#10b981' }} />
-                              <Typography variant="caption">Personal Info</Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <CheckCircleIcon fontSize="small" sx={{ color: '#10b981' }} />
-                              <Typography variant="caption">Medical History</Typography>
+                              <Typography variant="h4" fontWeight={800} sx={{ 
+                                color: 'text.primary', 
+                                letterSpacing: -0.5, 
+                                fontSize: { xs: '1.5rem', md: '1.875rem' },
+                                mb: 0.5
+                              }}>
+                                Exercise & Activity Analytics
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
+                                Monitor your physical activity and exercise patterns
+                              </Typography>
                             </Box>
                           </Box>
-                        </Paper>
-                      </Grid>
 
-                      {/* HbA1c & Blood Glucose */}
-                      <Grid item xs={12} md={4}>
-                        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`, height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha(t.palette.error.main, 0.08)}`, borderColor: (t) => alpha(t.palette.error.main, 0.2) } }}>
-                          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2.5, fontSize: '1rem' }}>Glycemic Control</Typography>
-                          {labsAnalytics ? (
-                            <Box>
-                              <Box sx={{ mb: 2 }}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                                  <Typography variant="caption" color="text.secondary">HbA1c</Typography>
-                                  <Typography variant="caption" fontWeight={600}>{labsAnalytics.hba1c?.value || 'N/A'}%</Typography>
-                                </Box>
-                                <LinearProgress 
-                                  variant="determinate" 
-                                  value={labsAnalytics.hba1c?.pct || 0} 
-                                  sx={{ 
-                                    height: 8, 
-                                    borderRadius: 1, 
-                                    bgcolor: alpha(labsAnalytics.hba1c?.severity === 'success' ? '#10b981' : '#ef4444', 0.1),
-                                    '& .MuiLinearProgress-bar': { 
-                                      bgcolor: labsAnalytics.hba1c?.severity === 'success' ? '#10b981' : '#ef4444',
-                                      borderRadius: 1 
-                                    } 
-                                  }} 
-                                />
-                              </Box>
-                              <Box sx={{ mb: 2 }}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                                  <Typography variant="caption" color="text.secondary">Fasting Glucose</Typography>
-                                  <Typography variant="caption" fontWeight={600}>{labsAnalytics.glucose?.value || 'N/A'} mg/dL</Typography>
-                                </Box>
-                                <LinearProgress 
-                                  variant="determinate" 
-                                  value={labsAnalytics.glucose?.pct || 0} 
-                                  sx={{ 
-                                    height: 8, 
-                                    borderRadius: 1, 
-                                    bgcolor: alpha(labsAnalytics.glucose?.severity === 'success' ? '#10b981' : '#ef4444', 0.1),
-                                    '& .MuiLinearProgress-bar': { 
-                                      bgcolor: labsAnalytics.glucose?.severity === 'success' ? '#10b981' : '#ef4444',
-                                      borderRadius: 1 
-                                    } 
-                                  }} 
-                                />
-                              </Box>
-                              <Chip 
-                                label={labsAnalytics.hba1c?.label || 'No Data'}
+                          {/* Exercise Duration Tracking */}
+                          <Paper elevation={0} sx={{ 
+                            p: { xs: 3, md: 3.5 }, 
+                            borderRadius: 4, 
+                            border: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`,
+                            background: (t) => t.palette.background.paper,
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                            mb: 3,
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
+                            '&:hover': { 
+                              transform: 'translateY(-6px)', 
+                              boxShadow: '0 12px 28px rgba(59, 130, 246, 0.15)',
+                              borderColor: (t) => alpha('#3b82f6', 0.3)
+                            } 
+                          }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, flexWrap: 'wrap', gap: 1 }}>
+                              <Typography variant="subtitle1" fontWeight={700} sx={{ fontSize: { xs: '0.9rem', md: '1rem' } }}>Exercise Duration</Typography>
+                              <ToggleButtonGroup
+                                value={exerciseTimeRange}
+                                exclusive
+                                onChange={(e, newValue) => {
+                                  if (newValue !== null) {
+                                    setExerciseTimeRange(newValue);
+                                  }
+                                }}
                                 size="small"
-                                color={labsAnalytics.hba1c?.severity === 'success' ? 'success' : 'error'}
-                                sx={{ fontSize: '0.7rem' }}
-                              />
+                                sx={{ height: 32 }}
+                              >
+                                <ToggleButton value="daily" sx={{ px: 1.5, py: 0.5, fontSize: '0.75rem' }}>Daily</ToggleButton>
+                                <ToggleButton value="weekly" sx={{ px: 1.5, py: 0.5, fontSize: '0.75rem' }}>Weekly</ToggleButton>
+                                <ToggleButton value="monthly" sx={{ px: 1.5, py: 0.5, fontSize: '0.75rem' }}>Monthly</ToggleButton>
+                              </ToggleButtonGroup>
                             </Box>
-                          ) : (
-                            <Typography variant="body2" color="text.secondary">No lab data available</Typography>
-                          )}
-                        </Paper>
-                      </Grid>
-                    </Grid>
+                            <ResponsiveContainer width="100%" height={220}>
+                              <AreaChart data={Array.isArray(planUsageAnalytics?.dailySeries) ? planUsageAnalytics.dailySeries.slice(exerciseTimeRange === 'daily' ? -7 : exerciseTimeRange === 'weekly' ? -14 : -30) : []}>
+                                <defs>
+                                  <linearGradient id="colorExercise" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                                  </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                                <YAxis tick={{ fontSize: 11 }} />
+                                <ReTooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                                <Area type="monotone" dataKey="exerciseMinutes" stroke="#3b82f6" fill="url(#colorExercise)" strokeWidth={2} />
+                              </AreaChart>
+                            </ResponsiveContainer>
+                            <Box sx={{ mt: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <TrendingUpIcon fontSize="small" color="info" />
+                              <Typography variant="caption" color="text.secondary">
+                                Avg: {planUsageAnalytics?.dailySeries?.length > 0 ? Math.round(planUsageAnalytics.dailySeries.slice(exerciseTimeRange === 'daily' ? -7 : exerciseTimeRange === 'weekly' ? -14 : -30).reduce((sum, d) => sum + (d.exerciseMinutes || 0), 0) / planUsageAnalytics.dailySeries.slice(exerciseTimeRange === 'daily' ? -7 : exerciseTimeRange === 'weekly' ? -14 : -30).length) : 0} min/day
+                              </Typography>
+                            </Box>
+                          </Paper>
 
-                    {/* === SECTION 4: LIFESTYLE HABITS === */}
-                    <Box sx={{ mt: 5, mb: 3 }}>
-                      <Box sx={{ mb: 3, pb: 1.5, borderBottom: (t) => `2px solid ${alpha(t.palette.secondary.main, 0.1)}` }}>
-                        <Typography variant="h5" fontWeight={700} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, color: 'text.primary', letterSpacing: -0.3 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: 2, bgcolor: (t) => alpha(t.palette.secondary.main, 0.1) }}>
-                            <SelfImprovementIcon color="secondary" sx={{ fontSize: 24 }} />
+                          {/* Exercise Type Distribution */}
+                          <Paper elevation={0} sx={{ 
+                            p: { xs: 3, md: 3.5 }, 
+                            borderRadius: 4, 
+                            border: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`,
+                            background: (t) => t.palette.background.paper,
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
+                            '&:hover': { 
+                              transform: 'translateY(-6px)', 
+                              boxShadow: '0 12px 28px rgba(16, 185, 129, 0.15)',
+                              borderColor: (t) => alpha('#10b981', 0.3)
+                            } 
+                          }}>
+                            <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2.5, fontSize: { xs: '0.9rem', md: '1rem' } }}>Exercise Type Distribution</Typography>
+                            <Box sx={{ display: 'grid', gap: 1.5, mb: 1 }}>
+                              {[
+                                { type: 'Walking', percentage: 40, color: '#10b981' },
+                                { type: 'Cardio', percentage: 30, color: '#3b82f6' },
+                                { type: 'Strength', percentage: 20, color: '#f97316' },
+                                { type: 'Flexibility', percentage: 10, color: '#eab308' }
+                              ].map((item) => (
+                                <Box key={item.type}>
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                                    <Typography variant="caption" color="text.secondary">{item.type}</Typography>
+                                    <Typography variant="caption" fontWeight={600}>{item.percentage}%</Typography>
+                                  </Box>
+                                  <LinearProgress 
+                                    variant="determinate" 
+                                    value={item.percentage} 
+                                    sx={{ 
+                                      height: 8, 
+                                      borderRadius: 1, 
+                                      bgcolor: alpha(item.color, 0.1), 
+                                      '& .MuiLinearProgress-bar': { bgcolor: item.color, borderRadius: 1 } 
+                                    }} 
+                                  />
+                                </Box>
+                              ))}
+                            </Box>
+                          </Paper>
+                        </Grid>
+
+                        {/* Right Column: Personal & Medical Profile */}
+                        <Grid item xs={12} lg={6} sx={{ position: 'relative' }}>
+                          {/* Vertical Divider - visible only on large screens */}
+                          <Box sx={{ 
+                            display: { xs: 'none', lg: 'block' },
+                            position: 'absolute',
+                            left: -12,
+                            top: 0,
+                            bottom: 0,
+                            width: '2px',
+                            background: 'linear-gradient(180deg, rgba(16, 185, 129, 0.2) 0%, rgba(59, 130, 246, 0.2) 100%)',
+                            borderRadius: 1
+                          }} />
+                          
+                          {/* Section Header */}
+                          <Box sx={{ 
+                            mb: 4, 
+                            pb: 2, 
+                            borderBottom: (t) => `3px solid ${alpha('#10b981', 0.15)}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2
+                          }}>
+                            <Box sx={{ 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'center', 
+                              width: 56, 
+                              height: 56, 
+                              borderRadius: 3, 
+                              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                              boxShadow: '0 8px 16px rgba(16, 185, 129, 0.25)'
+                            }}>
+                              <PersonIcon sx={{ color: '#fff', fontSize: 28 }} />
+                            </Box>
+                            <Box>
+                              <Typography variant="h4" fontWeight={800} sx={{ 
+                                color: 'text.primary', 
+                                letterSpacing: -0.5, 
+                                fontSize: { xs: '1.5rem', md: '1.875rem' },
+                                mb: 0.5
+                              }}>
+                                Personal & Medical Profile
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
+                                Your health metrics and medical information
+                              </Typography>
+                            </Box>
                           </Box>
-                          Lifestyle Habits & Patterns
-                        </Typography>
-                      </Box>
-                    </Box>
 
-                    <Grid container spacing={3}>
-
-                      {/* Sleep & Stress */}
-                      <Grid item xs={12} md={6}>
-                        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`, height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha('#8b5cf6', 0.08)}`, borderColor: (t) => alpha('#8b5cf6', 0.2) } }}>
-                          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2.5, fontSize: '1rem' }}>Sleep & Stress Management</Typography>
-                          <Box sx={{ display: 'grid', gap: 2 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                              <NightlightRoundIcon sx={{ color: '#8b5cf6', fontSize: 32 }} />
-                              <Box sx={{ flex: 1 }}>
-                                <Typography variant="caption" color="text.secondary">Sleep Quality</Typography>
-                                <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
-                                  {[1, 2, 3, 4].map((star) => (
-                                    <Box key={star} sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: star <= 3 ? '#8b5cf6' : alpha('#8b5cf6', 0.2) }} />
-                                  ))}
+                          {/* BMI & Weight Analytics */}
+                          <Paper elevation={0} sx={{ 
+                            p: { xs: 3, md: 3.5 }, 
+                            borderRadius: 4, 
+                            border: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`,
+                            background: (t) => t.palette.background.paper,
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                            mb: 3,
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
+                            '&:hover': { 
+                              transform: 'translateY(-6px)', 
+                              boxShadow: '0 12px 28px rgba(16, 185, 129, 0.15)',
+                              borderColor: (t) => alpha('#10b981', 0.3)
+                            } 
+                          }}>
+                            <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2.5, fontSize: { xs: '0.9rem', md: '1rem' } }}>Body Mass Index</Typography>
+                            {bmiAnalytics ? (
+                              <Box>
+                                <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 1 }}>
+                                  <Typography variant="h3" fontWeight={700}>{bmiAnalytics.value}</Typography>
+                                  <Chip 
+                                    label={bmiAnalytics.label} 
+                                    size="small" 
+                                    color={bmiAnalytics.severity === 'success' ? 'success' : bmiAnalytics.severity === 'warning' ? 'warning' : 'error'}
+                                    sx={{ fontSize: '0.7rem' }}
+                                  />
+                                </Box>
+                                <Box sx={{ mt: 2 }}>
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                                    <Typography variant="caption" color="text.secondary">BMI Progress</Typography>
+                                    <Typography variant="caption" fontWeight={600}>{bmiAnalytics.pct}%</Typography>
+                                  </Box>
+                                  <LinearProgress 
+                                    variant="determinate" 
+                                    value={bmiAnalytics.pct} 
+                                    sx={{ 
+                                      height: 10, 
+                                      borderRadius: 1, 
+                                      bgcolor: alpha(bmiAnalytics.severity === 'success' ? '#10b981' : bmiAnalytics.severity === 'warning' ? '#eab308' : '#ef4444', 0.1),
+                                      '& .MuiLinearProgress-bar': { 
+                                        bgcolor: bmiAnalytics.severity === 'success' ? '#10b981' : bmiAnalytics.severity === 'warning' ? '#eab308' : '#ef4444',
+                                        borderRadius: 1 
+                                      } 
+                                    }} 
+                                  />
+                                </Box>
+                                <Divider sx={{ my: 1.5 }} />
+                                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                                  <Box>
+                                    <Typography variant="caption" color="text.secondary">Height</Typography>
+                                    <Typography variant="body2" fontWeight={600}>{personalInfo?.height || 'N/A'} cm</Typography>
+                                  </Box>
+                                  <Box>
+                                    <Typography variant="caption" color="text.secondary">Weight</Typography>
+                                    <Typography variant="body2" fontWeight={600}>{personalInfo?.weight || 'N/A'} kg</Typography>
+                                  </Box>
                                 </Box>
                               </Box>
-                              <Typography variant="h6" fontWeight={700}>7.2h</Typography>
-                            </Box>
-                            <Divider />
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                              <SelfImprovementIcon sx={{ color: '#10b981', fontSize: 32 }} />
-                              <Box sx={{ flex: 1 }}>
-                                <Typography variant="caption" color="text.secondary">Stress Level</Typography>
-                                <LinearProgress 
-                                  variant="determinate" 
-                                  value={40} 
-                                  sx={{ 
-                                    mt: 0.5,
-                                    height: 8, 
-                                    borderRadius: 1, 
-                                    bgcolor: alpha('#10b981', 0.1),
-                                    '& .MuiLinearProgress-bar': { bgcolor: '#10b981', borderRadius: 1 } 
-                                  }} 
-                                />
-                              </Box>
-                              <Chip label="Low" size="small" color="success" sx={{ fontSize: '0.7rem' }} />
-                            </Box>
-                          </Box>
-                        </Paper>
-                      </Grid>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary">No BMI data available</Typography>
+                            )}
+                          </Paper>
 
-                      {/* Hydration & Activity */}
-                      <Grid item xs={12} md={6}>
-                        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`, height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha(t.palette.info.main, 0.08)}`, borderColor: (t) => alpha(t.palette.info.main, 0.2) } }}>
-                          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2.5, fontSize: '1rem' }}>Daily Tracking</Typography>
-                          <Box sx={{ display: 'grid', gap: 2 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                              <LocalDrinkIcon sx={{ color: '#3b82f6', fontSize: 32 }} />
-                              <Box sx={{ flex: 1 }}>
-                                <Typography variant="caption" color="text.secondary">Water Intake</Typography>
-                                <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
-                                  {[1, 2, 3, 4, 5, 6, 7, 8].map((glass) => (
-                                    <Box key={glass} sx={{ width: 10, height: 16, borderRadius: 0.5, bgcolor: glass <= 6 ? '#3b82f6' : alpha('#3b82f6', 0.2) }} />
-                                  ))}
+                          {/* Profile Completion Gauge */}
+                          <Paper elevation={0} sx={{ 
+                            p: { xs: 3, md: 3.5 }, 
+                            borderRadius: 4, 
+                            border: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`,
+                            background: (t) => t.palette.background.paper,
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                            mb: 3,
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
+                            '&:hover': { 
+                              transform: 'translateY(-6px)', 
+                              boxShadow: '0 12px 28px rgba(102, 126, 234, 0.15)',
+                              borderColor: (t) => alpha('#667eea', 0.3)
+                            } 
+                          }}>
+                            <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 2.5, fontSize: { xs: '0.9rem', md: '1rem' } }}>Profile Completion</Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 2 }}>
+                              <Box sx={{ position: 'relative', display: 'inline-flex', mb: 2 }}>
+                                <CircularProgress
+                                  variant="determinate"
+                                  value={personalInfoCompletion}
+                                  size={100}
+                                  thickness={6}
+                                  sx={{
+                                    color: personalInfoCompletion === 100 ? '#10b981' : '#3b82f6',
+                                    '& .MuiCircularProgress-circle': {
+                                      strokeLinecap: 'round',
+                                    },
+                                  }}
+                                />
+                                <Box
+                                  sx={{
+                                    top: 0,
+                                    left: 0,
+                                    bottom: 0,
+                                    right: 0,
+                                    position: 'absolute',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                  }}
+                                >
+                                  <Typography variant="h5" fontWeight={700} color="text.primary">
+                                    {personalInfoCompletion}%
+                                  </Typography>
                                 </Box>
                               </Box>
-                              <Typography variant="h6" fontWeight={700}>6/8</Typography>
+                              <Typography variant="caption" color="text.secondary" align="center">
+                                {personalInfoCompletion === 100 ? 'Profile Complete' : `${100 - personalInfoCompletion}% remaining`}
+                              </Typography>
                             </Box>
-                            <Divider />
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                              <DirectionsWalkIcon sx={{ color: '#f97316', fontSize: 32 }} />
-                              <Box sx={{ flex: 1 }}>
-                                <Typography variant="caption" color="text.secondary">Daily Steps</Typography>
-                                <LinearProgress 
-                                  variant="determinate" 
-                                  value={72} 
-                                  sx={{ 
-                                    mt: 0.5,
-                                    height: 8, 
-                                    borderRadius: 1, 
-                                    bgcolor: alpha('#f97316', 0.1),
-                                    '& .MuiLinearProgress-bar': { bgcolor: '#f97316', borderRadius: 1 } 
-                                  }} 
-                                />
+                            <Divider sx={{ my: 1.5 }} />
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <CheckCircleIcon fontSize="small" sx={{ color: '#10b981' }} />
+                                <Typography variant="caption">Personal Info</Typography>
                               </Box>
-                              <Typography variant="body2" fontWeight={600}>7,200</Typography>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <CheckCircleIcon fontSize="small" sx={{ color: '#10b981' }} />
+                                <Typography variant="caption">Medical History</Typography>
+                              </Box>
                             </Box>
-                          </Box>
-                        </Paper>
-                      </Grid>
-                    </Grid>
+                          </Paper>
+                        </Grid>
 
-                    {/* === SECTION 5: SMART INSIGHTS === */}
-                    <Box sx={{ mt: 5, mb: 3 }}>
-                      <Box sx={{ mb: 3, pb: 1.5, borderBottom: (t) => `2px solid ${alpha(t.palette.warning.main, 0.1)}` }}>
-                        <Typography variant="h5" fontWeight={700} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, color: 'text.primary', letterSpacing: -0.3 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: 2, bgcolor: (t) => alpha(t.palette.warning.main, 0.1) }}>
-                            <LightbulbIcon sx={{ color: '#f59e0b', fontSize: 24 }} />
-                          </Box>
-                          Smart Insights
-                        </Typography>
-                      </Box>
+                      </Grid>
                     </Box>
-
-                    <Grid container spacing={3}>
-
-                      {/* Key Insights Cards */}
-                      <Grid item xs={12} md={4}>
-                        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: (t) => `1px solid ${alpha('#10b981', 0.3)}`, bgcolor: alpha('#10b981', 0.04), height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha('#10b981', 0.15)}`, borderColor: (t) => alpha('#10b981', 0.4), bgcolor: alpha('#10b981', 0.08) } }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-                            <TrendingUpIcon sx={{ color: '#10b981', fontSize: 20 }} />
-                            <Typography variant="subtitle2" fontWeight={700} sx={{ color: '#10b981' }}>Positive Trend</Typography>
-                          </Box>
-                          <Typography variant="body2" sx={{ mb: 1.5, lineHeight: 1.6 }}>
-                            Your calorie intake has been consistently within target for the past 5 days. Keep up the great work!
-                          </Typography>
-                          <ResponsiveContainer width="100%" height={60}>
-                            <AreaChart data={Array.isArray(planUsageAnalytics?.dailySeries) ? planUsageAnalytics.dailySeries.slice(-5) : []}>
-                              <defs>
-                                <linearGradient id="miniColorCalories" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                                </linearGradient>
-                              </defs>
-                              <Area type="monotone" dataKey="dietCalories" stroke="#10b981" fill="url(#miniColorCalories)" strokeWidth={2} />
-                            </AreaChart>
-                          </ResponsiveContainer>
-                        </Paper>
-                      </Grid>
-
-                      <Grid item xs={12} md={4}>
-                        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: (t) => `1px solid ${alpha('#3b82f6', 0.3)}`, bgcolor: alpha('#3b82f6', 0.04), height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha('#3b82f6', 0.15)}`, borderColor: (t) => alpha('#3b82f6', 0.4), bgcolor: alpha('#3b82f6', 0.08) } }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-                            <FitnessCenterIcon sx={{ color: '#3b82f6', fontSize: 20 }} />
-                            <Typography variant="subtitle2" fontWeight={700} sx={{ color: '#3b82f6' }}>Activity Boost</Typography>
-                          </Box>
-                          <Typography variant="body2" sx={{ mb: 1.5, lineHeight: 1.6 }}>
-                            Exercise duration increased by 25% this week. Your consistency is paying off!
-                          </Typography>
-                          <ResponsiveContainer width="100%" height={60}>
-                            <AreaChart data={Array.isArray(planUsageAnalytics?.dailySeries) ? planUsageAnalytics.dailySeries.slice(-7) : []}>
-                              <defs>
-                                <linearGradient id="miniColorExercise" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                                </linearGradient>
-                              </defs>
-                              <Area type="monotone" dataKey="exerciseMinutes" stroke="#3b82f6" fill="url(#miniColorExercise)" strokeWidth={2} />
-                            </AreaChart>
-                          </ResponsiveContainer>
-                        </Paper>
-                      </Grid>
-
-                      <Grid item xs={12} md={4}>
-                        <Paper elevation={0} sx={{ p: 3, borderRadius: 3, border: (t) => `1px solid ${alpha('#eab308', 0.3)}`, bgcolor: alpha('#eab308', 0.04), height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha('#eab308', 0.15)}`, borderColor: (t) => alpha('#eab308', 0.4), bgcolor: alpha('#eab308', 0.08) } }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-                            <InfoIcon sx={{ color: '#eab308', fontSize: 20 }} />
-                            <Typography variant="subtitle2" fontWeight={700} sx={{ color: '#eab308' }}>Attention Needed</Typography>
-                          </Box>
-                          <Typography variant="body2" sx={{ mb: 1.5, lineHeight: 1.6 }}>
-                            Carb intake slightly elevated this week. Consider balanced meal planning.
-                          </Typography>
-                          <ResponsiveContainer width="100%" height={60}>
-                            <AreaChart data={Array.isArray(planUsageAnalytics?.dailySeries) ? planUsageAnalytics.dailySeries.slice(-7) : []}>
-                              <defs>
-                                <linearGradient id="miniColorCarbs" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor="#eab308" stopOpacity={0.3}/>
-                                  <stop offset="95%" stopColor="#eab308" stopOpacity={0}/>
-                                </linearGradient>
-                              </defs>
-                              <Area type="monotone" dataKey="dietCarbs" stroke="#eab308" fill="url(#miniColorCarbs)" strokeWidth={2} />
-                            </AreaChart>
-                          </ResponsiveContainer>
-                        </Paper>
-                      </Grid>
-                    </Grid>
 
                     {/* === SECTION 6: MEDICAL OVERVIEW === */}
-                    <Box sx={{ mt: 5, mb: 3 }}>
-                      <Box sx={{ mb: 3, pb: 1.5, borderBottom: (t) => `2px solid ${alpha(t.palette.error.main, 0.1)}` }}>
-                        <Typography variant="h5" fontWeight={700} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, color: 'text.primary', letterSpacing: -0.3 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 40, height: 40, borderRadius: 2, bgcolor: (t) => alpha(t.palette.error.main, 0.1) }}>
-                            <LocalHospitalIcon color="error" sx={{ fontSize: 24 }} />
-                          </Box>
-                          Medical Overview
-                        </Typography>
+                    <Box sx={{ mt: 6, mb: 4 }}>
+                      <Box sx={{ 
+                        mb: 4, 
+                        pb: 2, 
+                        borderBottom: (t) => `3px solid ${alpha('#ef4444', 0.15)}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2
+                      }}>
+                        <Box sx={{ 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          width: 56, 
+                          height: 56, 
+                          borderRadius: 3, 
+                          background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                          boxShadow: '0 8px 16px rgba(239, 68, 68, 0.25)'
+                        }}>
+                          <AssessmentIcon sx={{ color: '#fff', fontSize: 28 }} />
+                        </Box>
+                        <Box>
+                          <Typography variant="h4" fontWeight={800} sx={{ 
+                            color: 'text.primary', 
+                            letterSpacing: -0.5, 
+                            fontSize: { xs: '1.5rem', md: '1.875rem' },
+                            mb: 0.5
+                          }}>
+                            Medical Overview
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.875rem' }}>
+                            Your diagnosis and health monitoring data
+                          </Typography>
+                        </Box>
                       </Box>
                     </Box>
 
@@ -1983,7 +2317,20 @@ export default function Dashboard() {
 
                       {/* Diagnosis Snapshot */}
                       <Grid item xs={12} md={7}>
-                        <Paper elevation={0} sx={{ p: 3.5, borderRadius: 3, border: (t) => `1px solid ${alpha(t.palette.divider, 0.08)}`, height: '100%', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: (t) => `0 12px 24px ${alpha(t.palette.primary.main, 0.08)}`, borderColor: (t) => alpha(t.palette.primary.main, 0.2) } }}>
+                        <Paper elevation={0} sx={{ 
+                          p: { xs: 3, md: 4 }, 
+                          borderRadius: 4, 
+                          border: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`,
+                          background: (t) => t.palette.background.paper,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                          height: '100%', 
+                          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
+                          '&:hover': { 
+                            transform: 'translateY(-6px)', 
+                            boxShadow: '0 12px 28px rgba(102, 126, 234, 0.15)',
+                            borderColor: (t) => alpha('#667eea', 0.3)
+                          } 
+                        }}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
                             <Box>
                               <Typography
@@ -1998,7 +2345,7 @@ export default function Dashboard() {
                               >
                                 Diagnosis Snapshot
                               </Typography>
-                              <Typography variant="h5" fontWeight={700} sx={{ mt: 0.5 }}>
+                              <Typography variant="h5" fontWeight={700} sx={{ mt: 0.5, fontSize: { xs: '1.25rem', md: '1.5rem' } }}>
                                 {medicalInfo?.diabetes_type || 'Add your diabetes type'}
                               </Typography>
                             </Box>
@@ -2117,16 +2464,17 @@ export default function Dashboard() {
                           ref={labsRef}
                           elevation={0}
                           sx={{
-                            p: 3,
-                            borderRadius: 2,
+                            p: { xs: 3, md: 3.5 },
+                            borderRadius: 4,
                             background: (t) => t.palette.background.paper,
                             border: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`,
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
                             height: '100%',
-                            transition: 'all 0.2s ease',
+                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                             '&:hover': {
-                              boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                              borderColor: (t) => alpha(t.palette.divider, 0.2)
+                              transform: 'translateY(-6px)',
+                              boxShadow: '0 12px 28px rgba(239, 68, 68, 0.15)',
+                              borderColor: (t) => alpha('#ef4444', 0.3)
                             }
                           }}
                         >
@@ -3306,7 +3654,7 @@ export default function Dashboard() {
             )}
 
             {currentSection === 'Personalized Suggestions' && (
-              <Box sx={{ background: '#e8eaf6', borderRadius: '16px', p: 5, minHeight: '70vh' }}>
+              <Box sx={{ bgcolor: 'transparent', borderRadius: '16px', p: 5, minHeight: '70vh' }}>
                 {/* Premium Title and Description */}
                 <Box sx={{ mb: 5, textAlign: 'center' }}>
                   <Typography 
@@ -3836,43 +4184,27 @@ export default function Dashboard() {
             )}
 
             {currentSection === 'Chat Assistant' && (
-              <Box>
+              <Box sx={{ 
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                m: 0,
+                p: 0
+              }}>
                 {personalInfoCompletion >= 100 ? (
                   <Box 
                     sx={{ 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      minHeight: '60vh',
-                      textAlign: 'center',
-                      p: 4
+                      height: '100vh',
+                      width: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      m: 0,
+                      p: 0
                     }}
                   >
-                    <ChatIcon sx={{ fontSize: 80, color: 'primary.main', mb: 3 }} />
-                    <Typography variant="h4" fontWeight={700} sx={{ mb: 2 }}>
-                      AI Chat Assistant
-                    </Typography>
-                    <Typography variant="body1" color="text.secondary" sx={{ mb: 4, maxWidth: 600 }}>
-                      Get instant answers to your health questions, diet advice, and personalized recommendations through our intelligent chat assistant.
-                    </Typography>
-                    <Button
-                      variant="contained"
-                      size="large"
-                      startIcon={<ChatIcon />}
-                      onClick={() => navigate('/personalized-suggestions/chat-assistant')}
-                      sx={{
-                        borderRadius: 2,
-                        textTransform: 'none',
-                        fontWeight: 600,
-                        px: 4,
-                        py: 1.5,
-                        fontSize: '1rem',
-                        boxShadow: 2
-                      }}
-                    >
-                      Open Chat Assistant
-                    </Button>
+                    <ChatAssistant inModal={true} />
                   </Box>
                 ) : (
                   <Paper 
@@ -4032,111 +4364,30 @@ export default function Dashboard() {
               ...dashboardTheme.modalStyles.container,
               width: '95%',
               maxWidth: openCardModal === 'chat-assistant' ? '1400px' : '1200px',
+              position: 'relative'
             }}
           >
-            {/* Premium Modal Header */}
-            <Box
+            {/* Floating Close Button */}
+            <IconButton
+              onClick={() => setOpenCardModal(null)}
               sx={{
-                ...dashboardTheme.modalStyles.header(
-                  openCardModal === 'personal-medical'
-                    ? dashboardTheme.colors.primary
-                    : openCardModal === 'diet-plan'
-                    ? dashboardTheme.colors.success
-                    : openCardModal === 'exercise-plan'
-                    ? dashboardTheme.colors.warning
-                    : openCardModal === 'lifestyle-tips'
-                    ? dashboardTheme.colors.secondary
-                    : dashboardTheme.colors.info
-                ),
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                position: 'relative',
-                overflow: 'hidden',
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  top: -50,
-                  right: -50,
-                  width: 200,
-                  height: 200,
-                  background: 'radial-gradient(circle, rgba(255,255,255,0.15), transparent 70%)',
-                  borderRadius: '50%',
-                },
+                position: 'absolute',
+                top: 16,
+                right: 16,
+                color: '#1e293b',
+                bgcolor: 'rgba(255, 255, 255, 0.95)',
+                border: '1px solid #e2e8f0',
+                zIndex: 10,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                '&:hover': {
+                  bgcolor: '#ffffff',
+                  borderColor: '#cbd5e1',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                }
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, zIndex: 1 }}>
-                <IconButton
-                  onClick={() => setOpenCardModal(null)}
-                  sx={{
-                    color: '#fff',
-                    bgcolor: 'rgba(255,255,255,0.15)',
-                    backdropFilter: 'blur(10px)',
-                    '&:hover': {
-                      bgcolor: 'rgba(255,255,255,0.25)',
-                      transform: 'scale(1.05)',
-                    },
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  }}
-                >
-                  <ArrowBackIcon />
-                </IconButton>
-                <Box>
-                  <Typography 
-                    variant="h5" 
-                    sx={{ 
-                      ...dashboardTheme.typography.h5,
-                      color: '#fff',
-                      fontWeight: 700,
-                      mb: 0.5,
-                    }}
-                  >
-                    {openCardModal === 'personal-medical'
-                      ? '👤 Personal & Medical Information'
-                      : openCardModal === 'diet-plan'
-                      ? '🍽️ Nutrition & Diet Plan'
-                      : openCardModal === 'exercise-plan'
-                      ? '💪 Exercise & Fitness Plan'
-                      : openCardModal === 'lifestyle-tips'
-                      ? '💡 Lifestyle Tips & Wellness'
-                      : '🤖 AI Health Assistant'}
-                  </Typography>
-                  <Typography 
-                    variant="body2" 
-                    sx={{ 
-                      color: 'rgba(255,255,255,0.9)',
-                      fontSize: '0.9rem',
-                    }}
-                  >
-                    {openCardModal === 'personal-medical'
-                      ? 'Complete your health profile for personalized recommendations'
-                      : openCardModal === 'diet-plan'
-                      ? 'AI-powered meal plans based on evidence-based guidelines'
-                      : openCardModal === 'exercise-plan'
-                      ? 'Customized fitness routines tailored to your needs'
-                      : openCardModal === 'lifestyle-tips'
-                      ? 'Daily habits and wellness recommendations'
-                      : 'Get instant answers from your AI health assistant'}
-                  </Typography>
-                </Box>
-              </Box>
-              <IconButton
-                onClick={() => setOpenCardModal(null)}
-                sx={{
-                  color: '#fff',
-                  bgcolor: 'rgba(255,255,255,0.15)',
-                  backdropFilter: 'blur(10px)',
-                  zIndex: 1,
-                  '&:hover': {
-                    bgcolor: 'rgba(255,255,255,0.25)',
-                    transform: 'rotate(90deg)',
-                  },
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                }}
-              >
-                <CloseIcon />
-              </IconButton>
-            </Box>
+              <CloseIcon />
+            </IconButton>
 
             {/* Premium Modal Content */}
             <Box
@@ -4172,7 +4423,7 @@ export default function Dashboard() {
               )}
 
               {openCardModal === 'chat-assistant' && (
-                <Box sx={{ height: '75vh' }}>
+                <Box sx={{ height: '85vh', minHeight: '600px' }}>
                   <ChatAssistant inModal={true} />
                 </Box>
               )}

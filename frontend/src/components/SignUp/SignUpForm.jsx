@@ -119,7 +119,7 @@ export default function SignUpForm() {
                                     onClick={() => setShowPassword((show) => !show)}
                                     edge="end"
                                 >
-                                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                                    {showPassword ? 'Hide' : 'Show'}
                                 </IconButton>
                             </InputAdornment>
                         ),

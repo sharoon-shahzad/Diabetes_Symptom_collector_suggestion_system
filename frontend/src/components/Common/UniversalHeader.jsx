@@ -24,7 +24,6 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, logout } from '../../utils/auth';
-import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
 import ThemeToggle from './ThemeToggle';
 
 export default function UniversalHeader() {
@@ -221,17 +220,7 @@ export default function UniversalHeader() {
           <Toolbar sx={{ justifyContent: 'space-between', py: 1 }}>
             {/* Logo/Brand */}
             <Box display="flex" alignItems="center">
-              <IconButton
-                onClick={() => navigate('/')}
-                sx={{
-                  color: 'primary.main',
-                  '&:hover': {
-                    backgroundColor: 'action.hover'
-                  }
-                }}
-              >
-                <MedicalServicesIcon sx={{ fontSize: 32 }} />
-              </IconButton>
+              {/* Empty space for alignment */}
             </Box>
 
             {/* User Menu */}

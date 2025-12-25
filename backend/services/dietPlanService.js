@@ -126,7 +126,7 @@ class DietPlanService {
         user_id: userId,
         target_date: targetDateObj,
         region: userRegion,
-        total_calories: dailyCalories,
+        total_calories: structuredPlan.nutritional_totals.calories || dailyCalories,
         meals: structuredPlan.meals,
         nutritional_totals: structuredPlan.nutritional_totals,
         sources: foodContext.sources,

@@ -16,7 +16,7 @@ import {
   ArrowBack,
   TrendingUp,
   Assessment as AssessmentIcon,
-  HealthAndSafety,
+  Assignment,
   Warning,
   CheckCircle,
   Refresh
@@ -378,7 +378,7 @@ const Assessment = () => {
                       >
                         {risk_level === 'High' ? <Warning sx={{ fontSize: 50, color: '#fff' }} /> : 
                          risk_level === 'Medium' ? <TrendingUp sx={{ fontSize: 50, color: '#fff' }} /> :
-                         <HealthAndSafety sx={{ fontSize: 50, color: '#fff' }} />}
+                         <Assignment sx={{ fontSize: 50, color: '#fff' }} />}
                       </Box>
                       <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)', fontWeight: 700, display: 'block', mb: 0.5 }}>
                         RISK LEVEL

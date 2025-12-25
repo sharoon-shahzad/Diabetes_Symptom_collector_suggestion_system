@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Typography, CircularProgress, Button, Paper } from '@mui/material';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import ErrorIcon from '@mui/icons-material/Error';
 
 export default function ActivateAccount() {
   const { token } = useParams();
@@ -35,8 +33,6 @@ export default function ActivateAccount() {
     <Box minHeight="100vh" display="flex" alignItems="center" justifyContent="center" bgcolor="background.default">
       <Paper elevation={4} sx={{ p: 4, borderRadius: 3, minWidth: 340, textAlign: 'center', background: 'background.paper' }}>
         {status === 'loading' && <CircularProgress sx={{ color: 'primary.main', mb: 2 }} />}
-        {status === 'success' && <CheckCircleIcon sx={{ color: 'green', fontSize: 48, mb: 1 }} />}
-        {status === 'error' && <ErrorIcon sx={{ color: 'red', fontSize: 48, mb: 1 }} />}
         <Typography variant="h6" color={status === 'error' ? 'error' : 'primary'} gutterBottom>
           {message}
         </Typography>

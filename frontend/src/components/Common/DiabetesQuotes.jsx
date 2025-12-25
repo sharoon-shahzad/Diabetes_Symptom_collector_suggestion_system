@@ -5,7 +5,7 @@ import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote';
-import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
+import LightbulbIcon from '@mui/icons-material/Lightbulb';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 
 const items = [
@@ -15,7 +15,7 @@ const items = [
   },
   {
     quote: "Awareness is the first step toward cure.",
-    icon: <LocalHospitalIcon sx={{ fontSize: 100, color: 'text.secondary' }} />,
+    icon: <LightbulbIcon sx={{ fontSize: 100, color: 'text.secondary' }} />,
   },
   {
     quote: "Your health is an investment, not an expense.",

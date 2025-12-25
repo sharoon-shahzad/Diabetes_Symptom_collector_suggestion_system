@@ -205,51 +205,63 @@ const LifestyleTipsView = ({ tips: propsTips, onBack: propsOnBack, onDelete: pro
     <Box
       sx={{
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f8fafc 0%, #f3e8ff 50%, #fae8ff 100%)',
-        py: 5,
-        position: 'relative',
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '400px',
-          background: 'radial-gradient(circle at 20% 10%, rgba(139,92,246,0.08), transparent 40%), radial-gradient(circle at 80% 20%, rgba(6,182,212,0.08), transparent 40%)',
-          zIndex: 0,
-        },
+        bgcolor: '#f8fafb',
+        py: 4,
       }}
     >
-      <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
+      <Container maxWidth="lg">
         {/* Header */}
-        <Box display="flex" alignItems="center" gap={2} mb={3}>
-          <IconButton onClick={() => propsOnBack ? propsOnBack() : navigate(-1)} size="large">
-            <ArrowBackIcon />
-          </IconButton>
-          <Box flex={1}>
-            <Typography variant="h5" fontWeight={700}>
-              🌟 Lifestyle Tips
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {new Date(tips.target_date).toLocaleDateString('en-US', {
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric',
-              })}{' '}
-              • Region: {tips.region}
-            </Typography>
+        <Paper
+          elevation={0}
+          sx={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: 3,
+            p: 3,
+            mb: 3,
+            color: '#ffffff',
+          }}
+        >
+          <Box display="flex" alignItems="center" gap={2}>
+            <IconButton 
+              onClick={() => propsOnBack ? propsOnBack() : navigate(-1)} 
+              size="large"
+              sx={{ color: '#ffffff' }}
+            >
+              <ArrowBackIcon />
+            </IconButton>
+            <Box flex={1}>
+              <Typography variant="h5" fontWeight={700}>
+                Lifestyle Wellness Tips
+              </Typography>
+              <Typography variant="body2" sx={{ opacity: 0.95, mt: 0.5 }}>
+                {new Date(tips.target_date).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
+                })}{' '}
+                • {tips.region}
+              </Typography>
+            </Box>
+            <Button
+              variant="contained"
+              color="error"
+              startIcon={<DeleteIcon />}
+              onClick={handleDelete}
+              sx={{
+                bgcolor: 'rgba(255,255,255,0.2)',
+                backdropFilter: 'blur(10px)',
+                color: '#ffffff',
+                fontWeight: 600,
+                '&:hover': {
+                  bgcolor: 'rgba(255,255,255,0.3)',
+                }
+              }}
+            >
+              Delete
+            </Button>
           </Box>
-          <Button
-            variant="outlined"
-            color="error"
-            startIcon={<DeleteIcon />}
-            onClick={handleDelete}
-            size="small"
-          >
-            Delete
-          </Button>
-        </Box>
+        </Paper>
 
         {error && (
           <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }} onClose={() => setError(null)}>
@@ -264,113 +276,63 @@ const LifestyleTipsView = ({ tips: propsTips, onBack: propsOnBack, onDelete: pro
 
         {/* Personalized Insights */}
         {tips.personalized_insights?.length > 0 && (
-          <Card sx={{ borderRadius: 3, border: '1px solid #e2e8f0', mb: 3, bgcolor: '#f8f5ff' }}>
-            <CardContent>
-              <Typography variant="h6" fontWeight={700} mb={2} sx={{ color: '#8b5cf6' }}>
+          <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid #e2e8f0', mb: 3, bgcolor: '#f8f5ff' }}>
+            <CardContent sx={{ p: 3 }}>
+              <Typography variant="h6" fontWeight={700} mb={2} sx={{ color: '#667eea' }}>
                 💡 Personalized Insights
               </Typography>
               <Stack spacing={1.5}>
                 {tips.personalized_insights.map((insight, idx) => (
-                  <Typography key={idx} variant="body2">
-                    • {insight}
-                  </Typography>
+                  <Box 
+                    key={idx}
+                    sx={{
+                      p: 2,
+                      borderRadius: 2,
+                      bgcolor: 'rgba(102, 126, 234, 0.05)',
+                      borderLeft: '3px solid #667eea'
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ color: '#1e293b' }}>
+                      {insight}
+                    </Typography>
+                  </Box>
                 ))}
               </Stack>
             </CardContent>
           </Card>
         )}
 
-        {/* Progress Overview */}
-        <Grid container spacing={2} mb={3}>
-          <Grid item xs={12} sm={6}>
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-              <Typography variant="body2" color="text.secondary" fontWeight={600} mb={1}>
-                Tips Completion
-              </Typography>
-              <Typography variant="h5" fontWeight={700} sx={{ color: '#8b5cf6', mb: 1 }}>
-                {completedTips}/{totalTips}
-              </Typography>
-              <Box sx={{ height: 6, borderRadius: 3, bgcolor: '#e0e0e0', overflow: 'hidden' }}>
-                <Box
-                  sx={{
-                    height: '100%',
-                    bgcolor: '#8b5cf6',
-                    width: `${totalTips > 0 ? (completedTips / totalTips) * 100 : 0}%`,
-                    transition: 'width 0.3s ease',
-                  }}
-                />
-              </Box>
-            </Paper>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-              <Typography variant="body2" color="text.secondary" fontWeight={600} mb={1}>
-                Daily Checklist
-              </Typography>
-              <Typography variant="h5" fontWeight={700} sx={{ color: '#10b981', mb: 1 }}>
-                {checklistCompleted}/{tips.daily_checklist?.length || 0}
-              </Typography>
-              <Box sx={{ height: 6, borderRadius: 3, bgcolor: '#e0e0e0', overflow: 'hidden' }}>
-                <Box
-                  sx={{
-                    height: '100%',
-                    bgcolor: '#10b981',
-                    width: `${tips.daily_checklist?.length > 0 ? (checklistCompleted / tips.daily_checklist.length) * 100 : 0}%`,
-                    transition: 'width 0.3s ease',
-                  }}
-                />
-              </Box>
-            </Paper>
-          </Grid>
-        </Grid>
-
         {/* Daily Checklist */}
         {tips.daily_checklist?.length > 0 && (
-          <Card sx={{ borderRadius: 3, border: '1px solid #e2e8f0', mb: 3 }}>
-            <CardContent>
-              <Typography variant="h6" fontWeight={700} mb={2}>
-                ✅ Daily Checklist
+          <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid #e2e8f0', mb: 3, bgcolor: '#ffffff' }}>
+            <CardContent sx={{ p: 3 }}>
+              <Typography variant="h6" fontWeight={700} mb={3} sx={{ color: '#1e293b' }}>
+                Daily Checklist
               </Typography>
-              <Divider sx={{ mb: 2 }} />
-              <Stack spacing={1.5}>
+              <Stack spacing={2}>
                 {tips.daily_checklist.map((task, idx) => (
                   <Box
                     key={idx}
                     sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 2,
-                      p: 1.5,
+                      p: 2.5,
                       borderRadius: 2,
-                      bgcolor: task.completed ? '#e8f5e9' : '#f5f5f5',
+                      bgcolor: '#f8fafb',
+                      border: '1px solid #e2e8f0',
                       transition: 'all 0.2s ease',
+                      '&:hover': {
+                        borderColor: '#667eea',
+                        boxShadow: '0 2px 8px rgba(102, 126, 234, 0.15)'
+                      }
                     }}
                   >
-                    <Checkbox
-                      checked={task.completed}
-                      onChange={() => handleChecklistToggle(idx, task.completed)}
-                      disabled={updating}
-                      sx={{
-                        color: '#8b5cf6',
-                        '&.Mui-checked': { color: '#10b981' },
-                      }}
-                    />
-                    <Box flex={1}>
-                      <Typography
-                        sx={{
-                          textDecoration: task.completed ? 'line-through' : 'none',
-                          color: task.completed ? '#999' : 'inherit',
-                        }}
-                      >
-                        {task.task}
+                    <Typography variant="body1" fontWeight={600} sx={{ color: '#1e293b', mb: 0.5 }}>
+                      {task.task}
+                    </Typography>
+                    {task.time_of_day && (
+                      <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
+                        🕒 {task.time_of_day}
                       </Typography>
-                      {task.time_of_day && (
-                        <Typography variant="caption" color="text.secondary">
-                          🕒 {task.time_of_day}
-                        </Typography>
-                      )}
-                    </Box>
-                    {task.completed && <Typography sx={{ color: '#10b981', fontWeight: 600 }}>✓</Typography>}
+                    )}
                   </Box>
                 ))}
               </Stack>
@@ -380,8 +342,8 @@ const LifestyleTipsView = ({ tips: propsTips, onBack: propsOnBack, onDelete: pro
 
         {/* Categories */}
         {tips.categories?.map((category, catIdx) => (
-          <Card key={catIdx} sx={{ borderRadius: 3, border: '1px solid #e2e8f0', mb: 2 }}>
-            <CardContent>
+          <Card key={catIdx} elevation={0} sx={{ borderRadius: 3, border: '1px solid #e2e8f0', mb: 2, bgcolor: '#ffffff' }}>
+            <CardContent sx={{ p: 3 }}>
               <Box
                 onClick={() => toggleCategory(catIdx)}
                 sx={{
@@ -389,20 +351,20 @@ const LifestyleTipsView = ({ tips: propsTips, onBack: propsOnBack, onDelete: pro
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   cursor: 'pointer',
-                  pb: 2,
+                  pb: expandedCategories[catIdx] ? 2 : 0,
                   borderBottom: expandedCategories[catIdx] ? '1px solid #e2e8f0' : 'none',
                 }}
               >
                 <Box display="flex" alignItems="center" gap={2}>
-                  <Typography variant="h6" fontWeight={700}>
-                    {categoryConfig[category.name]?.icon} {categoryConfig[category.name]?.name}
+                  <Typography variant="h6" fontWeight={700} sx={{ color: '#1e293b' }}>
+                    {categoryConfig[category.name]?.icon || '📝'} {categoryConfig[category.name]?.name || category.name.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                   </Typography>
                   <Chip
-                    label={`${category.tips?.filter((t) => t.completed).length || 0}/${category.tips?.length || 0}`}
+                    label={`${category.tips?.length || 0} tips`}
                     size="small"
                     sx={{
-                      bgcolor: `${categoryConfig[category.name]?.color || '#8b5cf6'}20`,
-                      color: categoryConfig[category.name]?.color || '#8b5cf6',
+                      bgcolor: `${categoryConfig[category.name]?.color || '#667eea'}20`,
+                      color: categoryConfig[category.name]?.color || '#667eea',
                       fontWeight: 600,
                     }}
                   />
@@ -411,6 +373,7 @@ const LifestyleTipsView = ({ tips: propsTips, onBack: propsOnBack, onDelete: pro
                   sx={{
                     transform: expandedCategories[catIdx] ? 'rotate(180deg)' : 'rotate(0deg)',
                     transition: 'transform 0.3s ease',
+                    color: '#64748b'
                   }}
                 />
               </Box>
@@ -418,51 +381,46 @@ const LifestyleTipsView = ({ tips: propsTips, onBack: propsOnBack, onDelete: pro
               <Collapse in={expandedCategories[catIdx]}>
                 <Stack spacing={2} sx={{ mt: 2 }}>
                   {category.tips?.map((tip, tipIdx) => (
-                    <Paper
+                    <Box
                       key={tipIdx}
-                      variant="outlined"
                       sx={{
-                        p: 2,
+                        p: 2.5,
                         borderRadius: 2,
-                        borderColor: tip.completed ? '#10b981' : '#e2e8f0',
-                        bgcolor: tip.completed ? '#f1f5f4' : '#fafafa',
+                        bgcolor: '#f8fafb',
+                        border: '1px solid #e2e8f0',
                         transition: 'all 0.2s ease',
+                        '&:hover': {
+                          borderColor: categoryConfig[category.name]?.color || '#667eea',
+                          boxShadow: `0 4px 12px ${categoryConfig[category.name]?.color || '#667eea'}25`,
+                        }
                       }}
                     >
-                      <Box display="flex" gap={2}>
-                        <Checkbox
-                          checked={tip.completed}
-                          onChange={() => handleTipToggle(catIdx, tipIdx, tip.completed)}
-                          disabled={updating}
-                          sx={{
-                            mt: 0.5,
-                            color: '#8b5cf6',
-                            '&.Mui-checked': { color: '#10b981' },
-                          }}
-                        />
-                        <Box flex={1}>
-                          <Typography
-                            variant="body1"
-                            fontWeight={600}
+                      <Typography
+                        variant="body1"
+                        fontWeight={600}
+                        sx={{ color: '#1e293b', mb: 1 }}
+                      >
+                        {tip.title}
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: '#64748b', mb: 2 }}>
+                        {tip.description}
+                      </Typography>
+                      <Box display="flex" gap={1} alignItems="center" flexWrap="wrap">
+                        <PriorityChip priority={tip.priority} />
+                        {tip.actionable && (
+                          <Chip 
+                            label="Actionable" 
+                            size="small" 
                             sx={{
-                              textDecoration: tip.completed ? 'line-through' : 'none',
-                              color: tip.completed ? '#999' : 'inherit',
-                            }}
-                          >
-                            {tip.title}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary" sx={{ my: 1 }}>
-                            {tip.description}
-                          </Typography>
-                          <Box display="flex" gap={1} alignItems="center">
-                            <PriorityChip priority={tip.priority} />
-                            {tip.actionable && (
-                              <Chip label="Actionable" size="small" variant="outlined" sx={{ fontSize: '0.75rem' }} />
-                            )}
-                          </Box>
-                        </Box>
+                              bgcolor: `${categoryConfig[category.name]?.color || '#667eea'}15`,
+                              color: categoryConfig[category.name]?.color || '#667eea',
+                              fontWeight: 600,
+                              fontSize: '0.75rem'
+                            }} 
+                          />
+                        )}
                       </Box>
-                    </Paper>
+                    </Box>
                   ))}
                 </Stack>
               </Collapse>
@@ -472,17 +430,31 @@ const LifestyleTipsView = ({ tips: propsTips, onBack: propsOnBack, onDelete: pro
 
         {/* Sources */}
         {tips.sources?.length > 0 && (
-          <Card sx={{ borderRadius: 3, border: '1px solid #e2e8f0', mb: 3 }}>
-            <CardContent>
-              <Typography variant="h6" fontWeight={700} mb={2}>
+          <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid #e2e8f0', mb: 3, bgcolor: '#ffffff' }}>
+            <CardContent sx={{ p: 3 }}>
+              <Typography variant="h6" fontWeight={700} mb={3} sx={{ color: '#1e293b' }}>
                 📚 Sources Used
               </Typography>
-              <Divider sx={{ mb: 2 }} />
-              <Stack spacing={1}>
+              <Stack spacing={1.5}>
                 {tips.sources.map((source, idx) => (
-                  <Typography key={idx} variant="body2">
-                    • {source.title} {source.country && `(${source.country})`}
-                  </Typography>
+                  <Box
+                    key={idx}
+                    sx={{
+                      p: 2,
+                      borderRadius: 2,
+                      bgcolor: '#f8fafb',
+                      border: '1px solid #e2e8f0',
+                    }}
+                  >
+                    <Typography variant="body2" fontWeight={600} sx={{ color: '#1e293b' }}>
+                      {source.title}
+                    </Typography>
+                    {source.country && (
+                      <Typography variant="caption" sx={{ color: '#64748b' }}>
+                        {source.country}
+                      </Typography>
+                    )}
+                  </Box>
                 ))}
               </Stack>
             </CardContent>

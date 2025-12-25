@@ -33,7 +33,7 @@ import {
   ArrowBack,
   Close,
   Assessment as AssessmentIcon,
-  MedicalServices,
+  Assignment,
   Login,
   Visibility,
 } from '@mui/icons-material';
@@ -189,59 +189,48 @@ const SymptomAssessment = () => {
     <Box 
       minHeight="100vh" 
       sx={{
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: (theme) => theme.palette.background.gradient || theme.palette.background.default,
         position: 'relative',
-        '&::before': {
-          content: '""',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'radial-gradient(circle at 20% 30%, rgba(255,255,255,0.1) 0%, transparent 50%), radial-gradient(circle at 80% 70%, rgba(255,255,255,0.08) 0%, transparent 50%)',
-          zIndex: 0
-        }
       }}
     >
       <Container maxWidth="lg" sx={{ py: 6, position: 'relative', zIndex: 1 }}>
         {/* Header */}
         <Fade in timeout={800}>
-          <Box textAlign="center" mb={4}>
+          <Box textAlign="center" mb={5}>
             <Box 
               sx={{ 
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: 80,
-                height: 80,
-                borderRadius: '50%',
-                background: 'rgba(255, 255, 255, 0.2)',
-                backdropFilter: 'blur(10px)',
-                border: '2px solid rgba(255, 255, 255, 0.3)',
+                width: 100,
+                height: 100,
+                borderRadius: 4,
+                background: (theme) => `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
+                border: (theme) => `2px solid ${alpha(theme.palette.primary.main, 0.2)}`,
                 mb: 3,
               }}
             >
-              <AssessmentIcon sx={{ fontSize: 50, color: '#fff' }} />
+              <AssessmentIcon sx={{ fontSize: 56, color: 'primary.main' }} />
             </Box>
             <Typography 
               variant="h3" 
-              fontWeight={900} 
+              fontWeight={700} 
               sx={{ 
-                color: '#fff',
                 mb: 2,
-                textShadow: '0 4px 20px rgba(0,0,0,0.2)',
+                fontSize: { xs: '2rem', md: '2.5rem' },
               }}
             >
               Diabetes Symptom Assessment
             </Typography>
             <Typography 
               variant="h6" 
+              color="text.secondary"
               sx={{ 
-                color: 'rgba(255, 255, 255, 0.95)',
                 maxWidth: 700,
                 mx: 'auto',
                 lineHeight: 1.7,
-                textShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                fontSize: { xs: '1rem', md: '1.1rem' },
+                fontWeight: 400,
               }}
             >
               Complete a professional health assessment to understand your diabetes risk
@@ -255,34 +244,40 @@ const SymptomAssessment = () => {
             elevation={0}
             sx={{
               p: { xs: 3, md: 5 },
-              borderRadius: 5,
-              background: 'rgba(255, 255, 255, 0.98)',
+              borderRadius: 4,
+              background: (theme) => alpha(theme.palette.background.paper, 0.95),
               backdropFilter: 'blur(20px)',
-              border: '1px solid rgba(255, 255, 255, 0.3)',
-              boxShadow: '0 30px 90px rgba(0, 0, 0, 0.3)',
+              border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+              boxShadow: (theme) => theme.shadows[8],
               minHeight: 600,
             }}
           >
             {/* Progress Bar */}
             <Box sx={{ mb: 4 }}>
               <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography variant="body2" fontWeight={700} color="text.secondary">
-                  Progress
+                <Typography variant="body2" fontWeight={600} color="text.secondary">
+                  Overall Progress
                 </Typography>
-                <Typography variant="body2" fontWeight={900} color="primary">
-                  {Math.round(getProgressPercentage())}%
-                </Typography>
+                <Chip 
+                  label={`${Math.round(getProgressPercentage())}%`}
+                  size="small"
+                  sx={{ 
+                    fontWeight: 700,
+                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
+                    color: 'primary.main',
+                  }}
+                />
               </Box>
               <LinearProgress 
                 variant="determinate" 
                 value={getProgressPercentage()} 
                 sx={{ 
-                  height: 10, 
-                  borderRadius: 10,
-                  bgcolor: alpha('#667eea', 0.1),
+                  height: 8, 
+                  borderRadius: 4,
+                  bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
                   '& .MuiLinearProgress-bar': {
-                    background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
-                    borderRadius: 10,
+                    borderRadius: 4,
+                    bgcolor: 'primary.main',
                   }
                 }} 
               />
@@ -296,15 +291,15 @@ const SymptomAssessment = () => {
                     StepIconProps={{
                       sx: {
                         '&.Mui-completed': {
-                          color: '#10b981',
+                          color: 'success.main',
                         },
                         '&.Mui-active': {
-                          color: '#667eea',
+                          color: 'primary.main',
                         },
                       },
                     }}
                   >
-                    <Typography variant="body2" fontWeight={700}>
+                    <Typography variant="body2" fontWeight={600}>
                       {label}
                     </Typography>
                   </StepLabel>
@@ -323,33 +318,33 @@ const SymptomAssessment = () => {
                         label={`Symptom ${currentSymptomIndex + 1} of ${symptoms.length}`}
                         sx={{ 
                           mb: 2,
-                          bgcolor: alpha('#6366f1', 0.09),
-                          color: '#4f46e5',
-                          fontWeight: 900,
-                          fontSize: '0.9rem',
-                          letterSpacing: 0.4,
+                          bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
+                          color: 'primary.main',
+                          fontWeight: 700,
+                          fontSize: '0.875rem',
+                          px: 1,
                         }}
                       />
                       <Typography
                         variant="overline"
                         sx={{
+                          display: 'block',
                           textTransform: 'uppercase',
-                          letterSpacing: 2.2,
+                          letterSpacing: 1.5,
                           color: 'text.secondary',
-                          fontWeight: 700,
+                          fontWeight: 600,
+                          mb: 1,
                         }}
                       >
                         {currentSymptom._diseaseName || 'Diabetes'}
                       </Typography>
                       <Typography
                         variant="h4"
-                        fontWeight={900}
+                        fontWeight={700}
                         gutterBottom
                         sx={{
-                          mt: 0.5,
-                          mb: 1.5,
-                          color: '#0f172a',
-                          letterSpacing: 0.3,
+                          mb: 2,
+                          fontSize: { xs: '1.75rem', md: '2.125rem' },
                         }}
                       >
                         {currentSymptom.name}
@@ -358,13 +353,13 @@ const SymptomAssessment = () => {
                         <Typography
                           variant="body1"
                           color="text.secondary"
-                          sx={{ maxWidth: 640, mx: 'auto', lineHeight: 1.7 }}
+                          sx={{ maxWidth: 640, mx: 'auto', lineHeight: 1.7, mb: 2 }}
                         >
                           {currentSymptom.description}
                         </Typography>
                       )}
                     </Box>
-                    <Divider sx={{ mb: 3 }} />
+                    <Divider sx={{ mb: 4, mx: 'auto', maxWidth: 600 }} />
                     <QuestionList 
                       symptomId={currentSymptom._id} 
                       symptomName={currentSymptom.name}
@@ -387,14 +382,14 @@ const SymptomAssessment = () => {
                         width: 120,
                         height: 120,
                         borderRadius: '50%',
-                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        bgcolor: (theme) => alpha(theme.palette.success.main, 0.1),
+                        border: (theme) => `3px solid ${alpha(theme.palette.success.main, 0.3)}`,
                         mb: 4,
-                        boxShadow: '0 20px 60px rgba(16, 185, 129, 0.3)',
                       }}
                     >
-                      <CheckCircle sx={{ fontSize: 80, color: '#fff' }} />
+                      <CheckCircle sx={{ fontSize: 80, color: 'success.main' }} />
                     </Box>
-                    <Typography variant="h4" fontWeight={900} gutterBottom sx={{ mb: 2 }}>
+                    <Typography variant="h4" fontWeight={700} gutterBottom sx={{ mb: 2, fontSize: { xs: '1.75rem', md: '2.125rem' } }}>
                       Assessment Complete! 🎉
                     </Typography>
                     <Typography variant="body1" color="text.secondary" sx={{ mb: 4, maxWidth: 600, mx: 'auto', lineHeight: 1.8 }}>
@@ -409,13 +404,11 @@ const SymptomAssessment = () => {
                         px: 6,
                         py: 2,
                         fontSize: '1.1rem',
-                        fontWeight: 900,
-                        borderRadius: 4,
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        boxShadow: '0 12px 40px rgba(102, 126, 234, 0.4)',
+                        fontWeight: 700,
+                        borderRadius: 3,
+                        boxShadow: (theme) => `0 12px 40px ${alpha(theme.palette.primary.main, 0.3)}`,
                         '&:hover': {
-                          background: 'linear-gradient(135deg, #5568d3 0%, #6a3e8f 100%)',
-                          boxShadow: '0 16px 50px rgba(102, 126, 234, 0.5)',
+                          boxShadow: (theme) => `0 16px 50px ${alpha(theme.palette.primary.main, 0.4)}`,
                           transform: 'translateY(-2px)',
                         },
                         transition: 'all 0.3s ease',
@@ -430,21 +423,17 @@ const SymptomAssessment = () => {
 
             {/* Navigation Buttons */}
             {activeStep === 0 && (
-              <Box display="flex" justifyContent="space-between" mt={5} pt={4} borderTop="2px solid #f3f4f6">
+              <Box display="flex" justifyContent="space-between" mt={5} pt={4} sx={{ borderTop: (theme) => `1px solid ${theme.palette.divider}` }}>
                 <Button
                   variant="outlined"
                   startIcon={<ArrowBack />}
                   onClick={handleBack}
-                  disabled={activeStep === 0}
+                  disabled={currentSymptomIndex === 0}
                   sx={{
                     px: 4,
                     py: 1.5,
-                    fontWeight: 800,
+                    fontWeight: 600,
                     borderRadius: 3,
-                    borderWidth: 2,
-                    '&:hover': {
-                      borderWidth: 2,
-                    },
                   }}
                 >
                   Back
@@ -457,13 +446,11 @@ const SymptomAssessment = () => {
                   sx={{
                     px: 4,
                     py: 1.5,
-                    fontWeight: 900,
+                    fontWeight: 700,
                     borderRadius: 3,
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    boxShadow: '0 8px 24px rgba(102, 126, 234, 0.35)',
+                    boxShadow: (theme) => `0 8px 24px ${alpha(theme.palette.primary.main, 0.3)}`,
                     '&:hover': {
-                      background: 'linear-gradient(135deg, #5568d3 0%, #6a3e8f 100%)',
-                      boxShadow: '0 12px 32px rgba(102, 126, 234, 0.45)',
+                      boxShadow: (theme) => `0 12px 32px ${alpha(theme.palette.primary.main, 0.4)}`,
                     },
                   }}
                 >
@@ -489,8 +476,18 @@ const SymptomAssessment = () => {
         }}
       >
         <DialogTitle sx={{ textAlign: 'center', pt: 4 }}>
-          <Login sx={{ fontSize: 80, color: '#667eea', mb: 2 }} />
-          <Typography variant="h5" fontWeight={800}>
+          <Box
+            sx={{
+              display: 'inline-flex',
+              p: 3,
+              borderRadius: 3,
+              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
+              mb: 2,
+            }}
+          >
+            <Login sx={{ fontSize: 56, color: 'primary.main' }} />
+          </Box>
+          <Typography variant="h5" fontWeight={700}>
             Login Required
           </Typography>
         </DialogTitle>
@@ -507,9 +504,8 @@ const SymptomAssessment = () => {
             sx={{
               px: 6,
               py: 1.5,
-              fontWeight: 900,
+              fontWeight: 700,
               borderRadius: 3,
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             }}
           >
             Sign In

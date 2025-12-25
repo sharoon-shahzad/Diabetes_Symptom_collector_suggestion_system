@@ -21,7 +21,6 @@ import {
   DialogContentText,
   DialogActions,
 } from '@mui/material';
-import { ArrowForward, ArrowBack, Error, CheckCircle } from '@mui/icons-material';
 import { motion as _motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../utils/axiosInstance';
@@ -513,7 +512,6 @@ const QuestionFlowStep = ({ onBack, onAnswersSubmit, isLoggedIn, initialSymptomI
         <Button
           variant="outlined"
           onClick={handleBack}
-          startIcon={<ArrowBack />}
           sx={{
             borderRadius: 2,
             px: 3,
@@ -527,7 +525,7 @@ const QuestionFlowStep = ({ onBack, onAnswersSubmit, isLoggedIn, initialSymptomI
         <Button
           variant="contained"
           onClick={handleNext}
-          endIcon={currentSymptomIndex >= symptoms.length - 1 ? <CheckCircle /> : <ArrowForward />}
+          onClick={handleNext}
           disabled={submitting}
           sx={{
             borderRadius: 2,

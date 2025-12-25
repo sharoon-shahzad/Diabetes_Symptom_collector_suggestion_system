@@ -71,6 +71,42 @@ const DietPlanDashboard = ({ inModal = false }) => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [generating, setGenerating] = useState(false);
 
+  // Calculate actual calories from meals - ALWAYS calculate from actual meal data
+  const calculateActualCalories = (plan) => {
+    // Priority 1: ALWAYS calculate from meals first (most accurate - actual food items)
+    if (plan.meals && Array.isArray(plan.meals) && plan.meals.length > 0) {
+      const mealTotal = plan.meals.reduce((sum, meal) => {
+        // Try meal.total_calories first
+        if (meal.total_calories && typeof meal.total_calories === 'number') {
+          return sum + meal.total_calories;
+        }
+        // Fall back to summing items
+        if (meal.items && Array.isArray(meal.items)) {
+          const itemSum = meal.items.reduce((mealSum, item) => {
+            return mealSum + (typeof item.calories === 'number' ? item.calories : 0);
+          }, 0);
+          return sum + itemSum;
+        }
+        return sum;
+      }, 0);
+      
+      if (mealTotal > 0) {
+        console.log(`Plan ${plan._id}: Calculated from meals = ${mealTotal}`);
+        return Math.round(mealTotal);
+      }
+    }
+    
+    // Priority 2: Check nutritional_totals.calories (backup)
+    if (plan.nutritional_totals && typeof plan.nutritional_totals.calories === 'number' && plan.nutritional_totals.calories > 0) {
+      console.log(`Plan ${plan._id}: Using nutritional_totals.calories = ${plan.nutritional_totals.calories}`);
+      return Math.round(plan.nutritional_totals.calories);
+    }
+    
+    // Priority 3: Fall back to total_calories (target value)
+    console.log(`Plan ${plan._id}: Using total_calories fallback = ${plan.total_calories}`);
+    return Math.round(plan.total_calories || 0);
+  };
+
   // Generate date options (today + 5 days)
   const generateDateOptions = () => {
     const options = [];
@@ -108,7 +144,20 @@ const DietPlanDashboard = ({ inModal = false }) => {
 
       // Fetch diet plan history
       const historyRes = await axiosInstance.get('/diet-plan/history?limit=10');
-      setDietHistory(historyRes.data.plans || []);
+      const plans = historyRes.data.plans || [];
+      
+      // Log each plan's calorie data for debugging
+      console.log('📋 Diet Plans Loaded:');
+      plans.forEach(plan => {
+        console.log(`Plan ${plan._id}:`, {
+          target_date: plan.target_date,
+          total_calories: plan.total_calories,
+          nutritional_totals: plan.nutritional_totals,
+          meals_count: plan.meals?.length
+        });
+      });
+      
+      setDietHistory(plans);
 
       // Try to fetch today's plan
       const today = new Date().toISOString().split('T')[0];
@@ -224,77 +273,69 @@ const DietPlanDashboard = ({ inModal = false }) => {
         <Paper
           elevation={0}
           sx={{
-            borderRadius: 4,
+            borderRadius: 3,
             p: { xs: 3, md: 4 },
             background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
             color: '#1f2937',
-            position: 'relative',
-            overflow: 'hidden',
-            border: '1px solid #e5e7eb'
+            border: '1px solid #d1fae5'
           }}
         >
-          <Box sx={{ position: 'absolute', inset: 0, background: 'radial-gradient(circle at 85% 20%, rgba(34,197,94,0.08), transparent 35%)' }} />
-          {/* Floating food emojis */}
-          <Box sx={{ position: 'absolute', top: 20, right: '8%', fontSize: '2.5rem', opacity: 0.15, animation: 'float 3s ease-in-out infinite' }}>🥗</Box>
-          <Box sx={{ position: 'absolute', bottom: 30, left: '6%', fontSize: '2rem', opacity: 0.15, animation: 'float 4s ease-in-out infinite', animationDelay: '1s' }}>🍎</Box>
-          <Box sx={{ position: 'absolute', top: '40%', right: '3%', fontSize: '2.2rem', opacity: 0.12, animation: 'float 3.5s ease-in-out infinite', animationDelay: '0.5s' }}>🥦</Box>
-          <Box sx={{ position: 'absolute', bottom: 20, right: '15%', fontSize: '1.8rem', opacity: 0.15, animation: 'float 4.5s ease-in-out infinite', animationDelay: '1.5s' }}>🥑</Box>
-          <style>{`
-            @keyframes float {
-              0%, 100% { transform: translateY(0px) rotate(0deg); }
-              50% { transform: translateY(-15px) rotate(5deg); }
-            }
-          `}</style>
-          <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} alignItems={{ xs: 'flex-start', md: 'center' }} justifyContent="space-between" gap={2} sx={{ position: 'relative' }}>
+          <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} alignItems={{ xs: 'flex-start', md: 'center' }} justifyContent="space-between" gap={2}>
             <Box>
-              <Typography variant="h4" fontWeight="800" sx={{ letterSpacing: '-0.5px' }}>
-                <RestaurantIcon sx={{ fontSize: 40, verticalAlign: 'middle', mr: 1 }} />
-                🍽️ Nutrition Coach
+              <Typography variant="h4" fontWeight="700" sx={{ letterSpacing: '-0.5px', color: '#1e293b', mb: 1 }}>
+                <RestaurantIcon sx={{ fontSize: 32, verticalAlign: 'middle', mr: 1, color: '#10b981' }} />
+                Nutrition & Diet Plan
               </Typography>
-              <Typography variant="body1" sx={{ opacity: 0.9, mt: 0.5 }}>
-                Personalized meal plans powered by evidence-based dietary guidelines tailored to your region and needs
+              <Typography variant="body1" sx={{ color: '#64748b', fontSize: '0.95rem' }}>
+                Personalized meal plans powered by evidence-based dietary guidelines
               </Typography>
-              <Stack direction="row" spacing={1} mt={2}>
+              <Stack direction="row" spacing={1} mt={2} flexWrap="wrap" gap={1}>
                 {regionCoverage ? (
                   <Chip
-                    label={`Region: ${regionCoverage.region} • ${regionCoverage.coverage || 'N/A'}`}
+                    label={`${regionCoverage.region}`}
+                    size="small"
                     sx={{ bgcolor: '#ffffff', color: '#10b981', borderColor: '#d1fae5', fontWeight: 600 }}
                     variant="outlined"
                   />
                 ) : null}
-                <Chip label={`History: ${dietHistory.length || 0}`} sx={{ bgcolor: '#ffffff', color: '#10b981', fontWeight: 600 }} />
+                <Chip 
+                  label={`${dietHistory.length} Plans`} 
+                  size="small"
+                  sx={{ bgcolor: '#ffffff', color: '#64748b', fontWeight: 600 }} 
+                />
               </Stack>
             </Box>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
               <Button
                 variant="contained"
-                size="large"
+                size="medium"
                 onClick={() => {
                   setShowGenerator(true);
                   setSelectedDate(dateOptions[0].value);
                 }}
+                startIcon={<RestaurantIcon />}
                 sx={{
                   textTransform: 'none',
-                  fontWeight: 'bold',
-                  px: 3.5,
-                  py: 1.2,
+                  fontWeight: 600,
+                  px: 3,
                   bgcolor: '#10b981',
                   color: '#fff',
-                  '&:hover': { bgcolor: '#059669' }
+                  boxShadow: 'none',
+                  '&:hover': { bgcolor: '#059669', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }
                 }}
               >
                 Create Diet Plan
               </Button>
               <Button
                 variant="outlined"
-                size="large"
+                size="medium"
                 onClick={fetchInitialData}
                 sx={{
                   textTransform: 'none',
-                  fontWeight: 'bold',
-                  color: '#10b981',
-                  borderColor: '#10b981',
-                  '&:hover': { borderColor: '#059669', bgcolor: '#f0fdf4' }
+                  fontWeight: 600,
+                  color: '#64748b',
+                  borderColor: '#e2e8f0',
+                  '&:hover': { borderColor: '#cbd5e1', bgcolor: '#f8fafc' }
                 }}
               >
                 Refresh
@@ -315,125 +356,124 @@ const DietPlanDashboard = ({ inModal = false }) => {
           </Alert>
         )}
 
-      <Grid container spacing={3}>
-        {/* Generate New Plan Section */}
-        <Grid item xs={12} md={6}>
-          <Card elevation={3}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-                <CalendarIcon sx={{ mr: 1 }} />
-                Generate New Diet Plan
+      {/* Diet History Section - Full Width */}
+      <Card elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: 2 }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', fontWeight: 600, color: '#1e293b' }}>
+            <TrendingUpIcon sx={{ mr: 1, color: '#10b981' }} />
+            Your Diet History
+          </Typography>
+          <Divider sx={{ my: 2 }} />
+          
+          {dietHistory.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 6 }}>
+              <RestaurantIcon sx={{ fontSize: 64, color: '#cbd5e1', mb: 2 }} />
+              <Typography variant="body1" sx={{ color: '#64748b', mb: 1, fontWeight: 500 }}>
+                No diet plans yet
               </Typography>
-              <Divider sx={{ my: 2 }} />
-              
-              <Typography variant="body2" color="text.secondary" paragraph>
-                Create a personalized meal plan for any day within the next 5 days
+              <Typography variant="body2" sx={{ color: '#94a3b8' }}>
+                Click "Create Diet Plan" above to generate your first personalized meal plan
               </Typography>
+            </Box>
+          ) : (
+            <Grid container spacing={2}>
+              {dietHistory.map((plan) => (
+                <Grid item xs={12} sm={6} md={4} key={plan._id}>
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 2.5,
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 2,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      '&:hover': { 
+                        borderColor: '#10b981', 
+                        bgcolor: '#f0fdf4', 
+                        transform: 'translateY(-4px)', 
+                        boxShadow: '0 8px 20px rgba(16,185,129,0.15)' 
+                      }
+                    }}
+                    onClick={() => handleViewPlan(plan)}
+                  >
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="h6" fontWeight="700" sx={{ color: '#1e293b', mb: 0.5 }}>
+                        {new Date(plan.target_date).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: '#64748b', fontSize: '0.75rem' }}>
+                        {new Date(plan.target_date).toLocaleDateString('en-US', {
+                          weekday: 'long'
+                        })}
+                      </Typography>
+                    </Box>
+                    
+                    <Box sx={{ 
+                      bgcolor: '#f0fdf4', 
+                      borderRadius: 1.5, 
+                      p: 1.5, 
+                      mb: 2,
+                      border: '1px solid #d1fae5'
+                    }}>
+                      <Typography variant="h5" fontWeight="700" sx={{ color: '#10b981', mb: 0.5 }}>
+                        {calculateActualCalories(plan)}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: '#059669', fontWeight: 600 }}>
+                        kcal
+                      </Typography>
+                    </Box>
 
-              <Button
-                variant="contained"
-                fullWidth
-                size="large"
-                onClick={() => setShowGenerator(true)}
-                disabled={!regionCoverage?.canGeneratePlan}
-                startIcon={<RestaurantIcon />}
-                sx={{
-                  bgcolor: '#10b981',
-                  color: '#fff',
-                  '&:hover': { bgcolor: '#059669' },
-                  textTransform: 'none',
-                  fontWeight: 600
-                }}
-              >
-                Create Diet Plan
-              </Button>
-
-              {!regionCoverage?.canGeneratePlan && (
-                <Alert severity="warning" sx={{ mt: 2 }}>
-                  Diet plans are not available for your region yet. Contact support to add regional guidelines.
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Diet History Section */}
-        <Grid item xs={12} md={6}>
-          <Card elevation={3}>
-            <CardContent>
-              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-                <TrendingUpIcon sx={{ mr: 1 }} />
-                Your Diet History
-              </Typography>
-              <Divider sx={{ my: 2 }} />
-              
-              {dietHistory.length === 0 ? (
-                <Typography variant="body2" color="text.secondary" align="center" py={3}>
-                  No diet plans yet. Generate your first plan to get started!
-                </Typography>
-              ) : (
-                <Box>
-                  {dietHistory.slice(0, 5).map((plan) => (
-                    <Paper
-                      key={plan._id}
-                      elevation={0}
-                      sx={{
-                        p: 2,
-                        mb: 1,
-                        border: '1px solid #e0e0e0',
-                        cursor: 'pointer',
-                        '&:hover': { bgcolor: '#f5f5f5' }
-                      }}
-                      onClick={() => handleViewPlan(plan)}
-                    >
-                      <Stack direction="row" justifyContent="space-between" alignItems="center">
-                        <Box>
-                          <Typography variant="body1" fontWeight="medium">
-                            {new Date(plan.target_date).toLocaleDateString('en-US', {
-                              weekday: 'long',
-                              month: 'short',
-                              day: 'numeric'
-                            })}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            {plan.total_calories} kcal • {plan.region}
-                          </Typography>
-                        </Box>
-                        <Chip
-                          size="small"
-                          label={plan.status}
-                          color={plan.status === 'completed' ? 'success' : 'default'}
-                          icon={plan.status === 'completed' ? <CheckCircleIcon /> : undefined}
-                        />
-                      </Stack>
-                    </Paper>
-                  ))}
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 'auto' }}>
+                      <Typography variant="caption" sx={{ color: '#64748b', display: 'flex', alignItems: 'center' }}>
+                        <PublicIcon sx={{ fontSize: 14, mr: 0.5 }} />
+                        {plan.region}
+                      </Typography>
+                      <Chip
+                        size="small"
+                        label={plan.status}
+                        sx={{
+                          bgcolor: plan.status === 'completed' ? '#ecfdf5' : '#f1f5f9',
+                          color: plan.status === 'completed' ? '#10b981' : '#64748b',
+                          fontWeight: 600,
+                          fontSize: '0.7rem',
+                          height: 22,
+                          border: '1px solid',
+                          borderColor: plan.status === 'completed' ? '#d1fae5' : '#e2e8f0'
+                        }}
+                      />
+                    </Box>
+                  </Paper>
+                </Grid>
+              ))}
+            </Grid>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Important Notes */}
-      <Card sx={{ mt: 3, bgcolor: '#fff3e0' }}>
+      <Card elevation={0} sx={{ mt: 3, bgcolor: '#fffbeb', border: '1px solid #fef3c7', borderRadius: 2 }}>
         <CardContent>
-          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center' }}>
-            <WarningIcon sx={{ mr: 1, color: 'warning.main' }} />
+          <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', fontWeight: 600, color: '#1e293b' }}>
+            <WarningIcon sx={{ mr: 1, color: '#f59e0b' }} />
             Important Notes
           </Typography>
           <Divider sx={{ my: 2 }} />
-          <Stack spacing={1}>
-            <Typography variant="body2">
+          <Stack spacing={1.5}>
+            <Typography variant="body2" sx={{ color: '#78350f', lineHeight: 1.6 }}>
               • Diet plans are personalized based on your profile and regional dietary guidelines
             </Typography>
-            <Typography variant="body2">
+            <Typography variant="body2" sx={{ color: '#78350f', lineHeight: 1.6 }}>
               • Plans will adjust based on your glucose levels (when glucose monitoring is enabled)
             </Typography>
-            <Typography variant="body2">
+            <Typography variant="body2" sx={{ color: '#78350f', lineHeight: 1.6 }}>
               • Only one diet plan can be generated per day
             </Typography>
-            <Typography variant="body2">
+            <Typography variant="body2" sx={{ color: '#78350f', lineHeight: 1.6 }}>
               • Consult your doctor before making major dietary changes
             </Typography>
           </Stack>
@@ -505,53 +545,6 @@ const DietPlanDashboard = ({ inModal = false }) => {
           </Button>
         </DialogActions>
       </Dialog>
-
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
-          <Card sx={{ borderRadius: 3, border: '1px solid #e2e8f0' }}>
-            <CardContent>
-              <Typography variant="h6" fontWeight={700} gutterBottom>
-                <RestaurantIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                Your Plans
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
-              {dietHistory.length === 0 ? (
-                <Typography variant="body2" color="text.secondary" align="center" py={3}>
-                  No diet plans yet. Generate your first plan!
-                </Typography>
-              ) : (
-                <Stack spacing={1.5}>
-                  {dietHistory.slice(0, 4).map((plan) => (
-                    <Paper
-                      key={plan._id}
-                      variant="outlined"
-                      onClick={() => handleViewPlan(plan)}
-                      sx={{
-                        p: 1.5,
-                        borderRadius: 2,
-                        cursor: 'pointer',
-                        borderColor: '#e2e8f0',
-                        transition: 'all 0.2s',
-                        '&:hover': { borderColor: '#10b981', boxShadow: '0 10px 30px rgba(16,185,129,0.15)' }
-                      }}
-                    >
-                      <Stack direction="row" justifyContent="space-between" alignItems="center">
-                        <Box>
-                          <Typography fontWeight={700}>
-                            {new Date(plan.target_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">{plan.total_calories} kcal</Typography>
-                        </Box>
-                        <Chip label={plan.status} color={plan.status === 'completed' ? 'success' : 'default'} variant="outlined" />
-                      </Stack>
-                    </Paper>
-                  ))}
-                </Stack>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
       </Stack>
     </Container>
   );

@@ -17,12 +17,12 @@ import {
   Stack,
   Paper,
   Button,
-  Chip
+  Chip,
+  alpha,
 } from '@mui/material';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../utils/axiosInstance';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 const QuestionList = ({ symptomId, symptomName, isLoggedIn, onDataUpdated }) => {
   const [questions, setQuestions] = useState([]);
@@ -180,7 +180,6 @@ const QuestionList = ({ symptomId, symptomName, isLoggedIn, onDataUpdated }) => 
                 <FormControlLabel key={option} value={option} control={<Radio />} label={option} />
               ))}
             </RadioGroup>
-            {isAnswered && <CheckCircleIcon color="success" fontSize="small" />}
           </Box>
         );
       case 'checkbox':
@@ -204,7 +203,6 @@ const QuestionList = ({ symptomId, symptomName, isLoggedIn, onDataUpdated }) => 
                 />
               ))}
             </Box>
-            {isAnswered && <CheckCircleIcon color="success" fontSize="small" />}
           </Box>
         );
       case 'dropdown':
@@ -233,7 +231,6 @@ const QuestionList = ({ symptomId, symptomName, isLoggedIn, onDataUpdated }) => 
                 <MenuItem key={option} value={option}>{option}</MenuItem>
               ))}
             </Select>
-            {isAnswered && <CheckCircleIcon color="success" fontSize="small" />}
           </Box>
         );
       case 'range':
@@ -264,35 +261,30 @@ const QuestionList = ({ symptomId, symptomName, isLoggedIn, onDataUpdated }) => 
       {questions.map((question) => (
         <Paper
           key={question._id}
-          elevation={0}
+          elevation={2}
           sx={{
             p: 3,
             borderRadius: 3,
             position: 'relative',
-            background: 'radial-gradient(circle at 0% 0%, #111827 0%, #020617 45%, #020617 100%)',
-            border: '1px solid rgba(148, 163, 184, 0.35)',
-            boxShadow: '0 24px 60px rgba(15, 23, 42, 0.65)',
-            overflow: 'hidden',
-            '&::before': {
-              content: '""',
-              position: 'absolute',
-              inset: 0,
-              background:
-                'radial-gradient(circle at 10% 0%, rgba(59,130,246,0.18) 0, transparent 55%), radial-gradient(circle at 85% 100%, rgba(139,92,246,0.2) 0, transparent 55%)',
-              opacity: 0.9,
-              pointerEvents: 'none',
+            background: (theme) => theme.palette.background.paper,
+            border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              boxShadow: (theme) => theme.shadows[6],
+              border: (theme) => `1px solid ${alpha(theme.palette.primary.main, 0.3)}`,
+              transform: 'translateY(-2px)',
             },
           }}
         >
           <Box position="relative" zIndex={1}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
+            <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
               <FormControl fullWidth>
                 <FormLabel
                   sx={{
-                    fontWeight: 700,
-                    fontSize: '1.05rem',
-                    color: '#e5e7eb',
-                    mb: 1,
+                    fontWeight: 600,
+                    fontSize: '1rem',
+                    mb: 2,
+                    color: 'text.primary',
                   }}
                 >
                   {question.question_text}
@@ -318,7 +310,7 @@ const QuestionList = ({ symptomId, symptomName, isLoggedIn, onDataUpdated }) => 
           </Box>
         </Paper>
       ))}
-      <Box mt={2} display="flex" alignItems="center" gap={2} justifyContent="flex-end">
+      <Box mt={2} display="flex" alignItems="center" gap={2} justifyContent="flex-end" flexWrap="wrap">
         {questions.length > 0 && questions.every(q => answeredIds.includes(q._id)) ? (
           <Typography color="info.main" fontWeight={600}>
             You have already answered all questions for this symptom. You can view and edit your responses in your dashboard.
@@ -329,20 +321,18 @@ const QuestionList = ({ symptomId, symptomName, isLoggedIn, onDataUpdated }) => 
             color="primary"
             size="large"
             sx={{
-              borderRadius: 999,
-              fontWeight: 800,
+              borderRadius: 3,
+              fontWeight: 700,
               textTransform: 'none',
               minWidth: 200,
               px: 4,
-              py: 1.2,
-              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%)',
-              boxShadow: '0 14px 40px rgba(79, 70, 229, 0.55)',
+              py: 1.5,
+              boxShadow: (theme) => `0 8px 24px ${alpha(theme.palette.primary.main, 0.3)}`,
               '&:hover': {
-                background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #db2777 100%)',
-                boxShadow: '0 18px 48px rgba(79, 70, 229, 0.7)',
+                boxShadow: (theme) => `0 12px 32px ${alpha(theme.palette.primary.main, 0.4)}`,
                 transform: 'translateY(-1px)',
               },
-              transition: 'all 0.25s ease-out',
+              transition: 'all 0.25s ease',
             }}
             onClick={handleSaveAll}
             disabled={globalSaving}
@@ -354,10 +344,10 @@ const QuestionList = ({ symptomId, symptomName, isLoggedIn, onDataUpdated }) => 
             variant="outlined"
             color="secondary"
             size="large"
-            sx={{ borderRadius: 2, fontWeight: 700, textTransform: 'none', minWidth: 220 }}
+            sx={{ borderRadius: 3, fontWeight: 600, textTransform: 'none', minWidth: 220 }}
             onClick={() => navigate('/signin')}
           >
-            Login first in order to save details
+            Login to Save Details
           </Button>
         )}
         {globalSuccess && <Typography color="success.main" fontWeight={600}>All answers saved!</Typography>}

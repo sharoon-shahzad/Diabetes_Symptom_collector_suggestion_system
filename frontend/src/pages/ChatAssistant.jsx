@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Box, Container, Paper, Typography, TextField, IconButton, Avatar, Fade, Grow, Chip, Stack } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
-import LocalHospitalIcon from '@mui/icons-material/LocalHospital';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import ReactMarkdown from 'react-markdown';
@@ -69,6 +68,8 @@ const ChatAssistant = ({ inModal = false }) => {
       background: inModal ? 'transparent' : 'linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%)',
       overflow: 'hidden',
       position: 'relative',
+      m: 0,
+      p: 0,
       '&::before': inModal ? {} : {
         content: '""',
         position: 'absolute',
@@ -80,11 +81,14 @@ const ChatAssistant = ({ inModal = false }) => {
         zIndex: 0
       }
     }}>
-      <Container maxWidth="lg" sx={{ 
+      <Container maxWidth={inModal ? false : "lg"} sx={{ 
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        py: inModal ? 0 : 3,
+        py: 0,
+        px: inModal ? 0 : 3,
+        m: 0,
+        maxWidth: inModal ? '100%' : undefined,
         position: 'relative',
         zIndex: 1
       }}>

@@ -5,7 +5,7 @@ import 'swiper/css';
 import 'swiper/css/navigation';
 import 'swiper/css/pagination';
 import { Card, CardContent, Typography, CircularProgress, Alert, Collapse, Box, Button, Stack } from '@mui/material';
-import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
+import AssignmentIcon from '@mui/icons-material/Assignment';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import QuestionList from './QuestionList';
 import { getCurrentUser } from '../../utils/auth';
@@ -118,7 +118,7 @@ const SymptomCard = ({ diseaseId }) => {
   if (error) return <Alert severity="error">{error}</Alert>;
   if (!symptoms.length) return (
     <Box textAlign="center" mt={4}>
-      <MedicalServicesIcon color="disabled" fontSize="large" />
+      <AssignmentIcon color="disabled" fontSize="large" />
       <Typography color="text.secondary" mt={1}>No symptoms found for this disease.</Typography>
     </Box>
   );
@@ -167,7 +167,7 @@ const SymptomCard = ({ diseaseId }) => {
               >
                 <CardContent>
                   <Box display="flex" alignItems="center" mb={1}>
-                    <MedicalServicesIcon sx={{ mr: 1, color: isCompleted ? '#4caf50' : '#90caf9' }} />
+                    <AssignmentIcon sx={{ mr: 1, color: isCompleted ? '#4caf50' : '#90caf9' }} />
                     <Typography variant="h6" fontWeight={700} color={isCompleted ? '#4caf50' : '#90caf9'}>
                       {symptom.name}
                     </Typography>

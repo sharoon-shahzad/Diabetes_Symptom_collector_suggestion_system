@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Button } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { Assignment, HealthAndSafety, Article } from '@mui/icons-material';
+import { Assignment, Article } from '@mui/icons-material';
 
 const QuickActions = () => {
   const navigate = useNavigate();
@@ -25,7 +25,7 @@ const QuickActions = () => {
       </Button>
       <Button
         variant="outlined"
-        startIcon={<HealthAndSafety />}
+        startIcon={<Assignment />}
         onClick={() => navigate('/assessment')}
         sx={{ 
           borderRadius: 2, 

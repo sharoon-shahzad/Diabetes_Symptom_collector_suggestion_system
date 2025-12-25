@@ -24,7 +24,6 @@ import {
   TrendingUp,
   TrendingDown,
   Assessment as AssessmentIcon,
-  HealthAndSafety,
   Warning,
   CheckCircle,
   Info,
@@ -54,7 +53,7 @@ const getRiskIcon = (risk) => {
   const level = (risk || '').toLowerCase();
   if (level === 'high') return <Warning sx={{ color: '#fff', fontSize: 40 }} />;
   if (level === 'medium') return <TrendingUp sx={{ color: '#fff', fontSize: 40 }} />;
-  return <HealthAndSafety sx={{ color: '#fff', fontSize: 40 }} />;
+  return <CheckCircle sx={{ color: '#fff', fontSize: 40 }} />;
 };
 
 const Assessment = () => {

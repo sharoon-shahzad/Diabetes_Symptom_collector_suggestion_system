@@ -13,7 +13,6 @@ import {
   ListItemText,
   Alert,
 } from '@mui/material';
-import { CheckCircle, Error, ArrowForward } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 
@@ -102,7 +101,6 @@ const AssessmentSummaryStep = ({ onComplete, answers, isLoggedIn }) => {
   if (error) {
     return (
       <Box sx={{ p: 6, textAlign: 'center', minHeight: 400, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <Error sx={{ fontSize: 60, color: theme.palette.error.main, mb: 2 }} />
         <Typography variant="h5" color="error" gutterBottom>
           Something went wrong
         </Typography>
@@ -132,7 +130,6 @@ const AssessmentSummaryStep = ({ onComplete, answers, isLoggedIn }) => {
         <Button 
           variant="contained" 
           onClick={handleComplete}
-          endIcon={<ArrowForward />}
           sx={{
             borderRadius: 2,
             px: 4,
