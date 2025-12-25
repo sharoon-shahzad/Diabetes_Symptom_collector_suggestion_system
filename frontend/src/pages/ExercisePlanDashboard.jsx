@@ -198,7 +198,7 @@ const ExercisePlanDashboard = ({ inModal = false }) => {
             <Box>
               <Typography variant="h6" fontWeight={600} sx={{ color: '#1e293b', mb: 2 }}>Recent Plans</Typography>
               <Grid container spacing={2}>
-                {history.slice(0, 6).map((p, idx) => (
+                {history.slice(0, 3).map((p, idx) => (
                   <Grid item xs={12} sm={6} md={4} key={idx}>
                     <Card
                       onClick={() => setSelectedPlan(p)}
