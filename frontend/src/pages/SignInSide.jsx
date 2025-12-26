@@ -1,77 +1,135 @@
 import React, { useState } from 'react';
-import { Stack, Typography, Button, Box } from '@mui/material';
+import { Stack, Typography, Box, alpha, Card, CardContent } from '@mui/material';
+import { motion } from 'framer-motion';
 import SignInForm from '../components/SignIn/SignInForm';
-import DiabetesQuotes from '../components/Common/DiabetesQuotes';
+import DiabetesImageSlider from '../components/Common/DiabetesImageSlider';
+import AuthBackground from '../components/Common/AuthBackground';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/useThemeContext';
+import SecurityIcon from '@mui/icons-material/Security';
+import AccessibilityIcon from '@mui/icons-material/Accessibility';
+import FavoriteIcon from '@mui/icons-material/Favorite';
 
 export default function SignInSide() {
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { isDarkMode } = useTheme();
+  const { isDarkMode, theme } = useTheme();
   
   return (
     <Stack
       direction="column"
       component="main"
-      sx={[
-        {
-          justifyContent: 'center',
-          height: '100vh',
-          position: 'relative',
-          overflow: 'hidden',
-        },
-        {
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            zIndex: -1,
-            inset: 0,
-            backgroundImage: isDarkMode 
-              ? 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)'
-              : 'linear-gradient(135deg, #f8fafc 0%, #eef2ff 40%, #e0f2fe 100%)',
-          },
-          '&::after': {
-            content: '""',
-            position: 'absolute',
-            zIndex: -1,
-            inset: 0,
-            backgroundImage: isDarkMode
-              ? 'radial-gradient(circle at 20% 30%, rgba(99,102,241,0.15), transparent 50%), radial-gradient(circle at 80% 70%, rgba(14,165,233,0.15), transparent 50%)'
-              : 'radial-gradient(circle at 20% 30%, rgba(99,102,241,0.08), transparent 50%), radial-gradient(circle at 80% 70%, rgba(14,165,233,0.08), transparent 50%)',
-          },
-        },
-      ]}
+      sx={{
+        justifyContent: 'center',
+        minHeight: '100vh',
+        position: 'relative',
+        overflow: 'hidden',
+        background: isDarkMode
+          ? 'linear-gradient(135deg, #0b1220 0%, #1a1a2e 50%, #0a0a0a 100%)'
+          : 'linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%)',
+      }}
     >
+      <AuthBackground />
         <Stack
           direction={{ xs: 'column-reverse', md: 'row' }}
           sx={{
-            justifyContent: 'space-between',
+            justifyContent: 'center',
             alignItems: 'center',
-            gap: { xs: 4, md: 12 },
-            p: 4,
+            gap: { xs: 4, md: 8 },
+            p: { xs: 2, sm: 4 },
             mx: 'auto',
             width: '100%',
             maxWidth: 1200,
+            position: 'relative',
+            zIndex: 1,
           }}
         >
-          <SignInForm setSuccess={setSuccess} setError={setError} navigate={navigate} />
-          <Box display="flex" flexDirection="column" alignItems="center">
-            <DiabetesQuotes />
-            <Button
-              variant="contained"
-              color="primary"
-              size="large"
-              sx={{ mt: 4, borderRadius: 3, fontWeight: 600, px: 5, py: 1.5, fontSize: '1.1rem', boxShadow: 2 }}
-              onClick={() => navigate('/onboarding')}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <SignInForm setSuccess={setSuccess} setError={setError} navigate={navigate} />
+          </motion.div>
+          <Box
+            sx={{
+              display: { xs: 'none', md: 'block' }
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
             >
-              Let's Get Started
-            </Button>
+              <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
+                <DiabetesImageSlider />
+                
+                {/* Badge Cards */}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    gap: 1.5,
+                    width: '100%',
+                    maxWidth: 500,
+                    justifyContent: 'center',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  {[
+                    { icon: SecurityIcon, label: 'Secure', color: 'success' },
+                    { icon: AccessibilityIcon, label: 'Accessible', color: 'info' },
+                    { icon: FavoriteIcon, label: 'Diabetic Partner', color: 'error' },
+                  ].map((badge, index) => (
+                    <motion.div
+                      key={badge.label}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5, delay: 0.4 + index * 0.1 }}
+                    >
+                      <Card
+                        elevation={0}
+                        sx={{
+                          px: 2,
+                          py: 1,
+                          borderRadius: 2,
+                          border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                          backgroundColor: alpha(theme.palette.background.paper, 0.8),
+                          backdropFilter: 'blur(10px)',
+                          transition: 'all 0.3s ease',
+                          '&:hover': {
+                            transform: 'translateY(-2px)',
+                            boxShadow: `0 4px 12px ${alpha(theme.palette[badge.color].main, 0.2)}`,
+                            borderColor: alpha(theme.palette[badge.color].main, 0.3),
+                          },
+                        }}
+                      >
+                        <CardContent sx={{ p: '8px !important', display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <badge.icon
+                            sx={{
+                              fontSize: 18,
+                              color: `${badge.color}.main`,
+                            }}
+                          />
+                          <Typography
+                            variant="caption"
+                            fontWeight={600}
+                            sx={{
+                              fontSize: '0.75rem',
+                              color: 'text.primary',
+                            }}
+                          >
+                            {badge.label}
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </Box>
+              </Box>
+            </motion.div>
           </Box>
         </Stack>
-        {success && <Typography color="success.main">{success}</Typography>}
-        {error && <Typography color="error.main">{error}</Typography>}
       </Stack>
   );
 }

@@ -1,55 +1,68 @@
 import React, { useState } from 'react';
-import { Stack, Typography } from '@mui/material';
+import { Stack, Typography, Box, alpha } from '@mui/material';
+import { motion } from 'framer-motion';
 import SignUpForm from '../components/SignUp/SignUpForm';
-import DiabetesQuotes from '../components/Common/DiabetesQuotes';
+import DiabetesImageSlider from '../components/Common/DiabetesImageSlider';
+import AuthBackground from '../components/Common/AuthBackground';
 import { useTheme } from '../contexts/useThemeContext';
 
 export default function SignUpSide() {
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
-  const { isDarkMode } = useTheme();
+  const { isDarkMode, theme } = useTheme();
 
   return (
     <Stack
       direction="column"
       component="main"
-      sx={[
-        {
-          justifyContent: 'center',
-          height: '100vh',
-          position: 'relative',
-          overflow: 'hidden',
-        },
-        {
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            zIndex: -1,
-            inset: 0,
-            backgroundImage: isDarkMode 
-              ? 'radial-gradient(at 50% 50%, hsla(210, 100%, 16%, 0.5), hsl(220, 30%, 5%))'
-              : 'radial-gradient(at 50% 50%, hsla(210, 100%, 90%, 0.5), hsl(220, 30%, 95%))',
-          },
-        },
-      ]}
+      sx={{
+        justifyContent: 'center',
+        minHeight: '100vh',
+        position: 'relative',
+        overflow: 'hidden',
+        background: isDarkMode
+          ? 'linear-gradient(135deg, #0b1220 0%, #1a1a2e 50%, #0a0a0a 100%)'
+          : 'linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%)',
+      }}
     >
+      <AuthBackground />
         <Stack
           direction={{ xs: 'column-reverse', md: 'row' }}
           sx={{
-            justifyContent: 'space-between',
+            justifyContent: 'center',
             alignItems: 'center',
-            gap: { xs: 4, md: 12 },
-            p: 4,
+            gap: { xs: 4, md: 8 },
+            p: { xs: 2, sm: 4 },
             mx: 'auto',
             width: '100%',
             maxWidth: 1200,
+            position: 'relative',
+            zIndex: 1,
           }}
         >
-          <SignUpForm setSuccess={setSuccess} setError={setError} />
-          <DiabetesQuotes />
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <SignUpForm setSuccess={setSuccess} setError={setError} />
+          </motion.div>
+          <Box
+            sx={{
+              display: { xs: 'none', md: 'block' }
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              <Box display="flex" flexDirection="column" alignItems="center">
+                <DiabetesImageSlider />
+              </Box>
+            </motion.div>
+          </Box>
         </Stack>
-        {success && <Typography color="success.main">{success}</Typography>}
-        {error && <Typography color="error.main">{error}</Typography>}
       </Stack>
   );
 }
