@@ -277,3 +277,24 @@ export async function adminRestoreFeedback(id) {
   const res = await axiosInstance.post(`/admin/feedback/${id}/restore`);
   return res.data;
 }
+
+// Audit Logs API
+export async function fetchAuditLogs(params = {}) {
+  const queryParams = new URLSearchParams(params).toString();
+  const res = await axiosInstance.get(`/admin/audit-logs?${queryParams}`);
+  return res.data;
+}
+
+export async function fetchAuditAnalytics(params = {}) {
+  const queryParams = new URLSearchParams(params).toString();
+  const res = await axiosInstance.get(`/admin/audit-logs/analytics?${queryParams}`);
+  return res.data;
+}
+
+export async function exportAuditLogs(params = {}) {
+  const queryParams = new URLSearchParams(params).toString();
+  const res = await axiosInstance.get(`/admin/audit-logs/export?${queryParams}`, {
+    responseType: 'blob',
+  });
+  return res.data;
+}
