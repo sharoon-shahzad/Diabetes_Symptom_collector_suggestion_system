@@ -15,8 +15,13 @@ import {
   FormControlLabel,
   Typography,
   Chip,
-  Autocomplete
+  Autocomplete,
+  Tabs,
+  Tab
 } from '@mui/material';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { createContent, updateContent, fetchCategories } from '../../utils/api';
 
 const ContentForm = ({ open, onClose, content, onSuccess }) => {
@@ -41,6 +46,8 @@ const ContentForm = ({ open, onClose, content, onSuccess }) => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [previewTab, setPreviewTab] = useState(0);
+  const [scheduledPublishDate, setScheduledPublishDate] = useState(null);
 
   useEffect(() => {
     if (content) {
@@ -62,6 +69,7 @@ const ContentForm = ({ open, onClose, content, onSuccess }) => {
           keywords: content.seo?.keywords || []
         }
       });
+      setScheduledPublishDate(content.publishedAt ? new Date(content.publishedAt) : null);
     } else {
       setFormData({
         title: '',
@@ -81,8 +89,10 @@ const ContentForm = ({ open, onClose, content, onSuccess }) => {
           keywords: []
         }
       });
+      setScheduledPublishDate(null);
     }
     setErrors({});
+    setPreviewTab(0);
   }, [content, open]);
 
   useEffect(() => {
@@ -190,10 +200,19 @@ const ContentForm = ({ open, onClose, content, onSuccess }) => {
     
     setLoading(true);
     try {
+      const submitData = {
+        ...formData,
+        publishedAt: scheduledPublishDate && scheduledPublishDate > new Date() 
+          ? scheduledPublishDate.toISOString() 
+          : formData.status === 'published' && !scheduledPublishDate 
+            ? new Date().toISOString() 
+            : undefined
+      };
+      
       if (content) {
-        await updateContent(content._id, formData);
+        await updateContent(content._id, submitData);
       } else {
-        await createContent(formData);
+        await createContent(submitData);
       }
       onSuccess();
       onClose();
@@ -276,17 +295,39 @@ const ContentForm = ({ open, onClose, content, onSuccess }) => {
               )}
             />
             
-            <TextField
-              label="Content"
-              value={formData.content}
-              onChange={handleChange('content')}
-              error={!!errors.content}
-              helperText={errors.content}
-              multiline
-              rows={8}
-              required
-              fullWidth
-            />
+            <Tabs value={previewTab} onChange={(e, newValue) => setPreviewTab(newValue)} sx={{ mb: 2 }}>
+              <Tab label="Edit" />
+              <Tab label="Preview" />
+            </Tabs>
+
+            {previewTab === 0 ? (
+              <TextField
+                label="Content"
+                value={formData.content}
+                onChange={handleChange('content')}
+                error={!!errors.content}
+                helperText={errors.content}
+                multiline
+                rows={8}
+                required
+                fullWidth
+              />
+            ) : (
+              <Box
+                sx={{
+                  p: 2,
+                  border: 1,
+                  borderColor: 'divider',
+                  borderRadius: 1,
+                  minHeight: 200,
+                  bgcolor: 'background.paper',
+                  '& h1, & h2, & h3': { mt: 2, mb: 1 },
+                  '& p': { mb: 2, lineHeight: 1.7 },
+                  '& ul, & ol': { mb: 2, pl: 3 }
+                }}
+                dangerouslySetInnerHTML={{ __html: formData.content }}
+              />
+            )}
             
             <Box sx={{ display: 'flex', gap: 2 }}>
               <FormControl fullWidth>
@@ -312,6 +353,25 @@ const ContentForm = ({ open, onClose, content, onSuccess }) => {
                 label="Featured"
               />
             </Box>
+
+            {formData.status === 'published' && (
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <DateTimePicker
+                  label="Schedule Publish Date (Optional)"
+                  value={scheduledPublishDate}
+                  onChange={(newValue) => setScheduledPublishDate(newValue)}
+                  minDateTime={new Date()}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      helperText: scheduledPublishDate && scheduledPublishDate > new Date() 
+                        ? 'Content will be published at the scheduled time' 
+                        : 'Leave empty to publish immediately'
+                    }
+                  }}
+                />
+              </LocalizationProvider>
+            )}
             
             <Typography variant="h6">Featured Image</Typography>
             <TextField
