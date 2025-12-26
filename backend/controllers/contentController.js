@@ -204,17 +204,8 @@ export const createContent = async (req, res) => {
       });
     }
 
-    // Generate slug from title
-    const slug = title
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-');
-
     const newContent = new Content({
       title,
-      slug,
       excerpt,
       content,
       featuredImage,
@@ -308,17 +299,7 @@ export const updateContent = async (req, res) => {
     }
 
     // Update fields
-    if (title) {
-      existingContent.title = title;
-      // Generate new slug from title
-      const newSlug = title
-        .toLowerCase()
-        .trim()
-        .replace(/[^\w\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-');
-      existingContent.slug = newSlug;
-    }
+    if (title) existingContent.title = title;
     if (excerpt) existingContent.excerpt = excerpt;
     if (content) existingContent.content = content;
     if (featuredImage) existingContent.featuredImage = featuredImage;
@@ -375,6 +356,69 @@ export const deleteContent = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error deleting content',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Update content review metadata
+// @route   PUT /api/v1/content/:id/review
+// @access  Private (SuperAdmin / content editors)
+export const reviewContent = async (req, res) => {
+  try {
+    const { status, nextReviewDate, notes, reviewCycleMonths } = req.body;
+
+    const content = await Content.findById(req.params.id);
+    if (!content) {
+      return res.status(404).json({
+        success: false,
+        message: 'Content not found'
+      });
+    }
+
+    const now = new Date();
+
+    // Update review status if provided
+    if (status && ['pending', 'reviewed', 'not_required'].includes(status)) {
+      content.reviewStatus = status;
+    }
+
+    // When marking as reviewed, set lastReviewedAt / nextReviewDate
+    if (status === 'reviewed') {
+      content.lastReviewedAt = now;
+      const cycle = reviewCycleMonths || content.reviewCycleMonths || 12;
+
+      const next =
+        nextReviewDate
+          ? new Date(nextReviewDate)
+          : new Date(now.getFullYear(), now.getMonth() + cycle, now.getDate());
+
+      content.nextReviewDate = next;
+      content.reviewCycleMonths = cycle;
+      content.lastReviewedBy = req.user.id;
+    }
+
+    if (notes !== undefined) {
+      content.reviewNotes = notes;
+    }
+
+    await content.save();
+
+    const populatedContent = await Content.findById(content._id)
+      .populate('category', 'name color')
+      .populate('author', 'fullName email')
+      .populate('lastReviewedBy', 'fullName email');
+
+    res.status(200).json({
+      success: true,
+      message: 'Content review updated successfully',
+      data: populatedContent
+    });
+  } catch (error) {
+    console.error('Error updating content review:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating content review',
       error: error.message
     });
   }
@@ -439,19 +483,44 @@ export const getContentStats = async (req, res) => {
       .limit(5)
       .select('title slug publishedAt viewCount category author');
 
+    // Review queue: published content needing review (pending or overdue)
+    const now = new Date();
+    const reviewQuery = {
+      status: 'published',
+      $or: [
+        { reviewStatus: 'pending' },
+        { nextReviewDate: { $lte: now } }
+      ]
+    };
+
+    const reviewQueue = await Content.find(reviewQuery)
+      .populate('category', 'name color')
+      .populate('author', 'fullName')
+      .sort({ nextReviewDate: 1, updatedAt: -1 })
+      .limit(10)
+      .select('title slug publishedAt viewCount category author reviewStatus lastReviewedAt nextReviewDate');
+
+    const needsReviewCount = await Content.countDocuments(reviewQuery);
+
+    const overview =
+      stats[0] || {
+        totalContent: 0,
+        publishedContent: 0,
+        draftContent: 0,
+        archivedContent: 0,
+        featuredContent: 0,
+        totalViews: 0
+      };
+
+    overview.needsReview = needsReviewCount;
+
     res.status(200).json({
       success: true,
       data: {
-        overview: stats[0] || {
-          totalContent: 0,
-          publishedContent: 0,
-          draftContent: 0,
-          archivedContent: 0,
-          featuredContent: 0,
-          totalViews: 0
-        },
+        overview,
         categoryStats,
-        recentContent
+        recentContent,
+        reviewQueue
       }
     });
   } catch (error) {

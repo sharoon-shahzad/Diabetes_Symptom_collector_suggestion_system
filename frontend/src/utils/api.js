@@ -111,7 +111,10 @@ export async function assessDiabetesRisk() {
 // CMS API Functions
 // Categories
 export async function fetchCategories(status = 'active') {
-  const res = await axiosInstance.get(`/categories?status=${status}`);
+  // Backend uses isActive boolean, not status string
+  const isActive = status === 'active' ? 'true' : status === 'inactive' ? 'false' : undefined;
+  const url = isActive ? `/categories?isActive=${isActive}` : '/categories';
+  const res = await axiosInstance.get(url);
   return res.data.data;
 }
 
@@ -174,6 +177,11 @@ export async function deleteContent(id) {
 
 export async function fetchContentStats() {
   const res = await axiosInstance.get(`/content/stats`);
+  return res.data.data;
+}
+
+export async function reviewContentApi(id, payload) {
+  const res = await axiosInstance.put(`/content/${id}/review`, payload);
   return res.data.data;
 }
 
@@ -268,58 +276,4 @@ export async function adminDeleteFeedback(id) {
 export async function adminRestoreFeedback(id) {
   const res = await axiosInstance.post(`/admin/feedback/${id}/restore`);
   return res.data;
-}
-
-// ============================================
-// AUDIT LOGS API FUNCTIONS
-// ============================================
-
-export async function fetchAuditLogs(filters = {}) {
-  const params = new URLSearchParams();
-  
-  if (filters.page) params.append('page', filters.page);
-  if (filters.limit) params.append('limit', filters.limit);
-  if (filters.user_email) params.append('user_email', filters.user_email);
-  if (filters.user_id) params.append('user_id', filters.user_id);
-  if (filters.action) params.append('action', filters.action);
-  if (filters.resource) params.append('resource', filters.resource);
-  if (filters.status) params.append('status', filters.status);
-  if (filters.startDate) params.append('startDate', filters.startDate);
-  if (filters.endDate) params.append('endDate', filters.endDate);
-
-  const res = await axiosInstance.get(`/admin/audit-logs?${params.toString()}`);
-  return res.data;
-}
-
-export async function fetchAuditLogDetail(id) {
-  const res = await axiosInstance.get(`/admin/audit-logs/${id}`);
-  return res.data;
-}
-
-export async function fetchAuditAnalytics(filters = {}) {
-  const params = new URLSearchParams();
-  
-  if (filters.startDate) params.append('startDate', filters.startDate);
-  if (filters.endDate) params.append('endDate', filters.endDate);
-
-  const res = await axiosInstance.get(`/admin/audit-logs/analytics/data?${params.toString()}`);
-  return res.data;
-}
-
-export async function exportAuditLogs(filters = {}, format = 'csv') {
-  const response = await axiosInstance.post(
-    `/admin/audit-logs/export`,
-    {
-      ...filters,
-      format,
-    },
-    {
-      responseType: format === 'csv' ? 'blob' : 'json',
-    }
-  );
-  
-  if (format === 'csv') {
-    return response.data;
-  }
-  return response.data;
 }

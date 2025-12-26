@@ -7,7 +7,8 @@ import {
   updateContent,
   deleteContent,
   getContentStats,
-  getRelatedContent
+  getRelatedContent,
+  reviewContent
 } from '../controllers/contentController.js';
 import { verifyAccessTokenMiddleware } from '../middlewares/authMiddleware.js';
 import { requirePermission } from '../middlewares/permissionMiddleware.js';
@@ -31,6 +32,7 @@ router.get('/:id', validateId, getContent);
 // Protected routes (CMS permissions required)
 router.post('/', verifyAccessTokenMiddleware, requirePermission('content:create:all'), validateContent, createContent);
 router.put('/:id', verifyAccessTokenMiddleware, requirePermission('content:update:all'), validateId, validateContentUpdate, updateContent);
+router.put('/:id/review', verifyAccessTokenMiddleware, requirePermission('content:update:all'), validateId, reviewContent);
 router.delete('/:id', verifyAccessTokenMiddleware, requirePermission('content:delete:all'), validateId, deleteContent);
 
 export default router;

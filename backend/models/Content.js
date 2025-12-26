@@ -92,6 +92,31 @@ const contentSchema = new mongoose.Schema({
   lastModifiedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
+  },
+  // Clinical / editorial review metadata
+  reviewStatus: {
+    type: String,
+    enum: ['pending', 'reviewed', 'not_required'],
+    default: 'pending'
+  },
+  lastReviewedAt: {
+    type: Date
+  },
+  nextReviewDate: {
+    type: Date
+  },
+  reviewCycleMonths: {
+    type: Number, // how often this content should be reviewed
+    default: 12
+  },
+  reviewNotes: {
+    type: String,
+    trim: true,
+    maxlength: 1000
+  },
+  lastReviewedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   }
 }, {
   timestamps: true
@@ -129,6 +154,8 @@ contentSchema.index({ publishedAt: -1 });
 contentSchema.index({ isFeatured: 1 });
 contentSchema.index({ tags: 1 });
 contentSchema.index({ author: 1 });
+contentSchema.index({ reviewStatus: 1 });
+contentSchema.index({ nextReviewDate: 1 });
 
 // Virtual for URL
 contentSchema.virtual('url').get(function() {
