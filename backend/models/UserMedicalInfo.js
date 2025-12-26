@@ -357,12 +357,22 @@ function decryptMedicalInfo(doc) {
   try {
     // Decrypt diabetes type
     if (doc.diabetes_type && encryptionService.isEncrypted(doc.diabetes_type)) {
-      doc.diabetes_type = encryptionService.decrypt(doc.diabetes_type);
+      try {
+        doc.diabetes_type = encryptionService.decrypt(doc.diabetes_type);
+      } catch (err) {
+        console.error('Decryption error in medical info:', err.message);
+        console.warn('⚠️ Keeping encrypted value for diabetes_type - ENCRYPTION_KEY may not match');
+      }
     }
 
     // Decrypt diagnosis date
     if (doc.diagnosis_date && encryptionService.isEncrypted(doc.diagnosis_date)) {
-      doc.diagnosis_date = new Date(encryptionService.decrypt(doc.diagnosis_date));
+      try {
+        doc.diagnosis_date = new Date(encryptionService.decrypt(doc.diagnosis_date));
+      } catch (err) {
+        console.error('Decryption error in medical info:', err.message);
+        console.warn('⚠️ Keeping encrypted value for diagnosis_date - ENCRYPTION_KEY may not match');
+      }
     }
 
     // Decrypt medications

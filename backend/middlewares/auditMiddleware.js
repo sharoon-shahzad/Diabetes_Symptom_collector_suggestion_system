@@ -24,30 +24,47 @@ export const captureAuditContext = (req, res, next) => {
  */
 export const createAuditLog = async (action, resource, req, res, resourceId = null, changes = null) => {
     try {
-        if (!req.auditContext) {
-            console.warn('Audit context not found in request');
+        // If auditContext is missing, fall back to req.user (graceful degradation)
+        const context = req.auditContext || {};
+        const user = req.user || {};
+        
+        // Build audit data with fallbacks
+        const user_id = context.user_id || user._id;
+        const user_email = context.user_email || user.email;
+        
+        if (!user_id || !user_email) {
+            console.warn('⚠️ Audit log skipped - missing required user_id or user_email');
+            console.warn('  user_id:', user_id, 'user_email:', user_email);
             return;
         }
 
         const auditData = {
-            user_id: req.auditContext.user_id,
-            user_email: req.auditContext.user_email,
-            user_role: req.auditContext.user_role,
+            user_id,
+            user_email,
+            user_role: context.user_role || user.roles || ['user'],
             action,
             resource,
             resource_id: resourceId || null,
             changes,
-            ip_address: req.auditContext.ip_address,
-            user_agent: req.auditContext.user_agent,
+            ip_address: context.ip_address || req.ip || req.connection?.remoteAddress || 'Unknown',
+            user_agent: context.user_agent || req.get('user-agent') || 'Unknown',
             status: res.statusCode >= 400 ? 'FAILURE' : 'SUCCESS',
             error_message: res.statusCode >= 400 ? res.locals.errorMessage || 'Unknown error' : null,
             involves_pii: ['User', 'UserMedicalInfo', 'UserPersonalInfo'].includes(resource),
             involves_phi: ['UserMedicalInfo', 'Assessment', 'DietPlan'].includes(resource),
         };
 
+        console.log('📝 Creating audit log:', {
+            user_email: auditData.user_email,
+            action: auditData.action,
+            resource: auditData.resource,
+            status: auditData.status
+        });
+
         await AuditService.logAction(auditData);
     } catch (error) {
-        console.error('Error creating audit log:', error.message);
+        console.error('❌ Error logging audit action:', error.message);
+        console.error('❌ Error stack:', error.stack);
         // Don't throw - audit logging shouldn't break the main operation
     }
 };

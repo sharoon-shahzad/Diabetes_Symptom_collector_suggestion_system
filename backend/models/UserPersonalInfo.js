@@ -255,8 +255,13 @@ function decryptPersonalInfo(doc) {
     if (doc.gender) {
       console.log('  - gender:', String(doc.gender).substring(0, 50));
       if (encryptionService.isEncrypted(doc.gender)) {
-        doc.gender = encryptionService.decrypt(doc.gender);
-        console.log('  ✅ Decrypted gender');
+        try {
+          doc.gender = encryptionService.decrypt(doc.gender);
+          console.log('  ✅ Decrypted gender');
+        } catch (err) {
+          console.error('Decryption error:', err.message);
+          console.warn('  ⚠️ Keeping encrypted value for gender - ENCRYPTION_KEY may not match');
+        }
       }
     }
 
@@ -265,16 +270,26 @@ function decryptPersonalInfo(doc) {
       const val = doc.height;
       console.log('  - height:', String(val).substring(0, 50), 'isEncrypted:', encryptionService.isEncrypted(val));
       if (encryptionService.isEncrypted(val)) {
-        doc.height = parseFloat(encryptionService.decrypt(val));
-        console.log('  ✅ Decrypted height');
+        try {
+          doc.height = parseFloat(encryptionService.decrypt(val));
+          console.log('  ✅ Decrypted height');
+        } catch (err) {
+          console.error('Decryption error:', err.message);
+          console.warn('  ⚠️ Keeping encrypted value for height - ENCRYPTION_KEY may not match');
+        }
       }
     }
     if (doc.weight) {
       const val = doc.weight;
       console.log('  - weight:', String(val).substring(0, 50), 'isEncrypted:', encryptionService.isEncrypted(val));
       if (encryptionService.isEncrypted(val)) {
-        doc.weight = parseFloat(encryptionService.decrypt(val));
-        console.log('  ✅ Decrypted weight');
+        try {
+          doc.weight = parseFloat(encryptionService.decrypt(val));
+          console.log('  ✅ Decrypted weight');
+        } catch (err) {
+          console.error('Decryption error:', err.message);
+          console.warn('  ⚠️ Keeping encrypted value for weight - ENCRYPTION_KEY may not match');
+        }
       }
     }
 

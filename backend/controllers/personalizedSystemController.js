@@ -2,6 +2,7 @@ import { UserPersonalInfo } from '../models/UserPersonalInfo.js';
 import { UserMedicalInfo } from '../models/UserMedicalInfo.js';
 import { User } from '../models/User.js';
 import { createAuditLog } from '../middlewares/auditMiddleware.js';
+import encryptionService from '../services/encryptionService.js';
 
 // Get user's personal information
 export const getPersonalInfo = async (req, res) => {
@@ -34,22 +35,66 @@ export const getPersonalInfo = async (req, res) => {
         
         console.log('📋 Personal info found - merging with user data');
         
-        // Don't use toObject() - it bypasses decryption middleware
-        // Access properties directly from the Mongoose document (already decrypted)
+        // Helper function to decrypt if still encrypted
+        const decryptIfNeeded = (value) => {
+            if (!value) return value;
+            if (typeof value === 'string' && encryptionService.isEncrypted(value)) {
+                try {
+                    return encryptionService.decrypt(value);
+                } catch (err) {
+                    console.error('Decryption error:', err.message);
+                    return value;
+                }
+            }
+            return value;
+        };
+        
+        // Manually decrypt all fields as fallback (in case middleware didn't run)
+        const date_of_birth = decryptIfNeeded(personalInfo.date_of_birth);
+        const gender = decryptIfNeeded(personalInfo.gender);
+        const height = decryptIfNeeded(personalInfo.height);
+        const weight = decryptIfNeeded(personalInfo.weight);
+        const activity_level = decryptIfNeeded(personalInfo.activity_level);
+        const dietary_preference = decryptIfNeeded(personalInfo.dietary_preference);
+        const smoking_status = decryptIfNeeded(personalInfo.smoking_status);
+        const alcohol_use = decryptIfNeeded(personalInfo.alcohol_use);
+        const sleep_hours = decryptIfNeeded(personalInfo.sleep_hours);
+        
+        console.log('🔍 Decrypted values check:', {
+            gender: typeof gender === 'string' && gender.includes(':') ? 'STILL ENCRYPTED' : 'OK',
+            height: typeof height === 'string' && height.includes(':') ? 'STILL ENCRYPTED' : 'OK',
+            weight: typeof weight === 'string' && weight.includes(':') ? 'STILL ENCRYPTED' : 'OK'
+        });
+        
+        // Decrypt nested objects
+        const emergency_contact = personalInfo.emergency_contact ? {
+            name: decryptIfNeeded(personalInfo.emergency_contact.name),
+            phone: decryptIfNeeded(personalInfo.emergency_contact.phone),
+            relationship: decryptIfNeeded(personalInfo.emergency_contact.relationship)
+        } : undefined;
+        
+        const address = personalInfo.address ? {
+            street: decryptIfNeeded(personalInfo.address.street),
+            city: decryptIfNeeded(personalInfo.address.city),
+            state: decryptIfNeeded(personalInfo.address.state),
+            zip_code: decryptIfNeeded(personalInfo.address.zip_code),
+            country: decryptIfNeeded(personalInfo.address.country)
+        } : undefined;
+        
         const responseData = {
             _id: personalInfo._id,
             user_id: personalInfo.user_id,
-            date_of_birth: personalInfo.date_of_birth,
-            gender: personalInfo.gender,
-            height: personalInfo.height,
-            weight: personalInfo.weight,
-            activity_level: personalInfo.activity_level,
-            dietary_preference: personalInfo.dietary_preference,
-            smoking_status: personalInfo.smoking_status,
-            alcohol_use: personalInfo.alcohol_use,
-            sleep_hours: personalInfo.sleep_hours,
-            emergency_contact: personalInfo.emergency_contact,
-            address: personalInfo.address,
+            date_of_birth: date_of_birth ? new Date(date_of_birth) : null,
+            gender,
+            height: height ? parseFloat(height) : null,
+            weight: weight ? parseFloat(weight) : null,
+            activity_level,
+            dietary_preference,
+            smoking_status,
+            alcohol_use,
+            sleep_hours: sleep_hours ? parseInt(sleep_hours) : null,
+            emergency_contact,
+            address,
             fullName: user?.fullName || '',
             country: user?.country || '',
             country_code: user?.country_code || '',
@@ -58,7 +103,7 @@ export const getPersonalInfo = async (req, res) => {
             updatedAt: personalInfo.updatedAt
         };
         
-        console.log('✅ Sending response with decrypted data');
+        console.log('✅ Sending response with manually decrypted data');
         
         return res.status(200).json({
             success: true,
@@ -217,9 +262,103 @@ export const getMedicalInfo = async (req, res) => {
             });
         }
         
+        // Helper function to decrypt if still encrypted
+        const decryptIfNeeded = (value) => {
+            if (!value) return value;
+            if (typeof value === 'string' && encryptionService.isEncrypted(value)) {
+                try {
+                    return encryptionService.decrypt(value);
+                } catch (err) {
+                    console.error('Decryption error:', err.message);
+                    return value;
+                }
+            }
+            return value;
+        };
+        
+        // Manually decrypt all fields as fallback
+        const diabetes_type = decryptIfNeeded(medicalInfo.diabetes_type);
+        const diagnosis_date = decryptIfNeeded(medicalInfo.diagnosis_date);
+        const last_medical_checkup = decryptIfNeeded(medicalInfo.last_medical_checkup);
+        
+        // Decrypt medications
+        const current_medications = medicalInfo.current_medications?.map(med => ({
+            medication_name: decryptIfNeeded(med.medication_name),
+            dosage: decryptIfNeeded(med.dosage),
+            frequency: decryptIfNeeded(med.frequency),
+            _id: med._id
+        }));
+        
+        // Decrypt allergies
+        const allergies = medicalInfo.allergies?.map(allergy => ({
+            allergen: decryptIfNeeded(allergy.allergen),
+            reaction: decryptIfNeeded(allergy.reaction),
+            _id: allergy._id
+        }));
+        
+        // Decrypt chronic conditions
+        const chronic_conditions = medicalInfo.chronic_conditions?.map(condition => ({
+            condition_name: decryptIfNeeded(condition.condition_name),
+            diagnosed_date: decryptIfNeeded(condition.diagnosed_date),
+            _id: condition._id
+        }));
+        
+        // Decrypt family history
+        const family_history = medicalInfo.family_history?.map(history => ({
+            relation: decryptIfNeeded(history.relation),
+            condition: decryptIfNeeded(history.condition),
+            _id: history._id
+        }));
+        
+        // Decrypt lab results
+        const recent_lab_results = medicalInfo.recent_lab_results ? {
+            hba1c: medicalInfo.recent_lab_results.hba1c ? {
+                value: decryptIfNeeded(medicalInfo.recent_lab_results.hba1c.value),
+                date: decryptIfNeeded(medicalInfo.recent_lab_results.hba1c.date),
+                unit: decryptIfNeeded(medicalInfo.recent_lab_results.hba1c.unit)
+            } : undefined,
+            fasting_glucose: medicalInfo.recent_lab_results.fasting_glucose ? {
+                value: decryptIfNeeded(medicalInfo.recent_lab_results.fasting_glucose.value),
+                date: decryptIfNeeded(medicalInfo.recent_lab_results.fasting_glucose.date),
+                unit: decryptIfNeeded(medicalInfo.recent_lab_results.fasting_glucose.unit)
+            } : undefined,
+            cholesterol: medicalInfo.recent_lab_results.cholesterol ? {
+                total: decryptIfNeeded(medicalInfo.recent_lab_results.cholesterol.total),
+                ldl: decryptIfNeeded(medicalInfo.recent_lab_results.cholesterol.ldl),
+                hdl: decryptIfNeeded(medicalInfo.recent_lab_results.cholesterol.hdl),
+                date: decryptIfNeeded(medicalInfo.recent_lab_results.cholesterol.date),
+                unit: decryptIfNeeded(medicalInfo.recent_lab_results.cholesterol.unit)
+            } : undefined
+        } : undefined;
+        
+        // Decrypt blood pressure
+        const blood_pressure = medicalInfo.blood_pressure ? {
+            systolic: decryptIfNeeded(medicalInfo.blood_pressure.systolic),
+            diastolic: decryptIfNeeded(medicalInfo.blood_pressure.diastolic),
+            last_recorded: decryptIfNeeded(medicalInfo.blood_pressure.last_recorded)
+        } : undefined;
+        
+        const responseData = {
+            _id: medicalInfo._id,
+            user_id: medicalInfo.user_id,
+            diabetes_type,
+            diagnosis_date: diagnosis_date ? new Date(diagnosis_date) : null,
+            current_medications,
+            allergies,
+            chronic_conditions,
+            family_history,
+            recent_lab_results,
+            blood_pressure,
+            last_medical_checkup: last_medical_checkup ? new Date(last_medical_checkup) : null,
+            createdAt: medicalInfo.createdAt,
+            updatedAt: medicalInfo.updatedAt
+        };
+        
+        console.log('✅ Sending medical info with manually decrypted data');
+        
         return res.status(200).json({
             success: true,
-            data: medicalInfo,
+            data: responseData,
         });
     } catch (err) {
         console.error('Error fetching medical info:', err);
