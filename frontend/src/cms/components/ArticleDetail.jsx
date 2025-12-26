@@ -11,13 +11,22 @@ import {
   Alert,
   Button,
   Divider,
-  Avatar
+  Avatar,
+  IconButton,
+  Tooltip,
+  Menu,
+  MenuItem
 } from '@mui/material';
 import {
   CalendarToday as CalendarIcon,
   Visibility as ViewIcon,
   Person as PersonIcon,
-  ArrowBack as ArrowBackIcon
+  ArrowBack as ArrowBackIcon,
+  Share as ShareIcon,
+  Facebook as FacebookIcon,
+  Twitter as TwitterIcon,
+  LinkedIn as LinkedInIcon,
+  Link as LinkIcon
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchContentBySlug, fetchRelatedContent } from '../../utils/api';
@@ -29,6 +38,7 @@ const ArticleDetail = () => {
   const [relatedContent, setRelatedContent] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [shareMenuAnchor, setShareMenuAnchor] = useState(null);
 
   useEffect(() => {
     const loadArticle = async () => {
@@ -69,6 +79,52 @@ const ArticleDetail = () => {
 
   const handleBackClick = () => {
     navigate(-1);
+  };
+
+  const calculateReadingTime = (content) => {
+    if (!content) return 0;
+    const text = content.replace(/<[^>]*>/g, ''); // Remove HTML tags
+    const wordsPerMinute = 200;
+    const wordCount = text.split(/\s+/).length;
+    return Math.ceil(wordCount / wordsPerMinute);
+  };
+
+  const handleShareClick = (event) => {
+    setShareMenuAnchor(event.currentTarget);
+  };
+
+  const handleShareClose = () => {
+    setShareMenuAnchor(null);
+  };
+
+  const handleShare = (platform) => {
+    const url = window.location.href;
+    const title = article?.title || '';
+    const text = article?.excerpt || '';
+
+    let shareUrl = '';
+    switch (platform) {
+      case 'facebook':
+        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
+        break;
+      case 'twitter':
+        shareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`;
+        break;
+      case 'linkedin':
+        shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
+        break;
+      case 'copy':
+        navigator.clipboard.writeText(url);
+        handleShareClose();
+        return;
+      default:
+        return;
+    }
+
+    if (shareUrl) {
+      window.open(shareUrl, '_blank', 'width=600,height=400');
+    }
+    handleShareClose();
   };
 
   if (loading) {
@@ -143,28 +199,64 @@ const ArticleDetail = () => {
 
               <Divider sx={{ my: 3 }} />
 
-              <Box display="flex" alignItems="center" gap={2} mb={3}>
-                <Avatar>
-                  <PersonIcon />
-                </Avatar>
-                <Box>
-                  <Typography variant="subtitle2">
-                    {article.author?.fullName || 'Admin'}
-                  </Typography>
-                  <Box display="flex" alignItems="center" gap={2}>
-                    <Box display="flex" alignItems="center" gap={0.5}>
-                      <CalendarIcon fontSize="small" color="action" />
-                      <Typography variant="caption" color="textSecondary">
-                        {formatDate(article.publishedAt)}
-                      </Typography>
-                    </Box>
-                    <Box display="flex" alignItems="center" gap={0.5}>
-                      <ViewIcon fontSize="small" color="action" />
-                      <Typography variant="caption" color="textSecondary">
-                        {article.viewCount} views
-                      </Typography>
+              <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
+                <Box display="flex" alignItems="center" gap={2}>
+                  <Avatar>
+                    <PersonIcon />
+                  </Avatar>
+                  <Box>
+                    <Typography variant="subtitle2">
+                      {article.author?.fullName || 'Admin'}
+                    </Typography>
+                    <Box display="flex" alignItems="center" gap={2}>
+                      <Box display="flex" alignItems="center" gap={0.5}>
+                        <CalendarIcon fontSize="small" color="action" />
+                        <Typography variant="caption" color="textSecondary">
+                          {formatDate(article.publishedAt)}
+                        </Typography>
+                      </Box>
+                      <Box display="flex" alignItems="center" gap={0.5}>
+                        <ViewIcon fontSize="small" color="action" />
+                        <Typography variant="caption" color="textSecondary">
+                          {article.viewCount || 0} views
+                        </Typography>
+                      </Box>
+                      {(article.readingTime || calculateReadingTime(article.content)) > 0 && (
+                        <Typography variant="caption" color="textSecondary">
+                          {article.readingTime || calculateReadingTime(article.content)} min read
+                        </Typography>
+                      )}
                     </Box>
                   </Box>
+                </Box>
+                <Box>
+                  <Tooltip title="Share article">
+                    <IconButton onClick={handleShareClick} color="primary">
+                      <ShareIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Menu
+                    anchorEl={shareMenuAnchor}
+                    open={Boolean(shareMenuAnchor)}
+                    onClose={handleShareClose}
+                  >
+                    <MenuItem onClick={() => handleShare('facebook')}>
+                      <FacebookIcon sx={{ mr: 1 }} />
+                      Share on Facebook
+                    </MenuItem>
+                    <MenuItem onClick={() => handleShare('twitter')}>
+                      <TwitterIcon sx={{ mr: 1 }} />
+                      Share on Twitter
+                    </MenuItem>
+                    <MenuItem onClick={() => handleShare('linkedin')}>
+                      <LinkedInIcon sx={{ mr: 1 }} />
+                      Share on LinkedIn
+                    </MenuItem>
+                    <MenuItem onClick={() => handleShare('copy')}>
+                      <LinkIcon sx={{ mr: 1 }} />
+                      Copy Link
+                    </MenuItem>
+                  </Menu>
                 </Box>
               </Box>
 

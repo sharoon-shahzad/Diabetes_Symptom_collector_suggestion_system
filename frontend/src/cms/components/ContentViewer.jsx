@@ -31,13 +31,25 @@ const ContentViewer = () => {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [sortBy, setSortBy] = useState('newest');
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 9,
     total: 0,
     pages: 0
   });
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      setPagination(prev => ({ ...prev, page: 1 }));
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const loadContent = async () => {
     try {
@@ -46,13 +58,14 @@ const ContentViewer = () => {
         page: pagination.page,
         limit: pagination.limit,
         status: 'published',
-        search: searchTerm,
-        category: selectedCategory
+        search: debouncedSearchTerm,
+        category: selectedCategory,
+        sortBy: sortBy
       };
       
       // Remove empty params
       Object.keys(params).forEach(key => {
-        if (params[key] === '') {
+        if (params[key] === '' || params[key] === undefined) {
           delete params[key];
         }
       });
@@ -82,7 +95,7 @@ const ContentViewer = () => {
 
   useEffect(() => {
     loadContent();
-  }, [pagination.page, searchTerm, selectedCategory]);
+  }, [pagination.page, debouncedSearchTerm, selectedCategory, sortBy]);
 
   useEffect(() => {
     loadCategories();
@@ -90,11 +103,15 @@ const ContentViewer = () => {
 
   const handleSearchChange = (event) => {
     setSearchTerm(event.target.value);
-    setPagination(prev => ({ ...prev, page: 1 }));
   };
 
   const handleCategoryChange = (event) => {
     setSelectedCategory(event.target.value);
+    setPagination(prev => ({ ...prev, page: 1 }));
+  };
+
+  const handleSortChange = (event) => {
+    setSortBy(event.target.value);
     setPagination(prev => ({ ...prev, page: 1 }));
   };
 
@@ -136,7 +153,7 @@ const ContentViewer = () => {
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
                 label="Search articles"
@@ -169,8 +186,23 @@ const ContentViewer = () => {
               </FormControl>
             </Grid>
             <Grid item xs={12} md={3}>
-              <Typography variant="body2" color="textSecondary">
-                {pagination.total} articles found
+              <FormControl fullWidth>
+                <InputLabel>Sort By</InputLabel>
+                <Select
+                  value={sortBy}
+                  onChange={handleSortChange}
+                  label="Sort By"
+                >
+                  <MenuItem value="newest">Newest First</MenuItem>
+                  <MenuItem value="oldest">Oldest First</MenuItem>
+                  <MenuItem value="mostViewed">Most Viewed</MenuItem>
+                  <MenuItem value="featured">Featured First</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={2}>
+              <Typography variant="body2" color="textSecondary" align="right">
+                {pagination.total} articles
               </Typography>
             </Grid>
           </Grid>
@@ -198,7 +230,7 @@ const ContentViewer = () => {
                       boxShadow: 4
                     }
                   }}
-                  onClick={() => window.open(`/content/${article.slug}`, '_blank')}
+                  onClick={() => window.location.href = `/content/${article.slug}`}
                 >
                   {article.featuredImage?.url && (
                     <CardMedia

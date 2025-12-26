@@ -28,11 +28,6 @@ const PublicCMS = () => {
 
   const tabs = [
     {
-      label: 'Home',
-      icon: <HomeIcon />,
-      component: <ContentViewer />
-    },
-    {
       label: 'Articles',
       icon: <ArticleIcon />,
       component: <ContentViewer />
