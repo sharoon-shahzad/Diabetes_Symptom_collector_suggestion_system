@@ -93,9 +93,20 @@ export const getAuditAnalytics = async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
 
-        // Default to last 7 days if not specified
-        const end = endDate ? new Date(endDate) : new Date();
-        const start = startDate
+        // Validate and parse dates
+        const hasValidEndDate = endDate && 
+            endDate !== 'undefined' && 
+            endDate !== 'null' && 
+            !isNaN(new Date(endDate).getTime());
+            
+        const hasValidStartDate = startDate && 
+            startDate !== 'undefined' && 
+            startDate !== 'null' && 
+            !isNaN(new Date(startDate).getTime());
+
+        // Default to last 7 days if not specified or invalid
+        const end = hasValidEndDate ? new Date(endDate) : new Date();
+        const start = hasValidStartDate
             ? new Date(startDate)
             : new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
 
@@ -113,7 +124,8 @@ export const getAuditAnalytics = async (req, res) => {
             },
         });
     } catch (error) {
-        console.error('Error fetching analytics:', error.message);
+        console.error('❌ Error fetching analytics:', error.message);
+        console.error('❌ Stack trace:', error.stack);
         res.status(500).json({
             success: false,
             message: 'Error fetching analytics',

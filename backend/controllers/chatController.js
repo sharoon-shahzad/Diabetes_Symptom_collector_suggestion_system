@@ -11,17 +11,39 @@ const safeText = (val) => (typeof val === 'string' ? val.trim() : '');
 
 const buildProfileSnippet = (personal, medical) => {
   const pieces = [];
+  
+  // Handle null/undefined personal and medical objects
+  if (!personal && !medical) {
+    return 'No profile data available';
+  }
+  
   if (personal?.gender) pieces.push(`Gender: ${personal.gender}`);
   if (personal?.date_of_birth) {
-    const age = Math.max(0, Math.floor((Date.now() - new Date(personal.date_of_birth).getTime()) / (365.25 * 24 * 60 * 60 * 1000)));
-    pieces.push(`Age: ${age}`);
+    try {
+      const dob = new Date(personal.date_of_birth);
+      if (!isNaN(dob.getTime())) {
+        const age = Math.max(0, Math.floor((Date.now() - dob.getTime()) / (365.25 * 24 * 60 * 60 * 1000)));
+        pieces.push(`Age: ${age}`);
+      }
+    } catch (e) {
+      console.warn('[CHAT] Invalid date_of_birth:', e.message);
+    }
   }
   if (personal?.height) pieces.push(`Height: ${personal.height} cm`);
   if (personal?.weight) pieces.push(`Weight: ${personal.weight} kg`);
   if (personal?.activity_level) pieces.push(`Activity: ${personal.activity_level}`);
   if (personal?.dietary_preference) pieces.push(`Diet preference: ${personal.dietary_preference}`);
   if (medical?.diabetes_type) pieces.push(`Diabetes type: ${medical.diabetes_type}`);
-  if (medical?.diagnosis_date) pieces.push(`Diagnosis date: ${new Date(medical.diagnosis_date).toISOString().slice(0, 10)}`);
+  if (medical?.diagnosis_date) {
+    try {
+      const diagDate = new Date(medical.diagnosis_date);
+      if (!isNaN(diagDate.getTime())) {
+        pieces.push(`Diagnosis date: ${diagDate.toISOString().slice(0, 10)}`);
+      }
+    } catch (e) {
+      console.warn('[CHAT] Invalid diagnosis_date:', e.message);
+    }
+  }
   if (medical?.current_medications?.length) {
     const meds = medical.current_medications
       .filter(Boolean)
@@ -52,8 +74,10 @@ const clipHistory = (history) => {
 
 export const completeChat = async (req, res) => {
   try {
+    console.log('[CHAT] Starting chat completion request');
     const { message, history = [] } = req.body || {};
     const userId = req.user?._id;
+    console.log('[CHAT] UserId:', userId, 'Message:', message?.substring(0, 50));
 
     if (!message || typeof message !== 'string' || !message.trim()) {
       return res.status(400).json({ success: false, message: 'Message is required.' });
@@ -63,10 +87,12 @@ export const completeChat = async (req, res) => {
     }
 
     // Fetch profile data
+    console.log('[CHAT] Fetching profile data for user:', userId);
     const [personal, medical] = await Promise.all([
       UserPersonalInfo.findOne({ user_id: userId }).lean(),
       UserMedicalInfo.findOne({ user_id: userId }).lean(),
     ]);
+    console.log('[CHAT] Profile fetched - personal:', !!personal, 'medical:', !!medical);
 
     const profileSnippet = buildProfileSnippet(personal, medical);
     const recentHistory = clipHistory(history);
@@ -74,10 +100,12 @@ export const completeChat = async (req, res) => {
     // **RAG Enhancement**
     let ragEnhancement = { systemPrompt: null, sources: [], contextUsed: false, intent: 'none' };
     
+    console.log('[CHAT] RAG_ENABLED:', process.env.RAG_ENABLED);
     if (process.env.RAG_ENABLED === 'true') {
       try {
         console.log('[CHAT] RAG enabled, enhancing query...');
         ragEnhancement = await enhanceChatWithRAG(message, personal, medical, recentHistory);
+        console.log('[CHAT] RAG enhancement complete - contextUsed:', ragEnhancement.contextUsed);
         console.log(`[CHAT] RAG Enhancement - Intent: ${ragEnhancement.intent}, Context used: ${ragEnhancement.contextUsed}`);
       } catch (ragError) {
         console.error('[CHAT] RAG failed, continuing without RAG:', ragError);
@@ -111,51 +139,87 @@ export const completeChat = async (req, res) => {
     messages.push(...recentHistory);
     messages.push({ role: 'user', content: message.trim() });
 
-    const maxTokens = parseInt(process.env.LM_STUDIO_MAX_TOKENS) || 4096;
+    const maxTokens = parseInt(process.env.LM_STUDIO_MAX_TOKENS) || 512;
     
     console.log('[CHAT] Sending to LM Studio with max_tokens:', maxTokens);
     console.log('[CHAT] Total messages:', messages.length);
+    console.log('[CHAT] LM Studio URL:', `${LM_STUDIO_BASE_URL}/v1/chat/completions`);
     
-    const response = await fetch(`${LM_STUDIO_BASE_URL}/v1/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: LM_STUDIO_MODEL,
-        messages,
-        temperature: 0.7,
-        max_tokens: maxTokens,
-        top_p: 0.95,
-        stream: false,
-      }),
-    });
+    // Add timeout to prevent hanging
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      controller.abort();
+      console.error('[CHAT] LM Studio request timed out after 50s');
+    }, 50000); // 50 second timeout
+    
+    try {
+      const response = await fetch(`${LM_STUDIO_BASE_URL}/v1/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: LM_STUDIO_MODEL,
+          messages,
+          temperature: 0.7,
+          max_tokens: maxTokens,
+          top_p: 0.95,
+          stream: false,
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+    
+      console.log('[CHAT] LM Studio response status:', response.status);
 
-    if (!response.ok) {
-      const text = await response.text();
-      console.error('LM Studio error response:', text);
-      return res.status(502).json({ success: false, message: 'LM Studio error', detail: text });
+      if (!response.ok) {
+        const text = await response.text();
+        console.error('LM Studio error response:', text);
+        return res.status(502).json({ success: false, message: 'LM Studio error', detail: text });
+      }
+
+      const data = await response.json();
+      console.log('LM Studio response tokens:', data?.usage || 'No usage data');
+      console.log('Finish reason:', data?.choices?.[0]?.finish_reason);
+      
+      const reply = data?.choices?.[0]?.message?.content;
+      if (!reply) {
+        return res.status(502).json({ success: false, message: 'No reply from model.' });
+      }
+      
+      console.log('[CHAT] Success! Reply length:', reply.length);
+      
+      // **Return with sources and context info**
+      return res.status(200).json({ 
+        success: true, 
+        reply,
+        sources: ragEnhancement.sources || [],
+        context_used: ragEnhancement.contextUsed || false,
+        intent: ragEnhancement.intent || 'none'
+      });
+    } catch (fetchErr) {
+      clearTimeout(timeout);
+      if (fetchErr.name === 'AbortError') {
+        console.error('[CHAT] LM Studio request aborted (timeout)');
+        return res.status(504).json({ 
+          success: false, 
+          message: 'AI model response timeout. Please try again with a shorter message.' 
+        });
+      }
+      throw fetchErr; // Re-throw to outer catch
     }
-
-    const data = await response.json();
-    console.log('LM Studio response tokens:', data?.usage || 'No usage data');
-    console.log('Finish reason:', data?.choices?.[0]?.finish_reason);
-    
-    const reply = data?.choices?.[0]?.message?.content;
-    if (!reply) {
-      return res.status(502).json({ success: false, message: 'No reply from model.' });
-    }
-
-    console.log('[CHAT] Reply length:', reply.length, 'characters');
-    
-    // **Return with sources and context info**
-    return res.status(200).json({ 
-      success: true, 
-      reply,
-      sources: ragEnhancement.sources || [],
-      context_used: ragEnhancement.contextUsed || false,
-      intent: ragEnhancement.intent || 'none'
-    });
   } catch (err) {
     console.error('Chat completion error:', err);
-    return res.status(500).json({ success: false, message: 'Chat completion failed.' });
+    console.error('Error stack:', err.stack);
+    console.error('Error message:', err.message);
+    
+    // More detailed error response
+    const errorMessage = err.response?.data?.error?.message 
+        || err.message 
+        || 'Chat completion failed.';
+    
+    return res.status(500).json({ 
+      success: false, 
+      message: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 };

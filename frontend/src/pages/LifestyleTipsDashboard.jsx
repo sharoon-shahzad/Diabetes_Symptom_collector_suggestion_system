@@ -99,7 +99,8 @@ const LifestyleTipsDashboard = ({ inModal = false }) => {
       });
 
       setSelectedTips(response.data.tips);
-      setSuccess('Lifestyle tips generated successfully!');
+      const emailMessage = response.data.emailSent ? ' A copy has been sent to your email.' : '';
+      setSuccess('Lifestyle tips generated successfully!' + emailMessage);
       setShowGenerator(false);
 
       // Refresh history

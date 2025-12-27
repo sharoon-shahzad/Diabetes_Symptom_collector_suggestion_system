@@ -116,15 +116,26 @@ class AuditService {
      */
     static async getAnalytics(startDate, endDate) {
         try {
+            // Validate dates
+            const start = startDate instanceof Date ? startDate : new Date(startDate);
+            const end = endDate instanceof Date ? endDate : new Date(endDate);
+            
+            if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+                throw new Error('Invalid date parameters provided');
+            }
+            
             const dateFilter = {
                 timestamp: {
-                    $gte: new Date(startDate),
-                    $lte: new Date(endDate),
+                    $gte: start,
+                    $lte: end,
                 },
             };
 
+            console.log('📊 Generating analytics with date range:', { start, end });
+            
             // Total events
             const totalEvents = await AuditLog.countDocuments(dateFilter);
+            console.log(`📈 Total events found: ${totalEvents}`);
 
             // Events by action
             const eventsByAction = await AuditLog.aggregate([
@@ -132,6 +143,7 @@ class AuditService {
                 { $group: { _id: '$action', count: { $sum: 1 } } },
                 { $sort: { count: -1 } },
             ]);
+            console.log(`✅ Events by action: ${eventsByAction.length} groups`);
 
             // Events by resource
             const eventsByResource = await AuditLog.aggregate([
@@ -139,6 +151,7 @@ class AuditService {
                 { $group: { _id: '$resource', count: { $sum: 1 } } },
                 { $sort: { count: -1 } },
             ]);
+            console.log(`✅ Events by resource: ${eventsByResource.length} groups`);
 
             // Events by hour
             const eventsByHour = await AuditLog.aggregate([
@@ -156,12 +169,14 @@ class AuditService {
                 },
                 { $sort: { _id: 1 } },
             ]);
+            console.log(`✅ Events by hour: ${eventsByHour.length} data points`);
 
             // Success/Failure stats
             const statusStats = await AuditLog.aggregate([
                 { $match: dateFilter },
                 { $group: { _id: '$status', count: { $sum: 1 } } },
             ]);
+            console.log(`✅ Status stats: ${statusStats.length} statuses`);
 
             // Top users
             const topUsers = await AuditLog.aggregate([
@@ -170,6 +185,7 @@ class AuditService {
                 { $sort: { count: -1 } },
                 { $limit: 10 },
             ]);
+            console.log(`✅ Top users: ${topUsers.length} users`);
 
             // Failed operations
             const failedOps = await AuditLog.countDocuments({
@@ -190,7 +206,12 @@ class AuditService {
                 topUsers,
             };
         } catch (error) {
-            console.error('Error generating analytics:', error.message);
+            console.error('❌ Error generating analytics:', error.message);
+            console.error('❌ Stack trace:', error.stack);
+            console.error('❌ Date filter used:', JSON.stringify({
+                startDate: startDate,
+                endDate: endDate
+            }));
             throw error;
         }
     }
@@ -222,32 +243,43 @@ class AuditService {
     static _buildQuery(filters) {
         const query = {};
 
-        if (filters.user_email) {
+        if (filters.user_email && filters.user_email !== 'undefined') {
             query.user_email = new RegExp(filters.user_email, 'i');
         }
 
-        if (filters.user_id) {
+        if (filters.user_id && filters.user_id !== 'undefined') {
             query.user_id = filters.user_id;
         }
 
-        if (filters.action) {
+        if (filters.action && filters.action !== 'undefined') {
             query.action = filters.action;
         }
 
-        if (filters.resource) {
+        if (filters.resource && filters.resource !== 'undefined') {
             query.resource = filters.resource;
         }
 
-        if (filters.status) {
+        if (filters.status && filters.status !== 'undefined') {
             query.status = filters.status;
         }
 
-        if (filters.startDate || filters.endDate) {
+        // Handle date filters with validation
+        const hasValidStartDate = filters.startDate && 
+            filters.startDate !== 'undefined' && 
+            filters.startDate !== 'null' &&
+            !isNaN(new Date(filters.startDate).getTime());
+            
+        const hasValidEndDate = filters.endDate && 
+            filters.endDate !== 'undefined' && 
+            filters.endDate !== 'null' &&
+            !isNaN(new Date(filters.endDate).getTime());
+
+        if (hasValidStartDate || hasValidEndDate) {
             query.timestamp = {};
-            if (filters.startDate) {
+            if (hasValidStartDate) {
                 query.timestamp.$gte = new Date(filters.startDate);
             }
-            if (filters.endDate) {
+            if (hasValidEndDate) {
                 query.timestamp.$lte = new Date(filters.endDate);
             }
         }

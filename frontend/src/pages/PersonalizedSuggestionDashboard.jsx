@@ -23,10 +23,22 @@ const PersonalizedSuggestionDashboard = () => {
       const medicalFields = ['diabetes_type', 'diagnosis_date'];
       const personalData = personalRes.data?.data || {};
       const medicalData = medicalRes.data?.data || {};
+      
+      // Helper to check if a value is actually filled and not encrypted
+      const isValidValue = (value) => {
+        if (!value) return false;
+        if (value === null || value === undefined || value === '') return false;
+        // Check if the value looks like an encrypted string (contains ':' and looks like hex)
+        if (typeof value === 'string' && value.includes(':') && value.length > 50) {
+          return false;
+        }
+        return true;
+      };
+      
       const total = personalFields.length + medicalFields.length;
       const completed = [...personalFields, ...medicalFields].reduce((count, field) => {
         const source = personalFields.includes(field) ? personalData : medicalData;
-        return source[field] ? count + 1 : count;
+        return isValidValue(source[field]) ? count + 1 : count;
       }, 0);
       setPersonalInfoCompletion(total ? Math.round((completed / total) * 100) : 0);
     } catch (e) {

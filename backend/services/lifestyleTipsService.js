@@ -37,8 +37,9 @@ class LifestyleTipsService {
       const medicalInfo = medicalInfoDoc ? medicalInfoDoc.toObject() : {};
 
       // Check if tips already exist for this date
+      // Normalize to UTC midnight to avoid timezone issues
       const targetDateObj = new Date(targetDate);
-      targetDateObj.setHours(0, 0, 0, 0);
+      targetDateObj.setUTCHours(0, 0, 0, 0);
       
       const existingTips = await LifestyleTip.findOne({
         user_id: userId,

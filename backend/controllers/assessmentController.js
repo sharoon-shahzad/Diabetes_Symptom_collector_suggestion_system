@@ -6,6 +6,10 @@ import { UserMedicalInfo } from '../models/UserMedicalInfo.js';
 import { assessDiabetesRiskPython } from '../services/mlService.js';
 import hybridRiskService from '../services/hybridRiskService.js';
 import { createAuditLog } from '../middlewares/auditMiddleware.js';
+import { generateRiskAssessmentPDF } from '../services/pdfGenerationService.js';
+import { sendRiskAssessmentEmail } from '../services/emailService.js';
+import { UserPersonalInfo } from '../models/UserPersonalInfo.js';
+import encryptionService from '../services/encryptionService.js';
 
 // Map stored answers to model features expected by EnhancedDiabetesSystem
 function mapAnswersToFeatures(answersByQuestionId, questions) {
@@ -208,13 +212,93 @@ export const assessDiabetes = async (req, res) => {
       const riskLevelRaw = finalResult?.risk_level || 'low';
       const probabilityRaw = finalResult?.diabetes_probability ?? 0;
 
-      await User.findByIdAndUpdate(userId, {
+      const updatedUser = await User.findByIdAndUpdate(userId, {
         last_assessment_risk_level: typeof riskLevelRaw === 'string' ? riskLevelRaw : String(riskLevelRaw),
         last_assessment_probability: Number(probabilityRaw) || 0,
         last_assessment_at: new Date(),
         // Reset popup handled flag so the new assessment can trigger a fresh prompt
         last_assessment_popup_handled_at: null,
+      }, { new: true });
+
+      // Generate and send risk assessment report email in background
+      setImmediate(async () => {
+        try {
+          console.log('📊 Generating risk assessment report for user:', updatedUser.email);
+          
+          // Fetch personal and medical info
+          const personalInfo = await UserPersonalInfo.findOne({ user_id: userId });
+          const medicalInfo = await UserMedicalInfo.findOne({ user_id: userId });
+          
+          // Decrypt if available
+          let decryptedPersonalInfo = null;
+          let decryptedMedicalInfo = null;
+          
+          if (personalInfo) {
+            decryptedPersonalInfo = {
+              date_of_birth: encryptionService.decrypt(personalInfo.date_of_birth),
+              gender: encryptionService.decrypt(personalInfo.gender),
+              height: encryptionService.decrypt(personalInfo.height),
+              weight: encryptionService.decrypt(personalInfo.weight),
+              activity_level: encryptionService.decrypt(personalInfo.activity_level),
+              dietary_preference: encryptionService.decrypt(personalInfo.dietary_preference),
+              smoking_status: encryptionService.decrypt(personalInfo.smoking_status),
+              alcohol_use: encryptionService.decrypt(personalInfo.alcohol_use),
+              sleep_hours: encryptionService.decrypt(personalInfo.sleep_hours)
+            };
+          }
+          
+          if (medicalInfo) {
+            decryptedMedicalInfo = {
+              diabetes_type: medicalInfo.diabetes_type ? encryptionService.decrypt(medicalInfo.diabetes_type) : null,
+              diagnosis_date: medicalInfo.diagnosis_date ? encryptionService.decrypt(medicalInfo.diagnosis_date) : null,
+              current_medications: medicalInfo.current_medications ? medicalInfo.current_medications.map(med => ({
+                medication_name: encryptionService.decrypt(med.medication_name),
+                dosage: encryptionService.decrypt(med.dosage),
+                frequency: encryptionService.decrypt(med.frequency)
+              })) : [],
+              chronic_conditions: medicalInfo.chronic_conditions ? medicalInfo.chronic_conditions.map(cond => ({
+                condition_name: encryptionService.decrypt(cond.condition_name)
+              })) : [],
+              blood_glucose_data: medicalInfo.blood_glucose_data ? {
+                fasting_glucose: medicalInfo.blood_glucose_data.fasting_glucose ? encryptionService.decrypt(medicalInfo.blood_glucose_data.fasting_glucose) : null,
+                hba1c: medicalInfo.blood_glucose_data.hba1c ? encryptionService.decrypt(medicalInfo.blood_glucose_data.hba1c) : null,
+                postprandial_glucose: medicalInfo.blood_glucose_data.postprandial_glucose ? encryptionService.decrypt(medicalInfo.blood_glucose_data.postprandial_glucose) : null
+              } : null
+            };
+          }
+          
+          // Prepare risk data with actual assessment results
+          const riskData = {
+            risk_level: updatedUser.last_assessment_risk_level || 'low',
+            probability: updatedUser.last_assessment_probability || 0,
+            confidence: finalResult?.confidence || 0,
+            total_symptoms: finalResult?.total_symptoms || 0,
+            assessment_date: new Date()
+          };
+          
+          // Generate PDF
+          const pdfPath = await generateRiskAssessmentPDF(
+            updatedUser,
+            decryptedPersonalInfo,
+            decryptedMedicalInfo,
+            riskData
+          );
+          
+          // Send email with PDF
+          await sendRiskAssessmentEmail(
+            updatedUser.email,
+            updatedUser.fullName,
+            riskData.risk_level,
+            pdfPath
+          );
+          
+          console.log('✅ Risk assessment report email sent successfully to:', updatedUser.email);
+        } catch (reportError) {
+          console.error('❌ Error generating/sending risk assessment report:', reportError.message);
+          console.error('Full error:', reportError);
+        }
       });
+
     } catch (persistErr) {
       console.error('Failed to persist latest assessment summary on user:', persistErr);
     }

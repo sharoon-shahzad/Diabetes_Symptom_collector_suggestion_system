@@ -75,8 +75,18 @@ const ExercisePlanDashboard = ({ inModal = false }) => {
   };
 
   const generateDateOptions = () => {
-    const dates = []; const start = new Date(); start.setHours(0,0,0,0);
-    for (let i=0;i<=5;i++){ const d=new Date(start); d.setDate(start.getDate()+i); dates.push(d.toISOString().split('T')[0]); }
+    const dates = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    for (let i = 0; i <= 5; i++) {
+      const d = new Date(today.getTime() + (i * 24 * 60 * 60 * 1000));
+      // Use local date components to avoid timezone conversion issues
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      dates.push(`${year}-${month}-${day}`);
+    }
     return dates;
   };
 
@@ -86,7 +96,8 @@ const ExercisePlanDashboard = ({ inModal = false }) => {
     try {
       const res = await axiosInstance.post('/exercise-plan/generate', { target_date: selectedDate });
       if (res.data.success) {
-        setSuccess('Exercise plan generated successfully!');
+        const emailMessage = res.data.emailSent ? ' A copy has been sent to your email.' : '';
+        setSuccess('Exercise plan generated successfully!' + emailMessage);
         setSelectedPlan(res.data.plan);
         setShowGenerator(false);
         const historyRes = await axiosInstance.get('/exercise-plan/history?limit=10');

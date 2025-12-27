@@ -1,5 +1,8 @@
 import dietPlanService from '../services/dietPlanService.js';
 import regionDiscoveryService from '../services/regionDiscoveryService.js';
+import { generateDietPlanPDF } from '../services/pdfGenerationService.js';
+import { sendDietPlanEmail } from '../services/emailService.js';
+import { User } from '../models/User.js';
 
 /**
  * Generate a new diet plan
@@ -55,9 +58,30 @@ const generateDietPlan = async (req, res) => {
     // Generate the plan
     const result = await dietPlanService.generateDietPlan(userId, target_date);
     
+    // Generate PDF and send email in background (don't wait for it)
+    setImmediate(async () => {
+      try {
+        const user = await User.findById(userId);
+        if (user && user.email) {
+          const userInfo = {
+            fullName: user.fullName,
+            email: user.email
+          };
+          
+          const pdfPath = await generateDietPlanPDF(result.plan, userInfo);
+          await sendDietPlanEmail(user.email, user.fullName, pdfPath, result.plan);
+          console.log('✅ Diet plan email sent successfully to:', user.email);
+        }
+      } catch (emailError) {
+        console.error('❌ Error sending diet plan email:', emailError.message);
+        // Don't fail the request if email fails
+      }
+    });
+    
     return res.status(201).json({
       success: true,
       message: 'Diet plan generated successfully',
+      emailSent: true,
       ...result
     });
     

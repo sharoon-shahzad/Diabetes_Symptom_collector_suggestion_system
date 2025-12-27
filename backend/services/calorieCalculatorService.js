@@ -25,18 +25,29 @@ class CalorieCalculatorService {
    * @returns {number} - BMR in kcal/day
    */
   calculateBMR(age, gender, weight, height) {
+    // Use defaults if parameters are missing (due to incomplete profile or decryption errors)
+    const defaultAge = age || 30;
+    const defaultGender = gender || 'male';
+    const defaultWeight = weight || 70;
+    const defaultHeight = height || 170;
+    
     if (!age || !gender || !weight || !height) {
-      throw new Error('Missing required parameters for BMR calculation');
+      console.warn('[CalorieCalculator] Using default values for missing parameters:', {
+        age: !age ? `${defaultAge} (default)` : age,
+        gender: !gender ? `${defaultGender} (default)` : gender,
+        weight: !weight ? `${defaultWeight} (default)` : weight,
+        height: !height ? `${defaultHeight} (default)` : height
+      });
     }
 
     let bmr;
     
-    if (gender.toLowerCase() === 'male') {
+    if (defaultGender.toLowerCase() === 'male') {
       // BMR (Men) = 88.362 + (13.397 × weight in kg) + (4.799 × height in cm) - (5.677 × age in years)
-      bmr = 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * age);
+      bmr = 88.362 + (13.397 * defaultWeight) + (4.799 * defaultHeight) - (5.677 * defaultAge);
     } else {
       // BMR (Women) = 447.593 + (9.247 × weight in kg) + (3.098 × height in cm) - (4.330 × age in years)
-      bmr = 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * age);
+      bmr = 447.593 + (9.247 * defaultWeight) + (3.098 * defaultHeight) - (4.330 * defaultAge);
     }
     
     return Math.round(bmr);

@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { cleanupTemporaryFile } from './pdfGenerationService.js';
 
 export async function sendActivationEmail(email, token) {
     const transporter = nodemailer.createTransport({
@@ -182,4 +183,441 @@ export async function sendOnboardingCompletionEmail(email, userName, diseaseName
             cleanupTempPDF(pdfFilepath);
         }, 5000); // Clean up after 5 seconds
     }
+}
+
+/**
+ * Send Diet Plan Email with PDF Attachment
+ * @param {string} email - User's email address
+ * @param {string} userName - User's full name
+ * @param {string} pdfFilepath - Path to generated PDF
+ * @param {Object} dietPlan - Diet plan object with date info
+ */
+export async function sendDietPlanEmail(email, userName, pdfFilepath, dietPlan) {
+    const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT, 10),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS,
+        },
+    });
+
+    const planDate = dietPlan.target_date ? new Date(dietPlan.target_date).toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    }) : 'Today';
+
+    const html = `
+    <div style="font-family: Arial, sans-serif; background: #f4f6fb; padding: 40px 0;">
+      <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 32px;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h1 style="color: #2563eb; margin: 0; font-size: 28px;">🥗 Diet Plan Ready!</h1>
+        </div>
+        
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">Dear ${userName},</p>
+        
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">
+          Your personalized diet plan for <strong>${planDate}</strong> has been successfully generated and is ready for you!
+        </p>
+        
+        <div style="background: #dbeafe; border-left: 4px solid #2563eb; padding: 16px; margin: 24px 0; border-radius: 4px;">
+          <p style="color: #1e40af; margin: 0; font-size: 15px;">
+            <strong>📎 Your diet plan is attached to this email as a PDF.</strong>
+          </p>
+          <p style="color: #1e40af; margin: 8px 0 0 0; font-size: 14px;">
+            You can download and print it for easy reference throughout your day.
+          </p>
+        </div>
+        
+        <p style="color: #555; font-size: 15px; line-height: 1.6;">
+          This plan has been carefully crafted based on your:
+        </p>
+        <ul style="color: #555; font-size: 15px; line-height: 1.8;">
+          <li>Personal health profile</li>
+          <li>Nutritional requirements</li>
+          <li>Regional food availability</li>
+          <li>Dietary preferences</li>
+        </ul>
+        
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${process.env.FRONTEND_URL}/personalized-system/diet" style="display: inline-block; padding: 14px 36px; background: #059669; color: #fff; border-radius: 6px; font-size: 17px; text-decoration: none; font-weight: bold; letter-spacing: 0.5px; box-shadow: 0 2px 8px rgba(5, 150, 105, 0.15);">View in Dashboard</a>
+        </div>
+        
+        <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 24px 0; border-radius: 4px;">
+          <p style="color: #92400e; margin: 0; font-size: 14px;">
+            <strong>💡 Tip:</strong> Consistency is key! Try to follow your meal plan as closely as possible for the best results.
+          </p>
+        </div>
+        
+        <p style="color: #888; font-size: 14px; line-height: 1.6; margin-top: 24px;">
+          If you have any questions or concerns about your diet plan, please consult with your healthcare provider.
+        </p>
+        
+        <hr style="margin: 32px 0; border: none; border-top: 1px solid #eee;">
+        <p style="color: #aaa; font-size: 13px; text-align: center;">&copy; ${new Date().getFullYear()} Diabetes Symptom Collector. All rights reserved.</p>
+      </div>
+    </div>
+    `;
+
+    const mailOptions = {
+        from: process.env.SMTP_USER,
+        to: email,
+        subject: '🥗 Your Personalized Diet Plan is Ready - Diabetes Symptom Collector',
+        html,
+        attachments: [{
+            filename: `Diet_Plan_${new Date().toISOString().split('T')[0]}.pdf`,
+            path: pdfFilepath,
+            contentType: 'application/pdf'
+        }]
+    };
+
+    console.log('📧 Sending diet plan email to:', email);
+    
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log('✅ Diet plan email sent successfully!');
+    } catch (error) {
+        console.error('❌ Diet plan email sending failed:', error.message);
+        throw error;
+    }
+
+    // Clean up the temporary PDF file after sending
+    setTimeout(() => {
+        cleanupTemporaryFile(pdfFilepath);
+    }, 5000);
+}
+
+/**
+ * Send Exercise Plan Email with PDF Attachment
+ * @param {string} email - User's email address
+ * @param {string} userName - User's full name
+ * @param {string} pdfFilepath - Path to generated PDF
+ * @param {Object} exercisePlan - Exercise plan object with date info
+ */
+export async function sendExercisePlanEmail(email, userName, pdfFilepath, exercisePlan) {
+    const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT, 10),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS,
+        },
+    });
+
+    const planDate = exercisePlan.target_date ? new Date(exercisePlan.target_date).toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    }) : 'Today';
+
+    const html = `
+    <div style="font-family: Arial, sans-serif; background: #f4f6fb; padding: 40px 0;">
+      <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 32px;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h1 style="color: #7c3aed; margin: 0; font-size: 28px;">🏃 Exercise Plan Ready!</h1>
+        </div>
+        
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">Dear ${userName},</p>
+        
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">
+          Your personalized exercise plan for <strong>${planDate}</strong> has been successfully generated!
+        </p>
+        
+        <div style="background: #f3e8ff; border-left: 4px solid #7c3aed; padding: 16px; margin: 24px 0; border-radius: 4px;">
+          <p style="color: #5b21b6; margin: 0; font-size: 15px;">
+            <strong>📎 Your exercise plan is attached to this email as a PDF.</strong>
+          </p>
+          <p style="color: #5b21b6; margin: 8px 0 0 0; font-size: 14px;">
+            Print it out or save it to your phone for easy access during your workout!
+          </p>
+        </div>
+        
+        <p style="color: #555; font-size: 15px; line-height: 1.6;">
+          This exercise plan is tailored to your:
+        </p>
+        <ul style="color: #555; font-size: 15px; line-height: 1.8;">
+          <li>Current fitness level</li>
+          <li>Health conditions</li>
+          <li>Personal preferences</li>
+          <li>Safety considerations</li>
+        </ul>
+        
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${process.env.FRONTEND_URL}/personalized-system/exercise" style="display: inline-block; padding: 14px 36px; background: #7c3aed; color: #fff; border-radius: 6px; font-size: 17px; text-decoration: none; font-weight: bold; letter-spacing: 0.5px; box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);">View in Dashboard</a>
+        </div>
+        
+        <div style="background: #fee2e2; border-left: 4px solid #dc2626; padding: 16px; margin: 24px 0; border-radius: 4px;">
+          <p style="color: #991b1b; margin: 0; font-size: 14px;">
+            <strong>⚠️ Safety First:</strong> Always warm up before exercising and stop immediately if you feel dizzy, short of breath, or experience chest pain. Consult your doctor before starting any new exercise program.
+          </p>
+        </div>
+        
+        <p style="color: #888; font-size: 14px; line-height: 1.6; margin-top: 24px;">
+          Stay consistent with your exercise routine for optimal health benefits. You've got this! 💪
+        </p>
+        
+        <hr style="margin: 32px 0; border: none; border-top: 1px solid #eee;">
+        <p style="color: #aaa; font-size: 13px; text-align: center;">&copy; ${new Date().getFullYear()} Diabetes Symptom Collector. All rights reserved.</p>
+      </div>
+    </div>
+    `;
+
+    const mailOptions = {
+        from: process.env.SMTP_USER,
+        to: email,
+        subject: '🏃 Your Personalized Exercise Plan is Ready - Diabetes Symptom Collector',
+        html,
+        attachments: [{
+            filename: `Exercise_Plan_${new Date().toISOString().split('T')[0]}.pdf`,
+            path: pdfFilepath,
+            contentType: 'application/pdf'
+        }]
+    };
+
+    console.log('📧 Sending exercise plan email to:', email);
+    
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log('✅ Exercise plan email sent successfully!');
+    } catch (error) {
+        console.error('❌ Exercise plan email sending failed:', error.message);
+        throw error;
+    }
+
+    // Clean up the temporary PDF file after sending
+    setTimeout(() => {
+        cleanupTemporaryFile(pdfFilepath);
+    }, 5000);
+}
+
+/**
+ * Send Lifestyle Tips Email with PDF Attachment
+ * @param {string} email - User's email address
+ * @param {string} userName - User's full name
+ * @param {string} pdfFilepath - Path to generated PDF
+ * @param {Object} lifestyleTips - Lifestyle tips object with date info
+ */
+export async function sendLifestyleTipsEmail(email, userName, pdfFilepath, lifestyleTips) {
+    const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT, 10),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS,
+        },
+    });
+
+    const tipsDate = lifestyleTips.target_date ? new Date(lifestyleTips.target_date).toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+    }) : 'Today';
+
+    const html = `
+    <div style="font-family: Arial, sans-serif; background: #f4f6fb; padding: 40px 0;">
+      <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 32px;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h1 style="color: #10b981; margin: 0; font-size: 28px;">💡 Lifestyle Tips Ready!</h1>
+        </div>
+        
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">Dear ${userName},</p>
+        
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">
+          Your personalized lifestyle recommendations for <strong>${tipsDate}</strong> are now available!
+        </p>
+        
+        <div style="background: #d1fae5; border-left: 4px solid #10b981; padding: 16px; margin: 24px 0; border-radius: 4px;">
+          <p style="color: #065f46; margin: 0; font-size: 15px;">
+            <strong>📎 Your lifestyle tips guide is attached to this email as a PDF.</strong>
+          </p>
+          <p style="color: #065f46; margin: 8px 0 0 0; font-size: 14px;">
+            Keep it handy as a reference for better health management throughout your day.
+          </p>
+        </div>
+        
+        <p style="color: #555; font-size: 15px; line-height: 1.6;">
+          These recommendations cover essential areas including:
+        </p>
+        <ul style="color: #555; font-size: 15px; line-height: 1.8;">
+          <li>Sleep hygiene and rest</li>
+          <li>Stress management techniques</li>
+          <li>Daily health monitoring</li>
+          <li>Preventive care practices</li>
+        </ul>
+        
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${process.env.FRONTEND_URL}/personalized-system/lifestyle" style="display: inline-block; padding: 14px 36px; background: #10b981; color: #fff; border-radius: 6px; font-size: 17px; text-decoration: none; font-weight: bold; letter-spacing: 0.5px; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);">View in Dashboard</a>
+        </div>
+        
+        <div style="background: #dbeafe; border-left: 4px solid #2563eb; padding: 16px; margin: 24px 0; border-radius: 4px;">
+          <p style="color: #1e40af; margin: 0; font-size: 14px;">
+            <strong>🌟 Remember:</strong> Small, consistent lifestyle changes lead to significant long-term health improvements. Take it one day at a time!
+          </p>
+        </div>
+        
+        <p style="color: #888; font-size: 14px; line-height: 1.6; margin-top: 24px;">
+          Your health journey is unique. These tips are personalized to help you achieve your wellness goals.
+        </p>
+        
+        <hr style="margin: 32px 0; border: none; border-top: 1px solid #eee;">
+        <p style="color: #aaa; font-size: 13px; text-align: center;">&copy; ${new Date().getFullYear()} Diabetes Symptom Collector. All rights reserved.</p>
+      </div>
+    </div>
+    `;
+
+    const mailOptions = {
+        from: process.env.SMTP_USER,
+        to: email,
+        subject: '💡 Your Personalized Lifestyle Tips are Ready - Diabetes Symptom Collector',
+        html,
+        attachments: [{
+            filename: `Lifestyle_Tips_${new Date().toISOString().split('T')[0]}.pdf`,
+            path: pdfFilepath,
+            contentType: 'application/pdf'
+        }]
+    };
+
+    console.log('📧 Sending lifestyle tips email to:', email);
+    
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log('✅ Lifestyle tips email sent successfully!');
+    } catch (error) {
+        console.error('❌ Lifestyle tips email sending failed:', error.message);
+        throw error;
+    }
+
+    // Clean up the temporary PDF file after sending
+    setTimeout(() => {
+        cleanupTemporaryFile(pdfFilepath);
+    }, 5000);
+}
+
+/**
+ * Send Risk Assessment Email with PDF Attachment
+ * @param {string} email - User's email address
+ * @param {string} userName - User's full name
+ * @param {string} riskLevel - Risk level (low/medium/high)
+ * @param {string} pdfFilepath - Path to generated PDF
+ */
+export async function sendRiskAssessmentEmail(email, userName, riskLevel, pdfFilepath) {
+    const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: parseInt(process.env.SMTP_PORT, 10),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS,
+        },
+    });
+
+    const riskColors = {
+        'low': { color: '#059669', bg: '#d1fae5', emoji: '✅' },
+        'medium': { color: '#f59e0b', bg: '#fed7aa', emoji: '⚠️' },
+        'high': { color: '#dc2626', bg: '#fee2e2', emoji: '🔴' }
+    };
+
+    const riskInfo = riskColors[riskLevel.toLowerCase()] || riskColors['medium'];
+
+    const html = `
+    <div style="font-family: Arial, sans-serif; background: #f4f6fb; padding: 40px 0;">
+      <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); padding: 32px;">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h1 style="color: #2563eb; margin: 0; font-size: 28px;">⚕️ Medical Risk Assessment Complete</h1>
+        </div>
+        
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">Dear ${userName},</p>
+        
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">
+          Thank you for completing your comprehensive health assessment. Your detailed medical risk report is now ready.
+        </p>
+        
+        <div style="background: ${riskInfo.bg}; border-left: 4px solid ${riskInfo.color}; padding: 20px; margin: 24px 0; border-radius: 4px; text-align: center;">
+          <p style="color: ${riskInfo.color}; margin: 0; font-size: 18px; font-weight: bold;">
+            ${riskInfo.emoji} Your Risk Level: ${riskLevel.toUpperCase()}
+          </p>
+        </div>
+        
+        <div style="background: #dbeafe; border-left: 4px solid #2563eb; padding: 16px; margin: 24px 0; border-radius: 4px;">
+          <p style="color: #1e40af; margin: 0; font-size: 15px;">
+            <strong>📎 Your comprehensive medical report is attached to this email as a PDF.</strong>
+          </p>
+          <p style="color: #1e40af; margin: 8px 0 0 0; font-size: 14px;">
+            This report includes your risk assessment, health profile, and personalized recommendations.
+          </p>
+        </div>
+        
+        <p style="color: #555; font-size: 15px; line-height: 1.6;">
+          Your report contains:
+        </p>
+        <ul style="color: #555; font-size: 15px; line-height: 1.8;">
+          <li>Complete risk assessment analysis</li>
+          <li>Your health and medical history</li>
+          <li>Personalized clinical recommendations</li>
+          <li>Next steps for your health journey</li>
+        </ul>
+        
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${process.env.FRONTEND_URL}/dashboard" style="display: inline-block; padding: 14px 36px; background: #dc2626; color: #fff; border-radius: 6px; font-size: 17px; text-decoration: none; font-weight: bold; letter-spacing: 0.5px; box-shadow: 0 2px 8px rgba(220, 38, 38, 0.15);">View Dashboard</a>
+        </div>
+        
+        <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; margin: 24px 0; border-radius: 4px;">
+          <p style="color: #92400e; margin: 0; font-size: 14px;">
+            <strong>⚠️ Important:</strong> This report is for informational purposes and does not replace professional medical advice. Please share this report with your healthcare provider during your next consultation.
+          </p>
+        </div>
+        
+        <p style="color: #555; font-size: 15px; line-height: 1.6;">
+          <strong>What's Next?</strong>
+        </p>
+        <ul style="color: #555; font-size: 15px; line-height: 1.8;">
+          <li>Review your personalized recommendations</li>
+          <li>Schedule an appointment with your healthcare provider</li>
+          <li>Start implementing the suggested lifestyle changes</li>
+          <li>Use our personalized diet, exercise, and lifestyle plans</li>
+        </ul>
+        
+        <p style="color: #888; font-size: 14px; line-height: 1.6; margin-top: 24px;">
+          We're here to support you on your health journey. Take care and stay healthy!
+        </p>
+        
+        <hr style="margin: 32px 0; border: none; border-top: 1px solid #eee;">
+        <p style="color: #aaa; font-size: 13px; text-align: center;">&copy; ${new Date().getFullYear()} Diabetes Symptom Collector. All rights reserved.</p>
+      </div>
+    </div>
+    `;
+
+    const mailOptions = {
+        from: process.env.SMTP_USER,
+        to: email,
+        subject: '⚕️ Your Medical Risk Assessment Report - Diabetes Symptom Collector',
+        html,
+        attachments: [{
+            filename: `Medical_Risk_Assessment_Report_${new Date().toISOString().split('T')[0]}.pdf`,
+            path: pdfFilepath,
+            contentType: 'application/pdf'
+        }]
+    };
+
+    console.log('📧 Sending risk assessment email to:', email);
+    
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log('✅ Risk assessment email sent successfully!');
+    } catch (error) {
+        console.error('❌ Risk assessment email sending failed:', error.message);
+        throw error;
+    }
+
+    // Clean up the temporary PDF file after sending
+    setTimeout(() => {
+        cleanupTemporaryFile(pdfFilepath);
+    }, 5000);
 } 

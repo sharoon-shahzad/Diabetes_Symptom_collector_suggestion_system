@@ -118,8 +118,20 @@ class DietPlanService {
       console.log('🤖 Calling AI model - no fallback mode');
       const aiResponse = await this.callDiabetica(aiPrompt);
       
+      // Log raw response for debugging (truncated)
+      console.log('📥 AI Response preview:', aiResponse.substring(0, 500) + '...');
+      
       // 9. Parse and structure meal plan
       const structuredPlan = this.parseMealPlan(aiResponse, dailyCalories, mealDistribution);
+      
+      // Validate final structure before saving
+      if (!structuredPlan.meals || structuredPlan.meals.length === 0) {
+        console.error('❌ Validation failed: No valid meals in structured plan');
+        console.error('Raw AI response:', aiResponse);
+        throw new Error('Failed to generate valid meal plan. AI response did not contain properly structured meals.');
+      }
+      
+      console.log(`✅ Successfully validated ${structuredPlan.meals.length} meals`);
       
       // 10. Save to database
       const dietPlan = new DietPlan({
@@ -179,18 +191,29 @@ class DietPlanService {
       const allResults = [];
       const seenTexts = new Set();
       
-      // Query with region-specific filter (DYNAMIC)
+      // Query with region-specific filter (DYNAMIC) - Include both diet_chart and guideline documents
+      // ChromaDB filter using $or operator for doc_type
       const filter = {
-        country: region,
-        doc_type: 'diet_chart'
+        $and: [
+          { country: region },
+          {
+            $or: [
+              { doc_type: 'diet_chart' },
+              { doc_type: 'guideline' }
+            ]
+          }
+        ]
       };
       
       for (const query of queries) {
         try {
           const queryResponse = await processQuery(
             query,
-            filter,
-            8 // Increased from 5 to 8 chunks per query for more variety
+            {
+              topK: 8, // Increased from 5 to 8 chunks per query for more variety
+              filter: filter,
+              minScore: 0.0
+            }
           );
           
           // processQuery returns an object with results array
@@ -365,7 +388,18 @@ CRITICAL INSTRUCTIONS:
 13. **CREATE UNIQUE COMBINATIONS** - Mix different food items creatively within guidelines
 14. **NO REPETITION** - If this is Day 2+, ensure completely different meal structure
 
-RESPONSE FORMAT (strict JSON):
+RESPONSE FORMAT (STRICT JSON - NO MARKDOWN, NO TEXT OUTSIDE JSON):
+
+CRITICAL JSON RULES:
+- "meals" MUST be an array of exactly 5 meal objects
+- Each meal MUST have "name", "timing", and "items" fields
+- "items" MUST be an array of food objects (NEVER a string or text)
+- Each item MUST have ALL required fields: "food" (string), "portion" (string), "calories" (number), "carbs" (number), "protein" (number), "fat" (number), "fiber" (number)
+- DO NOT include general advice, tips, or notes as meal items
+- DO NOT add text-only meals like "Monitor blood glucose" - these should go in "tips" array only
+- "tips" MUST be an array of strings (NOT part of meals)
+
+EXAMPLE (follow this structure exactly):
 {
   "meals": [
     {
@@ -380,9 +414,18 @@ RESPONSE FORMAT (strict JSON):
           "protein": 3,
           "fat": 3,
           "fiber": 2
+        },
+        {
+          "food": "Greek Yogurt",
+          "portion": "1 cup (200g)",
+          "calories": 100,
+          "carbs": 8,
+          "protein": 17,
+          "fat": 2,
+          "fiber": 0
         }
       ],
-      "total_calories": 450
+      "total_calories": 220
     }
   ],
   "nutritional_totals": {
@@ -399,7 +442,7 @@ RESPONSE FORMAT (strict JSON):
   ]
 }
 
-Generate the complete meal plan now in valid JSON format:`;
+Generate the complete meal plan now. Return ONLY valid JSON (no markdown, no code blocks, no explanations):`;
   }
   
   /**
@@ -422,7 +465,27 @@ Generate the complete meal plan now in valid JSON format:`;
         messages: [
           {
             role: 'system',
-            content: `You are a specialized diabetes dietitian AI (Session: ${randomSeed}). You must respond with ONLY valid JSON format for diet plans. Create diverse and unique meal combinations for every request. Do not include any markdown formatting or explanations.`
+            content: `You are a specialized diabetes dietitian AI (Session: ${randomSeed}). 
+
+CRITICAL RESPONSE RULES:
+1. Respond with ONLY valid JSON - no markdown, no code blocks, no explanations
+2. Each meal's "items" field MUST be an array of food objects
+3. NEVER put strings, text, or advice directly in the "items" array
+4. Each food item MUST have: "food" (string), "portion" (string), "calories" (number), "carbs" (number), "protein" (number), "fat" (number), "fiber" (number)
+5. Put all advice, tips, and monitoring instructions in the "tips" array ONLY
+6. Create diverse and unique meal combinations for every request
+7. DO NOT include meals that only contain advice (like "Monitor blood glucose") - these are NOT meals
+
+Example of CORRECT structure:
+{
+  "meals": [{"name": "Breakfast", "items": [{"food": "Oatmeal", "portion": "1 cup", "calories": 150, ...}]}],
+  "tips": ["Monitor blood glucose levels", "Drink water"]
+}
+
+Example of INCORRECT structure (DO NOT DO THIS):
+{
+  "meals": [{"name": "Monitoring", "items": "Monitor blood glucose levels"}]  ❌ WRONG
+}`
           },
           {
             role: 'user',
@@ -480,25 +543,83 @@ Generate the complete meal plan now in valid JSON format:`;
         throw new Error('Invalid meal structure in AI response');
       }
       
-      // Validate and correct meal calories
-      parsed.meals = parsed.meals.map(meal => {
-        if (meal.items && Array.isArray(meal.items)) {
-          // Recalculate total_calories from items to ensure accuracy
-          const calculatedCalories = meal.items.reduce((sum, item) => {
-            // Ensure item.calories is a number
-            const itemCals = parseFloat(item.calories) || 0;
-            return sum + itemCals;
-          }, 0);
-          
-          // Round to nearest integer
-          meal.total_calories = Math.round(calculatedCalories);
-          
-          console.log(`✅ ${meal.name}: ${meal.total_calories} kcal (${meal.items.length} items)`);
-        } else {
-          meal.total_calories = 0;
+      // Validate and sanitize each meal
+      parsed.meals = parsed.meals.filter(meal => {
+        // Skip meals without a name
+        if (!meal.name) {
+          console.warn('⚠️ Skipping meal without name');
+          return false;
         }
-        return meal;
+        
+        // Validate items is an array
+        if (!meal.items) {
+          console.warn(`⚠️ Meal "${meal.name}" has no items, skipping`);
+          return false;
+        }
+        
+        // Check if items is a string (invalid)
+        if (typeof meal.items === 'string') {
+          console.warn(`⚠️ Meal "${meal.name}" has string items instead of array: "${meal.items.substring(0, 100)}...", skipping`);
+          return false;
+        }
+        
+        // Ensure items is an array
+        if (!Array.isArray(meal.items)) {
+          console.warn(`⚠️ Meal "${meal.name}" items is not an array, skipping`);
+          return false;
+        }
+        
+        // Filter and validate individual food items
+        meal.items = meal.items.filter(item => {
+          // Skip non-object items (strings, numbers, etc.)
+          if (typeof item !== 'object' || item === null) {
+            console.warn(`⚠️ Invalid item in "${meal.name}": ${typeof item} - ${JSON.stringify(item)?.substring(0, 50)}`);
+            return false;
+          }
+          
+          // Validate required fields
+          if (!item.food || typeof item.food !== 'string') {
+            console.warn(`⚠️ Item missing 'food' field in "${meal.name}": ${JSON.stringify(item)?.substring(0, 100)}`);
+            return false;
+          }
+          
+          if (!item.portion || typeof item.portion !== 'string') {
+            console.warn(`⚠️ Item missing 'portion' field in "${meal.name}": ${JSON.stringify(item)?.substring(0, 100)}`);
+            return false;
+          }
+          
+          // Ensure numeric fields are numbers
+          item.calories = parseFloat(item.calories) || 0;
+          item.carbs = parseFloat(item.carbs) || 0;
+          item.protein = parseFloat(item.protein) || 0;
+          item.fat = parseFloat(item.fat) || 0;
+          item.fiber = parseFloat(item.fiber) || 0;
+          
+          return true;
+        });
+        
+        // Skip meals with no valid items after filtering
+        if (meal.items.length === 0) {
+          console.warn(`⚠️ Meal "${meal.name}" has no valid items after filtering, skipping`);
+          return false;
+        }
+        
+        // Recalculate total_calories from valid items
+        const calculatedCalories = meal.items.reduce((sum, item) => {
+          return sum + item.calories;
+        }, 0);
+        
+        meal.total_calories = Math.round(calculatedCalories);
+        
+        console.log(`✅ ${meal.name}: ${meal.total_calories} kcal (${meal.items.length} items)`);
+        
+        return true;
       });
+      
+      // Ensure we have at least one valid meal
+      if (parsed.meals.length === 0) {
+        throw new Error('No valid meals found in AI response after validation');
+      }
       
       // Recalculate nutritional totals from meals
       const recalculatedTotals = this.calculateTotals(parsed.meals);
@@ -508,43 +629,51 @@ Generate the complete meal plan now in valid JSON format:`;
       // Ensure nutritional_totals matches recalculated values
       parsed.nutritional_totals = recalculatedTotals;
       
+      // Sanitize tips array
+      const tips = Array.isArray(parsed.tips) 
+        ? parsed.tips.filter(tip => typeof tip === 'string' && tip.trim().length > 0)
+        : [];
+      
       return {
         meals: parsed.meals,
         nutritional_totals: recalculatedTotals,
-        tips: parsed.tips || []
+        tips: tips
       };
       
     } catch (error) {
-      console.error('Error parsing AI response:', error);
+      console.error('❌ Error parsing AI response:', error.message);
+      console.error('Raw AI response (first 1000 chars):', aiResponse.substring(0, 1000));
       
       // Fallback: Try to extract JSON from markdown code blocks
       const jsonMatch = aiResponse.match(/```json\s*([\s\S]*?)\s*```/);
       if (jsonMatch) {
+        console.log('🔄 Found JSON in markdown block, attempting to parse...');
         try {
           const parsed = JSON.parse(jsonMatch[1]);
-          if (parsed.meals) {
-            // Apply same validation
-            parsed.meals = parsed.meals.map(meal => {
-              if (meal.items && Array.isArray(meal.items)) {
-                meal.total_calories = Math.round(
-                  meal.items.reduce((sum, item) => sum + (parseFloat(item.calories) || 0), 0)
-                );
-              }
-              return meal;
-            });
-            
-            return {
-              meals: parsed.meals,
-              nutritional_totals: this.calculateTotals(parsed.meals),
-              tips: parsed.tips || []
-            };
+          if (parsed.meals && Array.isArray(parsed.meals)) {
+            // Apply same validation recursively
+            return this.parseMealPlan(jsonMatch[1], targetCalories, mealDistribution);
           }
         } catch (e) {
-          console.error('Failed to parse extracted JSON:', e);
+          console.error('Failed to parse extracted JSON:', e.message);
         }
       }
       
-      throw new Error('Unable to parse meal plan from AI response');
+      // Try alternative markdown formats
+      const altJsonMatch = aiResponse.match(/```\s*([\s\S]*?)\s*```/);
+      if (altJsonMatch) {
+        console.log('🔄 Found code block, attempting to parse as JSON...');
+        try {
+          const parsed = JSON.parse(altJsonMatch[1]);
+          if (parsed.meals && Array.isArray(parsed.meals)) {
+            return this.parseMealPlan(altJsonMatch[1], targetCalories, mealDistribution);
+          }
+        } catch (e) {
+          console.error('Failed to parse alternative code block:', e.message);
+        }
+      }
+      
+      throw new Error('Unable to parse meal plan from AI response. The AI did not return properly formatted meal data. Please try regenerating the plan.');
     }
   }
   

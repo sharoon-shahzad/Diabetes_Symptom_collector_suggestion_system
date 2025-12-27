@@ -1,6 +1,8 @@
 import lifestyleTipsService from '../services/lifestyleTipsService.js';
 import LifestyleTip from '../models/LifestyleTip.js';
 import { User } from '../models/User.js';
+import { generateLifestyleTipsPDF } from '../services/pdfGenerationService.js';
+import { sendLifestyleTipsEmail } from '../services/emailService.js';
 
 export const generateLifestyleTips = async (req, res) => {
   try {
@@ -45,7 +47,30 @@ export const generateLifestyleTips = async (req, res) => {
 
     const result = await lifestyleTipsService.generateLifestyleTips(userId, target_date);
 
-    return res.status(201).json(result);
+    // Generate PDF and send email in background
+    setImmediate(async () => {
+      try {
+        const user = await User.findById(userId);
+        if (user && user.email) {
+          const userInfo = {
+            fullName: user.fullName,
+            email: user.email
+          };
+          
+          const pdfPath = await generateLifestyleTipsPDF(result.tips, userInfo);
+          await sendLifestyleTipsEmail(user.email, user.fullName, pdfPath, result.tips);
+          console.log('✅ Lifestyle tips email sent successfully to:', user.email);
+        }
+      } catch (emailError) {
+        console.error('❌ Error sending lifestyle tips email:', emailError.message);
+        // Don't fail the request if email fails
+      }
+    });
+
+    return res.status(201).json({
+      ...result,
+      emailSent: true
+    });
   } catch (error) {
     console.error('Generate tips error:', error);
 

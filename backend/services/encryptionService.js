@@ -9,27 +9,39 @@ import crypto from 'crypto';
 
 class EncryptionService {
   constructor() {
-    // Get encryption key from environment or generate
-    const keyStr = process.env.ENCRYPTION_KEY;
-    console.log('🔑 ENCRYPTION_KEY loaded:', keyStr ? `YES (${keyStr.substring(0, 10)}...)` : 'NO - USING RANDOM KEY');
-    
-    if (!keyStr) {
-      console.warn('⚠️ WARNING: ENCRYPTION_KEY not found in .env. Please set it for production.');
-      console.warn('⚠️ Check .env file - make sure it says ENCRYPTION_KEY (not ENCRYPPTION_KEY)');
-      // Generate a temporary key (for development only)
-      this.key = crypto.randomBytes(32);
-    } else {
-      // Convert hex string to buffer
-      this.key = Buffer.from(keyStr, 'hex');
-      if (this.key.length !== 32) {
-        throw new Error(
-          'ENCRYPTION_KEY must be 64 hexadecimal characters (32 bytes for AES-256)'
-        );
+    this._key = null;
+    this.algorithm = 'aes-256-cbc';
+  }
+
+  /**
+   * Lazy initialization of encryption key
+   * Gets key from environment on first use
+   */
+  get key() {
+    if (this._key === null) {
+      // Get encryption key from environment
+      const keyStr = process.env.ENCRYPTION_KEY;
+      console.log('🔑 ENCRYPTION_KEY from env:', keyStr ? 'EXISTS' : 'MISSING');
+      console.log('🔑 Key length:', keyStr ? keyStr.length : 0);
+      console.log('🔑 Key preview:', keyStr ? `${keyStr.substring(0, 16)}...` : 'NONE');
+      
+      if (!keyStr || keyStr.trim() === '') {
+        console.warn('⚠️ WARNING: ENCRYPTION_KEY not found in .env. Please set it for production.');
+        console.warn('⚠️ Check .env file - make sure it says ENCRYPTION_KEY (not ENCRYPPTION_KEY)');
+        // Generate a temporary key (for development only)
+        this._key = crypto.randomBytes(32);
+      } else {
+        // Convert hex string to buffer
+        this._key = Buffer.from(keyStr.trim(), 'hex');
+        if (this._key.length !== 32) {
+          throw new Error(
+            'ENCRYPTION_KEY must be 64 hexadecimal characters (32 bytes for AES-256)'
+          );
+        }
+        console.log('✅ ENCRYPTION_KEY loaded successfully');
       }
     }
-
-    // Algorithm: AES-256-CBC
-    this.algorithm = 'aes-256-cbc';
+    return this._key;
   }
 
   /**

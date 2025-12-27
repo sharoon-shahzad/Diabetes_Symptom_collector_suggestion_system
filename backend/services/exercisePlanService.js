@@ -57,8 +57,9 @@ class ExercisePlanService {
       medications: medicalInfo?.medications || []
     };
 
+    // Normalize to UTC midnight to avoid timezone issues
     const targetDateObj = new Date(targetDate);
-    targetDateObj.setHours(0,0,0,0);
+    targetDateObj.setUTCHours(0, 0, 0, 0);
     const existing = await ExercisePlan.findOne({ user_id: userId, target_date: targetDateObj });
     if (existing) throw new Error('Exercise plan already exists for this date. View your existing plan or choose a different date.');
 
@@ -66,12 +67,18 @@ class ExercisePlanService {
     let userRegion = personal.country;
     if (!regionCoverage.canGeneratePlan) {
       const fallback = await regionDiscoveryService.getFallbackRegion(userRegion, 'exercise_recommendation');
-      if (!fallback) throw new Error(`No exercise documents available for your region (${userRegion}).`);
-      userRegion = fallback;
+      if (!fallback) {
+        console.warn(`⚠️ No exercise documents for ${userRegion}, using AI's built-in knowledge`);
+        userRegion = personal.country; // Keep original region
+      } else {
+        userRegion = fallback;
+      }
     }
 
     const context = await this.queryRegionalExercise(userRegion);
-    if (!context.chunks || context.chunks.length === 0) throw new Error(`Unable to retrieve exercise guidance for ${userRegion}. Please try again.`);
+    if (!context.chunks || context.chunks.length === 0) {
+      console.warn(`⚠️ No RAG context for ${userRegion}. Using AI's built-in exercise knowledge.`);
+    }
 
     const prompt = this.buildExercisePrompt(personal, medical, context, targetDateObj);
     let structured;
@@ -250,6 +257,32 @@ class ExercisePlanService {
               }
             }
 
+            // Parse precautions - handle string, array, or complex objects
+            let precautions = [];
+            if (i.precautions) {
+              if (typeof i.precautions === 'string') {
+                try {
+                  // Try to parse if it's a stringified JSON
+                  const parsed = JSON.parse(i.precautions);
+                  if (Array.isArray(parsed)) {
+                    // Extract text from objects or use strings directly
+                    precautions = parsed.map(p => typeof p === 'object' ? (p.text || p.description || JSON.stringify(p)) : String(p));
+                  } else {
+                    precautions = [String(parsed)];
+                  }
+                } catch (e) {
+                  // Not JSON, treat as a single precaution string
+                  precautions = [i.precautions];
+                }
+              } else if (Array.isArray(i.precautions)) {
+                // Extract text from objects or use strings directly
+                precautions = i.precautions.map(p => typeof p === 'object' ? (p.text || p.description || JSON.stringify(p)) : String(p));
+              } else if (typeof i.precautions === 'object') {
+                // Single object, extract text
+                precautions = [i.precautions.text || i.precautions.description || JSON.stringify(i.precautions)];
+              }
+            }
+
             return {
               exercise: i.exercise.trim(),
               category: i.category || 'General',
@@ -259,7 +292,7 @@ class ExercisePlanService {
               estimated_calories: estCals,
               heart_rate_zone: i.heart_rate_zone,
               notes: i.notes,
-              precautions: i.precautions||[]
+              precautions: precautions
             };
           });
           const totalDuration = items.reduce((a,i)=>a+(i.duration_min||0),0);
@@ -360,8 +393,9 @@ class ExercisePlanService {
   }
 
   async getExercisePlanByDate(userId, targetDate) {
+    // Normalize to UTC midnight to avoid timezone issues
     const targetDateObj = new Date(targetDate);
-    targetDateObj.setHours(0,0,0,0);
+    targetDateObj.setUTCHours(0, 0, 0, 0);
     const plan = await ExercisePlan.findOne({ user_id: userId, target_date: targetDateObj });
     return plan;
   }

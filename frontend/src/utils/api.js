@@ -280,13 +280,29 @@ export async function adminRestoreFeedback(id) {
 
 // Audit Logs API
 export async function fetchAuditLogs(params = {}) {
-  const queryParams = new URLSearchParams(params).toString();
+  // Filter out undefined, null, and empty string values
+  const cleanParams = Object.entries(params).reduce((acc, [key, value]) => {
+    if (value !== undefined && value !== null && value !== '' && value !== 'undefined') {
+      acc[key] = value;
+    }
+    return acc;
+  }, {});
+  
+  const queryParams = new URLSearchParams(cleanParams).toString();
   const res = await axiosInstance.get(`/admin/audit-logs?${queryParams}`);
   return res.data;
 }
 
 export async function fetchAuditAnalytics(params = {}) {
-  const queryParams = new URLSearchParams(params).toString();
+  // Filter out undefined, null, and empty string values
+  const cleanParams = Object.entries(params).reduce((acc, [key, value]) => {
+    if (value !== undefined && value !== null && value !== '' && value !== 'undefined') {
+      acc[key] = value;
+    }
+    return acc;
+  }, {});
+  
+  const queryParams = new URLSearchParams(cleanParams).toString();
   const res = await axiosInstance.get(`/admin/audit-logs/analytics?${queryParams}`);
   return res.data;
 }

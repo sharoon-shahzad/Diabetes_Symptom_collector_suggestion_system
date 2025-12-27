@@ -153,16 +153,17 @@ export default function AuditLogs() {
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            const response = await fetchAuditLogs({
-                page,
-                limit,
-                user_email: filters.user_email || undefined,
-                action: filters.action !== 'all' ? filters.action : undefined,
-                resource: filters.resource !== 'all' ? filters.resource : undefined,
-                status: filters.status !== 'all' ? filters.status : undefined,
-                startDate: filters.startDate || undefined,
-                endDate: filters.endDate || undefined,
-            });
+            // Build params object without undefined values
+            const params = { page, limit };
+            
+            if (filters.user_email) params.user_email = filters.user_email;
+            if (filters.action && filters.action !== 'all') params.action = filters.action;
+            if (filters.resource && filters.resource !== 'all') params.resource = filters.resource;
+            if (filters.status && filters.status !== 'all') params.status = filters.status;
+            if (filters.startDate) params.startDate = filters.startDate;
+            if (filters.endDate) params.endDate = filters.endDate;
+
+            const response = await fetchAuditLogs(params);
 
             if (response.success) {
                 setLogs(response.data);
@@ -181,10 +182,12 @@ export default function AuditLogs() {
     const fetchAnalytics = async () => {
         setAnalyticsLoading(true);
         try {
-            const response = await fetchAuditAnalytics({
-                startDate: filters.startDate || undefined,
-                endDate: filters.endDate || undefined,
-            });
+            // Build params object without undefined values
+            const params = {};
+            if (filters.startDate) params.startDate = filters.startDate;
+            if (filters.endDate) params.endDate = filters.endDate;
+            
+            const response = await fetchAuditAnalytics(params);
 
             if (response.success) {
                 setAnalytics(response.data);

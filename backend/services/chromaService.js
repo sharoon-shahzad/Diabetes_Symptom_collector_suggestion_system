@@ -19,7 +19,7 @@ const resolveChromaBaseUrl = () => {
         return urlFromEnv.trim();
     }
     // Default local server
-    return 'http://127.0.0.1:8001';
+    return 'http://127.0.0.1:8000';
 };
 
 /**
@@ -52,15 +52,24 @@ export const initializeChromaDB = async (_legacyPathIgnored, collectionName = 'd
             throw new Error(`Cannot reach ChromaDB server at ${baseUrl}. Start it with: python -m chromadb run --host 127.0.0.1 --port 8000 --path ./chroma_db`);
         }
 
-        // Create / get collection
-        collection = await chromaClient.getOrCreateCollection({
-            name: collectionName,
-            metadata: {
-                description: 'Diabetes-related documents for personalized suggestion system',
-                'hnsw:space': 'cosine',
-            },
-        });
-        console.log(`ChromaDB collection '${collectionName}' ready.`);
+        // Get or create collection WITHOUT embedding function (we provide embeddings ourselves)
+        try {
+            // Try to get existing collection first
+            collection = await chromaClient.getCollection({ name: collectionName });
+            console.log(`Retrieved existing collection '${collectionName}' with ${await collection.count()} chunks`);
+        } catch (getErr) {
+            // Collection doesn't exist, create it
+            console.log(`Collection '${collectionName}' not found, creating new one...`);
+            collection = await chromaClient.createCollection({
+                name: collectionName,
+                metadata: {
+                    description: 'Diabetes-related documents for personalized suggestion system',
+                    'hnsw:space': 'cosine',
+                },
+                embeddingFunction: undefined, // Explicitly no embedding function - we provide embeddings
+            });
+            console.log(`ChromaDB collection '${collectionName}' created.`);
+        }
     } catch (error) {
         console.error('Failed to initialize ChromaDB:', error);
         throw new Error(`ChromaDB initialization failed: ${error.message}`);
@@ -130,7 +139,17 @@ export const queryChunks = async (queryEmbedding, nResults = 5, filter = null) =
         };
         
         if (filter) {
-            queryParams.where = filter;
+            // Handle multiple filter conditions with $and operator
+            const filterKeys = Object.keys(filter);
+            if (filterKeys.length > 1) {
+                // Multiple conditions - use $and
+                queryParams.where = {
+                    $and: filterKeys.map(key => ({ [key]: filter[key] }))
+                };
+            } else {
+                // Single condition - use directly
+                queryParams.where = filter;
+            }
         }
         
         const results = await collection.query(queryParams);

@@ -1,5 +1,8 @@
 import exercisePlanService from '../services/exercisePlanService.js';
 import regionDiscoveryService from '../services/regionDiscoveryService.js';
+import { generateExercisePlanPDF } from '../services/pdfGenerationService.js';
+import { sendExercisePlanEmail } from '../services/emailService.js';
+import { User } from '../models/User.js';
 
 const generateExercisePlan = async (req, res) => {
   try {
@@ -20,7 +23,28 @@ const generateExercisePlan = async (req, res) => {
     if (diff > 5) return res.status(400).json({ success:false, error:'Can only generate plans up to 5 days ahead' });
 
     const result = await exercisePlanService.generateExercisePlan(userId, target_date);
-    return res.status(201).json({ success:true, message:'Exercise plan generated successfully', ...result });
+    
+    // Generate PDF and send email in background
+    setImmediate(async () => {
+      try {
+        const user = await User.findById(userId);
+        if (user && user.email) {
+          const userInfo = {
+            fullName: user.fullName,
+            email: user.email
+          };
+          
+          const pdfPath = await generateExercisePlanPDF(result.plan, userInfo);
+          await sendExercisePlanEmail(user.email, user.fullName, pdfPath, result.plan);
+          console.log('✅ Exercise plan email sent successfully to:', user.email);
+        }
+      } catch (emailError) {
+        console.error('❌ Error sending exercise plan email:', emailError.message);
+        // Don't fail the request if email fails
+      }
+    });
+    
+    return res.status(201).json({ success:true, message:'Exercise plan generated successfully', emailSent: true, ...result });
   } catch (error) {
     console.error('Error in generateExercisePlan controller:', error);
     if (error.message.includes('already exists')) return res.status(409).json({ success:false, error:error.message });

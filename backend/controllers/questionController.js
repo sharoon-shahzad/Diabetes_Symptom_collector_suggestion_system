@@ -4,6 +4,9 @@ import { Answer } from '../models/Answer.js';
 import { QuestionsAnswers } from '../models/Questions_Answers.js';
 import { UsersAnswers } from '../models/Users_Answers.js';
 import mongoose from "mongoose";
+import { generateRiskAssessmentPDF } from '../services/pdfGenerationService.js';
+import { sendRiskAssessmentEmail } from '../services/emailService.js';
+import encryptionService from '../services/encryptionService.js';
 
 // Get all questions for a disease (populate symptom)
 export const getQuestionsByDisease = async (req, res) => {
@@ -222,7 +225,9 @@ export const saveUserAnswer = async (req, res) => {
               console.log('📧 Email service imported successfully');
               
               await sendOnboardingCompletionEmail(user.email, user.fullName, disease.name, symptomMap);
-              console.log('✅ Email sent successfully!');
+              console.log('✅ Onboarding completion email sent successfully!');
+              console.log('ℹ️ Risk assessment report will be sent after user completes the assessment.');
+              
             } catch (emailError) {
               console.error('❌ Email sending failed:', emailError.message);
               console.error('❌ Full email error:', emailError);

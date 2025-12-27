@@ -230,6 +230,7 @@ const ChatAssistant = ({ inModal = false }) => {
                   justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
                   mb: 2,
                   gap: 1.5,
+                  alignItems: 'flex-start',
                 }}>
                   {msg.role === 'assistant' && (
                     <Avatar sx={{ 
@@ -267,7 +268,7 @@ const ChatAssistant = ({ inModal = false }) => {
                       {msg.role === 'assistant' ? (
                         <ReactMarkdown>{msg.content}</ReactMarkdown>
                       ) : (
-                        <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
+                        <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap', color: '#ffffff' }}>
                           {msg.content}
                         </Typography>
                       )}

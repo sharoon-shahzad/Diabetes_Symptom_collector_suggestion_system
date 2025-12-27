@@ -17,6 +17,20 @@ router.use(captureAuditContext);
 router.use(roleCheckMiddleware);
 
 /**
+ * GET /api/v1/admin/audit-logs/analytics
+ * Get analytics and statistics
+ * NOTE: Must come BEFORE /:id route to avoid conflict
+ */
+router.get('/analytics', getAuditAnalytics);
+
+/**
+ * POST /api/v1/admin/audit-logs/export
+ * Export audit logs in CSV or JSON format
+ * NOTE: Must come BEFORE /:id route to avoid conflict
+ */
+router.post('/export', exportAuditLogs);
+
+/**
  * GET /api/v1/admin/audit-logs
  * Fetch audit logs with filters and pagination
  */
@@ -25,19 +39,8 @@ router.get('/', getAuditLogs);
 /**
  * GET /api/v1/admin/audit-logs/:id
  * Fetch single audit log details
+ * NOTE: Must come AFTER specific routes like /analytics and /export
  */
 router.get('/:id', getAuditLogDetail);
-
-/**
- * GET /api/v1/admin/audit-logs/analytics
- * Get analytics and statistics
- */
-router.get('/analytics/data', getAuditAnalytics);
-
-/**
- * POST /api/v1/admin/audit-logs/export
- * Export audit logs in CSV or JSON format
- */
-router.post('/export', exportAuditLogs);
 
 export default router;

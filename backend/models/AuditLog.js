@@ -1,5 +1,9 @@
 import mongoose from 'mongoose';
-import encryptionService from '../services/encryptionService.js';
+import { 
+    encryptAuditLogData, 
+    decryptAuditLogData, 
+    decryptAuditLogArrayData 
+} from '../middlewares/encryption/auditLogEncryption.js';
 
 const auditLogSchema = new mongoose.Schema({
     // User Information
@@ -128,58 +132,10 @@ auditLogSchema.index({ timestamp: -1 });
 auditLogSchema.index({ user_email: 1, timestamp: -1 });
 auditLogSchema.index({ status: 1, timestamp: -1 });
 
-// Middleware: Encrypt sensitive fields before saving
-auditLogSchema.pre('save', function (next) {
-    try {
-        if (this.involves_pii && this.changes?.after && typeof this.changes.after === 'object') {
-            const fieldsToEncrypt = Object.keys(this.changes.after);
-            if (fieldsToEncrypt.length > 0) {
-                this.changes.after = encryptionService.encryptObject(this.changes.after, fieldsToEncrypt);
-            }
-        }
-        if (this.involves_phi && this.changes?.after && typeof this.changes.after === 'object') {
-            const fieldsToEncrypt = Object.keys(this.changes.after);
-            if (fieldsToEncrypt.length > 0) {
-                this.changes.after = encryptionService.encryptObject(this.changes.after, fieldsToEncrypt);
-            }
-        }
-    } catch (error) {
-        console.warn('Audit log encryption note:', error.message);
-    }
-    next();
-});
-
-// Middleware: Decrypt sensitive fields after retrieval
-auditLogSchema.post('findOne', function (doc) {
-    if (doc && doc.changes?.after && typeof doc.changes.after === 'object') {
-        // Decrypt all fields if they are encrypted
-        try {
-            const fieldsToDecrypt = Object.keys(doc.changes.after);
-            if (fieldsToDecrypt.length > 0 && (doc.involves_pii || doc.involves_phi)) {
-                doc.changes.after = encryptionService.decryptObject(doc.changes.after, fieldsToDecrypt);
-            }
-        } catch (err) {
-            console.warn('Audit log decryption note:', err.message);
-        }
-    }
-});
-
-auditLogSchema.post('find', function (docs) {
-    if (docs && Array.isArray(docs)) {
-        docs.forEach((doc) => {
-            if (doc && doc.changes?.after && typeof doc.changes.after === 'object') {
-                try {
-                    const fieldsToDecrypt = Object.keys(doc.changes.after);
-                    if (fieldsToDecrypt.length > 0 && (doc.involves_pii || doc.involves_phi)) {
-                        doc.changes.after = encryptionService.decryptObject(doc.changes.after, fieldsToDecrypt);
-                    }
-                } catch (err) {
-                    console.warn('Audit log decryption note:', err.message);
-                }
-            }
-        });
-    }
-});
+// Apply encryption middleware
+auditLogSchema.pre('save', encryptAuditLogData);
+auditLogSchema.post('findOne', decryptAuditLogData);
+auditLogSchema.post('find', decryptAuditLogArrayData);
 
 const AuditLog = mongoose.model('AuditLog', auditLogSchema);
 

@@ -194,7 +194,8 @@ const DietPlanDashboard = ({ inModal = false }) => {
       });
 
       if (response.data.success) {
-        setSuccess('Diet plan generated successfully!');
+        const emailMessage = response.data.emailSent ? ' A copy has been sent to your email.' : '';
+        setSuccess('Diet plan generated successfully!' + emailMessage);
         setSelectedPlan(response.data.plan);
         setShowGenerator(false);
         
