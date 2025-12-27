@@ -30,48 +30,124 @@ const LifestyleTipsScreen = () => {
   const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
-    fetchCurrentTips();
+    loadTips();
   }, []);
+
+  const loadTips = async () => {
+    try {
+      // First, try to fetch existing tips for today
+      const response = await api.get('/lifestyle-tips/current');
+      console.log('✅ Tips found for today:', response.data);
+      if (response.data.tips) {
+        setSelectedTips(response.data.tips);
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+    } catch (err) {
+      // 404 means no tips exist yet
+      if (err.response?.status === 404) {
+        console.log('ℹ️ No tips found for today, auto-generating...');
+        // Auto-generate tips for today
+        await autoGenerateTips();
+      } else {
+        console.error('Error fetching lifestyle tips:', err);
+        setError('Failed to load lifestyle tips');
+      }
+    }
+    setLoading(false);
+    setRefreshing(false);
+  };
 
   const fetchCurrentTips = async () => {
     try {
       const response = await api.get('/lifestyle-tips/current');
-      if (response.data.tips) {
+      console.log('✅ Tips fetched successfully:', response.data);
+      if (response.data && response.data.tips) {
         setSelectedTips(response.data.tips);
+        setError(null); // Clear any previous errors
+        return true; // Success
+      } else {
+        console.log('⚠️ No tips in response');
+        setSelectedTips(null);
+        return false;
       }
     } catch (err) {
-      // 404 is expected when no tips exist yet - not an error
+      console.error('❌ Error fetching current tips:');
+      console.error('Status:', err.response?.status);
+      console.error('Message:', err.response?.data?.message);
+      console.error('Full error:', err);
+      
+      // 404 is expected when no tips exist yet - not an error to display
       if (err.response?.status !== 404) {
-        console.error('Error fetching lifestyle tips:', err);
+        setError('Unable to load tips. Please try again.');
       }
       setSelectedTips(null);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+      return false;
+    }
+  };
+
+  const autoGenerateTips = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      console.log('🔄 Auto-generating tips for:', today);
+      const response = await api.post('/lifestyle-tips/generate', {
+        target_date: today,
+      });
+      console.log('✅ Tips generated:', response.data);
+      if (response.data.tips) {
+        setSelectedTips(response.data.tips);
+        setError(null);
+      }
+    } catch (err) {
+      console.error('❌ Error auto-generating tips:', err.message);
+      console.error('Status:', err.response?.status);
+      console.error('Message:', err.response?.data?.message);
+      
+      const errorMessage = err.response?.data?.message || '';
+      const statusCode = err.response?.status;
+      
+      // If tips already exist (409 conflict), fetch them by specific date
+      if (statusCode === 409 || errorMessage.includes('already exist')) {
+        console.log('ℹ️ Tips already exist, fetching by date...');
+        const today = new Date().toISOString().split('T')[0];
+        try {
+          const fetchResponse = await api.get(`/lifestyle-tips/date/${today}`);
+          console.log('✅ Successfully fetched existing tips by date:', fetchResponse.data);
+          if (fetchResponse.data && fetchResponse.data.tips) {
+            setSelectedTips(fetchResponse.data.tips);
+            setError(null);
+          } else {
+            console.error('⚠️ No tips in response');
+            setError('Tips exist but could not be loaded. Please refresh.');
+          }
+        } catch (fetchErr) {
+          console.error('❌ Failed to fetch existing tips by date:', fetchErr);
+          // Try the current endpoint as fallback
+          const success = await fetchCurrentTips();
+          if (!success) {
+            setError('Tips exist but could not be loaded. Please refresh.');
+          }
+        }
+      } else {
+        // Only show error for non-409 errors
+        console.error('❌ Showing error to user:', errorMessage);
+        setError(errorMessage || 'Failed to generate lifestyle tips');
+      }
     }
   };
 
   const handleGenerateTips = async () => {
     setGenerating(true);
     setError(null);
-    try {
-      const today = new Date().toISOString().split('T')[0];
-      const response = await api.post('/lifestyle-tips/generate', {
-        target_date: today,
-      });
-      if (response.data.tips) {
-        setSelectedTips(response.data.tips);
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to generate lifestyle tips');
-    } finally {
-      setGenerating(false);
-    }
+    await autoGenerateTips();
+    setGenerating(false);
   };
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchCurrentTips();
+    setError(null);
+    loadTips();
   };
 
   if (loading) {

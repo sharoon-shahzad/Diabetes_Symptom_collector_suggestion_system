@@ -301,9 +301,12 @@ IMPORTANT: Respond ONLY with valid JSON, no markdown, no code blocks. Use this e
   }
 
   async getLifestyleTipsByDate(userId, date) {
+    const targetDateObj = new Date(date);
+    targetDateObj.setUTCHours(0, 0, 0, 0);
+    
     const tips = await LifestyleTip.findOne({
       user_id: userId,
-      target_date: new Date(date).toDateString(),
+      target_date: targetDateObj,
     });
     return tips;
   }

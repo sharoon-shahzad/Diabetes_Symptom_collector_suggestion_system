@@ -99,7 +99,7 @@ export const getCurrentTips = async (req, res) => {
   try {
     const userId = req.user._id;
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setUTCHours(0, 0, 0, 0);
 
     const tips = await LifestyleTip.findOne({
       user_id: userId,
