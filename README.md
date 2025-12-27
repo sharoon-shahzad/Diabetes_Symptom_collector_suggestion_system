@@ -1,4 +1,4 @@
-# 🏥 DiaCare - Diabetes Symptom Collector & Suggestion System
+# 🏥 Diavise - Diabetes Symptom Collector & Suggestion System
 
 A comprehensive AI-powered diabetes management system featuring risk assessment, personalized health recommendations, and real-time chat assistance.
 
