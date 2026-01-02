@@ -92,20 +92,27 @@ export const updateUser = async (req, res) => {
             return res.status(400).json({ success: false, message: "Date of birth is required" });
         }
 
-        // Check for email uniqueness if email is being changed
-        if (email !== user.email) {
-            const existingUser = await User.findOne({ email });
+        // Normalize email (lowercase and trim)
+        const normalizeEmail = (email) => {
+            if (!email || typeof email !== 'string') return email;
+            return email.trim().toLowerCase();
+        };
+        const normalizedEmail = normalizeEmail(email);
+        
+        // Check for email uniqueness if email is being changed (compare normalized emails)
+        if (normalizedEmail !== normalizeEmail(user.email)) {
+            const existingUser = await User.findOne({ email: normalizedEmail });
             if (existingUser) {
                 return res.status(400).json({ success: false, message: "Email is already in use by another user" });
             }
         }
 
-        // Update user
+        // Update user (store normalized email)
         const updatedUser = await User.findByIdAndUpdate(
             id,
             {
                 fullName,
-                email,
+                email: normalizedEmail,
                 gender,
                 date_of_birth,
                 isActivated,

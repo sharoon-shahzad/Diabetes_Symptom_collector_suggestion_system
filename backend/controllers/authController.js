@@ -10,6 +10,12 @@ import {
 import { sendActivationEmail, sendResetPasswordEmail } from '../services/emailService.js';
 import { createAuditLog } from '../middlewares/auditMiddleware.js';
 
+// Helper: Normalize email (lowercase and trim)
+const normalizeEmail = (email) => {
+    if (!email || typeof email !== 'string') return email;
+    return email.trim().toLowerCase();
+};
+
 // Helper: Generate and store tokens
 const generateAccessAndRefreshTokens = async (userId, email) => {
     try {
@@ -40,9 +46,12 @@ export const register = async (req, res) => {
             });
         }
         
+        // Normalize email (lowercase and trim)
+        const normalizedEmail = normalizeEmail(email);
+        
         // Email format validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
+        if (!emailRegex.test(normalizedEmail)) {
             return res.status(400).json({ 
                 success: false,
                 message: 'Invalid email format.' 
@@ -57,8 +66,8 @@ export const register = async (req, res) => {
             });
         }
         
-        // Check if user already exists
-        const existingUser = await User.findOne({ email });
+        // Check if user already exists (using normalized email)
+        const existingUser = await User.findOne({ email: normalizedEmail });
         if (existingUser) {
             return res.status(400).json({ 
                 success: false,
@@ -73,10 +82,10 @@ export const register = async (req, res) => {
         const activationToken = crypto.randomBytes(32).toString('hex');
         const activationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
         
-        // Create user
+        // Create user (store normalized email)
         const user = new User({
             fullName,
-            email,
+            email: normalizedEmail,
             password: hashedPassword,
             isActivated: false,
             activationToken,
@@ -113,8 +122,8 @@ export const register = async (req, res) => {
             // Don't fail registration if role assignment fails
         }
         
-        // Send activation email
-        await sendActivationEmail(email, activationToken);
+        // Send activation email (use normalized email)
+        await sendActivationEmail(normalizedEmail, activationToken);
         
         return res.status(201).json({ 
             success: true,
@@ -170,7 +179,9 @@ export const login = async (req, res) => {
             });
         }
         
-        const user = await User.findOne({ email });
+        // Normalize email (lowercase and trim) before lookup
+        const normalizedEmail = normalizeEmail(email);
+        const user = await User.findOne({ email: normalizedEmail });
         if (!user) {
             return res.status(400).json({ 
                 success: false,
@@ -376,12 +387,17 @@ export const getCurrentUser = async (req, res) => {
 export const forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
-        // Validate email format
-        const emailRegex = /^[^\s@]+@[^\\s@]+\.[^\s@]+$/;
-        if (!email || !emailRegex.test(email)) {
+        
+        // Normalize email (lowercase and trim)
+        const normalizedEmail = normalizeEmail(email);
+        
+        // Validate email format (fixed regex typo: removed double backslash)
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!normalizedEmail || !emailRegex.test(normalizedEmail)) {
             return res.status(400).json({ message: 'Please enter a valid email address.' });
         }
-        const user = await User.findOne({ email });
+        
+        const user = await User.findOne({ email: normalizedEmail });
         if (user) {
             // Generate reset token
             const resetToken = crypto.randomBytes(32).toString('hex');
@@ -389,8 +405,8 @@ export const forgotPassword = async (req, res) => {
             user.resetPasswordToken = resetToken;
             user.resetPasswordExpires = resetTokenExpires;
             await user.save();
-            // Send reset email
-            await sendResetPasswordEmail(email, resetToken);
+            // Send reset email (use normalized email)
+            await sendResetPasswordEmail(normalizedEmail, resetToken);
         }
         // Always respond with a generic message
         return res.status(200).json({ message: 'If this email is registered, a password reset link has been sent.' });
@@ -467,7 +483,10 @@ export const resendActivationLink = async (req, res) => {
         if (!email) {
             return res.status(400).json({ message: 'Email is required.' });
         }
-        const user = await User.findOne({ email });
+        
+        // Normalize email (lowercase and trim) before lookup
+        const normalizedEmail = normalizeEmail(email);
+        const user = await User.findOne({ email: normalizedEmail });
         if (!user) {
             return res.status(404).json({ message: 'User not found.' });
         }
@@ -480,8 +499,8 @@ export const resendActivationLink = async (req, res) => {
         user.activationToken = activationToken;
         user.activationTokenExpires = activationTokenExpires;
         await user.save();
-        // Send activation email
-        await sendActivationEmail(email, activationToken);
+        // Send activation email (use normalized email)
+        await sendActivationEmail(normalizedEmail, activationToken);
         return res.status(200).json({ message: 'Activation link resent. Please check your email.' });
     } catch (error) {
         console.error('Resend activation link error:', error);
