@@ -1,10 +1,31 @@
-import React from 'react';
-import { Box, Paper, Typography, Avatar, Chip, Divider, Alert, TextField, Grid, Button, CircularProgress } from '@mui/material';
+import React, { useState } from 'react';
+import { 
+  Box, Paper, Typography, Avatar, Chip, Divider, Alert, TextField, 
+  Grid, Button, CircularProgress, Switch, FormControlLabel,
+  Card, CardContent
+} from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import EditIcon from '@mui/icons-material/Edit';
 import LockIcon from '@mui/icons-material/Lock';
+import VpnKeyIcon from '@mui/icons-material/VpnKey';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import LightModeIcon from '@mui/icons-material/LightMode';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
 export default function AccountSection({ user, setUser, profileError, savingProfile, handleSaveProfile }) {
+  const [darkMode, setDarkMode] = useState(localStorage.getItem('theme') === 'dark');
+
+  const handleThemeToggle = () => {
+    const newTheme = darkMode ? 'light' : 'dark';
+    setDarkMode(!darkMode);
+    localStorage.setItem('theme', newTheme);
+    window.location.reload();
+  };
+
+  const handleOpenChangePassword = () => {
+    window.dispatchEvent(new Event('openChangePassword'));
+  };
+  
   return (
     <Paper 
       elevation={0} 
@@ -70,7 +91,7 @@ export default function AccountSection({ user, setUser, profileError, savingProf
 
       {/* Profile Info Section */}
       <Box sx={{ 
-        mb: 5,
+        mb: 4,
         animation: 'fadeInUp 0.8s ease-out 0.2s backwards',
       }}>
         <Typography variant="h6" fontWeight={800} sx={{ mb: 3.5 }}>Personal Information</Typography>
@@ -170,6 +191,7 @@ export default function AccountSection({ user, setUser, profileError, savingProf
                 </Box>
               </Box>
             </Grid>
+            
             <Grid item xs={12}>
               <Button 
                 type="submit" 
@@ -197,6 +219,120 @@ export default function AccountSection({ user, setUser, profileError, savingProf
             </Grid>
           </Grid>
         </Box>
+      </Box>
+
+      <Divider sx={{ mb: 4 }} />
+
+      {/* Appearance Settings */}
+      <Box sx={{ 
+        mb: 4,
+        animation: 'fadeInUp 0.8s ease-out 0.3s backwards',
+      }}>
+        <Typography variant="h6" fontWeight={800} sx={{ mb: 3.5 }}>Appearance</Typography>
+        
+        <Card 
+          elevation={0}
+          sx={{ 
+            borderRadius: 3,
+            border: (t) => `1px solid ${t.palette.divider}`,
+            background: (t) => alpha(t.palette.background.paper, 0.6),
+            backdropFilter: 'blur(10px)',
+          }}
+        >
+          <CardContent sx={{ p: 3 }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center">
+              <Box display="flex" alignItems="center" gap={2}>
+                <Box 
+                  sx={{ 
+                    width: 48, 
+                    height: 48, 
+                    borderRadius: 2, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    bgcolor: (t) => alpha(t.palette.primary.main, 0.1),
+                  }}
+                >
+                  {darkMode ? <DarkModeIcon color="primary" /> : <LightModeIcon color="primary" />}
+                </Box>
+                <Box>
+                  <Typography variant="body1" fontWeight={700}>
+                    Theme Mode
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {darkMode ? 'Dark mode is enabled' : 'Light mode is enabled'}
+                  </Typography>
+                </Box>
+              </Box>
+              <FormControlLabel
+                control={
+                  <Switch 
+                    checked={darkMode} 
+                    onChange={handleThemeToggle}
+                    color="primary"
+                  />
+                }
+                label=""
+              />
+            </Box>
+          </CardContent>
+        </Card>
+      </Box>
+
+      <Divider sx={{ mb: 4 }} />
+
+      {/* Security Section */}
+      <Box sx={{ 
+        animation: 'fadeInUp 0.8s ease-out 0.4s backwards',
+      }}>
+        <Typography variant="h6" fontWeight={800} sx={{ mb: 3.5 }}>Security</Typography>
+        
+        <Card 
+          elevation={0}
+          sx={{ 
+            borderRadius: 3,
+            border: (t) => `1px solid ${t.palette.divider}`,
+            background: (t) => alpha(t.palette.background.paper, 0.6),
+            backdropFilter: 'blur(10px)',
+            cursor: 'pointer',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            '&:hover': {
+              transform: 'translateY(-2px)',
+              boxShadow: (t) => `0 8px 24px ${alpha(t.palette.error.main, 0.15)}`,
+              borderColor: (t) => alpha(t.palette.error.main, 0.3),
+            }
+          }}
+          onClick={handleOpenChangePassword}
+        >
+          <CardContent sx={{ p: 3 }}>
+            <Box display="flex" justifyContent="space-between" alignItems="center">
+              <Box display="flex" alignItems="center" gap={2}>
+                <Box 
+                  sx={{ 
+                    width: 48, 
+                    height: 48, 
+                    borderRadius: 2, 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    bgcolor: (t) => alpha(t.palette.error.main, 0.1),
+                  }}
+                >
+                  <VpnKeyIcon color="error" />
+                </Box>
+                <Box>
+                  <Typography variant="body1" fontWeight={700}>
+                    Change Password
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Update your password to keep your account secure
+                  </Typography>
+                </Box>
+              </Box>
+              <ArrowForwardIcon sx={{ color: 'text.secondary' }} />
+            </Box>
+          </CardContent>
+        </Card>
       </Box>
     </Paper>
   );

@@ -80,12 +80,19 @@ const PersonalInformationForm = () => {
     const fetchPersonalInfo = async () => {
         setLoading(true);
         try {
+            // First, get current user data to pre-fill gender and DOB
+            const userResponse = await axiosInstance.get('/auth/user');
+            const userData = userResponse.data.data.user;
+            
             const response = await axiosInstance.get('/personalized-system/personal-info');
             if (response.data.success) {
                 const data = response.data.data;
                 setFormData({
-                    date_of_birth: data.date_of_birth ? new Date(data.date_of_birth) : null,
-                    gender: data.gender || '',
+                    // Use gender and DOB from User model if not already set in UserPersonalInfo
+                    date_of_birth: data.date_of_birth 
+                        ? new Date(data.date_of_birth) 
+                        : (userData.date_of_birth ? new Date(userData.date_of_birth) : null),
+                    gender: data.gender || userData.gender || '',
                     country: data.country || '',
                     country_code: data.country_code || '',
                     phone_number: data.phone_number || '',
@@ -112,7 +119,18 @@ const PersonalInformationForm = () => {
             }
         } catch (err) {
             if (err.response?.status !== 404) {
-                setError('Failed to load personal information.');
+                // If personal info not found, still try to get user data
+                try {
+                    const userResponse = await axiosInstance.get('/auth/user');
+                    const userData = userResponse.data.data.user;
+                    setFormData(prev => ({
+                        ...prev,
+                        date_of_birth: userData.date_of_birth ? new Date(userData.date_of_birth) : null,
+                        gender: userData.gender || '',
+                    }));
+                } catch (userErr) {
+                    setError('Failed to load personal information.');
+                }
             }
         } finally {
             setLoading(false);

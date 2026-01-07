@@ -18,7 +18,9 @@ import {
   CheckCircle as CheckCircleIcon,
   Science as ScienceIcon,
   Add as AddIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  Lock as LockIcon,
+  ArrowForward as ArrowForwardIcon
 } from '@mui/icons-material';
 
 // Import extracted components
@@ -38,6 +40,9 @@ function DiagnosedInsightsView({
   const navigate = useNavigate();
   const labsRef = useRef(null);
 
+  // Check if personal info is completed (100%)
+  const isPersonalInfoCompleted = personalInfoCompletion >= 100;
+
   console.log('DiagnosedInsightsView Props:', {
     planUsageAnalytics,
     macronutrientBalance,
@@ -45,11 +50,17 @@ function DiagnosedInsightsView({
     bmiAnalytics,
     personalInfo,
     medicalInfo,
-    user
+    user,
+    personalInfoCompletion,
+    isPersonalInfoCompleted
   });
 
+  const handleNavigateToPersonalizedSuggestions = () => {
+    navigate('/personalized-suggestions');
+  };
+
   return (
-    <Box>
+    <Box sx={{ position: 'relative' }}>
       {/* Main grid - Comprehensive Health Analytics Dashboard */}
       <Grid container spacing={3}>
         {/* Page Header with Key Metrics */}
@@ -92,14 +103,32 @@ function DiagnosedInsightsView({
       </Grid>
 
       {/* === SECTION 1: NUTRITION ANALYTICS === */}
-      <NutritionAnalytics 
-        planUsageAnalytics={planUsageAnalytics}
-        macronutrientBalance={macronutrientBalance}
-        mealWiseDistribution={mealWiseDistribution}
-      />
+      <Box
+        sx={{
+          filter: !isPersonalInfoCompleted ? 'blur(8px)' : 'none',
+          pointerEvents: !isPersonalInfoCompleted ? 'none' : 'auto',
+          userSelect: !isPersonalInfoCompleted ? 'none' : 'auto',
+          transition: 'filter 0.3s ease-in-out'
+        }}
+      >
+        <NutritionAnalytics 
+          planUsageAnalytics={planUsageAnalytics}
+          macronutrientBalance={macronutrientBalance}
+          mealWiseDistribution={mealWiseDistribution}
+        />
+      </Box>
 
       {/* === SECTION 2: EXERCISE & ACTIVITY ANALYTICS === */}
-      <Box sx={{ mt: 6, mb: 4 }}>
+      <Box
+        sx={{
+          mt: 6,
+          mb: 4,
+          filter: !isPersonalInfoCompleted ? 'blur(8px)' : 'none',
+          pointerEvents: !isPersonalInfoCompleted ? 'none' : 'auto',
+          userSelect: !isPersonalInfoCompleted ? 'none' : 'auto',
+          transition: 'filter 0.3s ease-in-out'
+        }}
+      >
         <Grid container spacing={3}>
           <Grid item xs={12} lg={6}>
             <ExerciseAnalytics planUsageAnalytics={planUsageAnalytics} />
@@ -286,7 +315,16 @@ function DiagnosedInsightsView({
       </Box>
 
       {/* === SECTION 6: MEDICAL OVERVIEW === */}
-      <Box sx={{ mt: 6, mb: 4 }}>
+      <Box
+        sx={{
+          mt: 6,
+          mb: 4,
+          filter: !isPersonalInfoCompleted ? 'blur(8px)' : 'none',
+          pointerEvents: !isPersonalInfoCompleted ? 'none' : 'auto',
+          userSelect: !isPersonalInfoCompleted ? 'none' : 'auto',
+          transition: 'filter 0.3s ease-in-out'
+        }}
+      >
         <Box sx={{ 
           mb: 4, 
           pb: 2, 
@@ -321,9 +359,8 @@ function DiagnosedInsightsView({
             </Typography>
           </Box>
         </Box>
-      </Box>
 
-      <Grid container spacing={3}>
+        <Grid container spacing={3}>
         {/* Diagnosis Snapshot */}
         <Grid item xs={12} md={7}>
           <Paper elevation={0} sx={{ 
@@ -679,6 +716,186 @@ function DiagnosedInsightsView({
           </Paper>
         </Grid>
       </Grid>
+      </Box>
+
+      {/* Glassmorphism Lock Overlay - Shown when Personal Info is Incomplete */}
+      {!isPersonalInfoCompleted && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            pointerEvents: 'all',
+            background: 'rgba(0, 0, 0, 0.4)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            animation: 'fadeIn 0.4s ease-in-out',
+            '@keyframes fadeIn': {
+              from: { opacity: 0 },
+              to: { opacity: 1 }
+            }
+          }}
+        >
+          <Paper
+            elevation={24}
+            sx={{
+              maxWidth: { xs: '90%', sm: 560 },
+              mx: 'auto',
+              p: { xs: 4, sm: 5 },
+              borderRadius: 4,
+              textAlign: 'center',
+              background: (theme) => 
+                theme.palette.mode === 'dark'
+                  ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%)'
+                  : 'linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 250, 252, 0.95) 100%)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: (theme) => `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+              animation: 'slideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
+              '@keyframes slideUp': {
+                from: { 
+                  opacity: 0,
+                  transform: 'translateY(30px) scale(0.95)'
+                },
+                to: { 
+                  opacity: 1,
+                  transform: 'translateY(0) scale(1)'
+                }
+              }
+            }}
+          >
+            {/* Lock Icon with Animated Glow */}
+            <Box
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 80,
+                height: 80,
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                boxShadow: '0 8px 32px rgba(102, 126, 234, 0.4)',
+                mb: 3,
+                animation: 'pulse 2s ease-in-out infinite',
+                '@keyframes pulse': {
+                  '0%, 100%': {
+                    boxShadow: '0 8px 32px rgba(102, 126, 234, 0.4)',
+                    transform: 'scale(1)'
+                  },
+                  '50%': {
+                    boxShadow: '0 12px 40px rgba(102, 126, 234, 0.6)',
+                    transform: 'scale(1.05)'
+                  }
+                }
+              }}
+            >
+              <LockIcon sx={{ color: '#fff', fontSize: 40 }} />
+            </Box>
+
+            {/* Main Message */}
+            <Typography
+              variant="h5"
+              fontWeight={700}
+              sx={{
+                mb: 2,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                fontSize: { xs: '1.375rem', sm: '1.5rem' },
+                letterSpacing: -0.5
+              }}
+            >
+              Complete Your Profile to Unlock Insights
+            </Typography>
+
+            <Typography
+              variant="body1"
+              sx={{
+                mb: 4,
+                color: 'text.secondary',
+                lineHeight: 1.7,
+                fontSize: { xs: '0.938rem', sm: '1rem' },
+                maxWidth: 400,
+                mx: 'auto'
+              }}
+            >
+              To view complete insights, please fill in your personal and medical information. 
+              This helps us provide accurate and personalized health recommendations.
+            </Typography>
+
+            {/* CTA Button */}
+            <Button
+              variant="contained"
+              size="large"
+              endIcon={<ArrowForwardIcon />}
+              onClick={handleNavigateToPersonalizedSuggestions}
+              sx={{
+                borderRadius: 2.5,
+                textTransform: 'none',
+                fontWeight: 600,
+                fontSize: '1rem',
+                px: 4,
+                py: 1.5,
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                boxShadow: '0 8px 24px rgba(102, 126, 234, 0.35)',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                '&:hover': {
+                  background: 'linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%)',
+                  boxShadow: '0 12px 32px rgba(102, 126, 234, 0.5)',
+                  transform: 'translateY(-2px)'
+                },
+                '&:active': {
+                  transform: 'translateY(0)'
+                }
+              }}
+            >
+              Go to Personalized Suggestions
+            </Button>
+
+            {/* Progress Indicator */}
+            <Box sx={{ mt: 3, pt: 3, borderTop: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}` }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 1 }}>
+                <Typography variant="caption" color="text.secondary" fontWeight={600}>
+                  Profile Completion
+                </Typography>
+                <Chip
+                  label={`${personalInfoCompletion}%`}
+                  size="small"
+                  sx={{
+                    height: 22,
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    background: alpha('#667eea', 0.1),
+                    color: '#667eea',
+                    border: `1px solid ${alpha('#667eea', 0.2)}`
+                  }}
+                />
+              </Box>
+              <LinearProgress
+                variant="determinate"
+                value={personalInfoCompletion}
+                sx={{
+                  height: 6,
+                  borderRadius: 3,
+                  bgcolor: alpha('#667eea', 0.1),
+                  '& .MuiLinearProgress-bar': {
+                    borderRadius: 3,
+                    background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)'
+                  }
+                }}
+              />
+            </Box>
+          </Paper>
+        </Box>
+      )}
     </Box>
   );
 }

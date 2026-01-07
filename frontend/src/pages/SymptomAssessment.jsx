@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -51,6 +51,10 @@ const SymptomAssessment = () => {
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [completedSymptoms, setCompletedSymptoms] = useState(new Set());
   const [symptomCompletionStatus, setSymptomCompletionStatus] = useState({});
+  const [userAge, setUserAge] = useState(null);
+  const [userGender, setUserGender] = useState(null);
+  const [canProceed, setCanProceed] = useState(false);
+  const questionListRef = useRef();
 
   useEffect(() => {
     checkLoginAndFetchData();
@@ -64,8 +68,32 @@ const SymptomAssessment = () => {
         setShowLoginDialog(true);
         return;
       }
-      await getCurrentUser();
+      const user = await getCurrentUser();
       setIsLoggedIn(true);
+      
+      console.log('User data fetched:', user);
+      console.log('Date of birth:', user?.date_of_birth);
+      console.log('Gender:', user?.gender);
+      
+      // Calculate age from user's date of birth if available
+      if (user?.date_of_birth) {
+        const dob = new Date(user.date_of_birth);
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const monthDiff = today.getMonth() - dob.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+          age--;
+        }
+        console.log('Calculated age:', age);
+        setUserAge(age);
+      }
+      
+      // Set user's gender if available
+      if (user?.gender) {
+        console.log('Setting gender:', user.gender);
+        setUserGender(user.gender);
+      }
+      
       await fetchAllSymptoms();
       await fetchUserAnsweredQuestions();
     } catch (err) {
@@ -147,14 +175,36 @@ const SymptomAssessment = () => {
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!symptoms.length) return;
+
+    // Auto-save answers before proceeding
+    if (questionListRef.current && activeStep === 0) {
+      try {
+        await questionListRef.current.saveAll();
+      } catch (error) {
+        console.error('Error saving answers:', error);
+        return; // Don't proceed if save fails
+      }
+    }
 
     if (activeStep === 0 && currentSymptomIndex < symptoms.length - 1) {
       setCurrentSymptomIndex((prev) => prev + 1);
+      setCanProceed(false); // Reset for next symptom
     } else if (activeStep === 0 && currentSymptomIndex === symptoms.length - 1) {
       setActiveStep(1);
     }
+  };
+
+  const handleAnswersChange = (answers, questions) => {
+    // Check if all questions have been answered
+    // Questions are considered answered if they have a value in answers object
+    const allAnswered = questions.every((q) => {
+      const answer = answers[q._id];
+      return answer !== undefined && answer !== null && answer.toString().trim() !== '';
+    });
+    console.log('All answered:', allAnswered, 'Total questions:', questions.length, 'Answers:', Object.keys(answers).length);
+    setCanProceed(allAnswered);
   };
 
   const handleBack = () => {
@@ -361,10 +411,14 @@ const SymptomAssessment = () => {
                     </Box>
                     <Divider sx={{ mb: 4, mx: 'auto', maxWidth: 600 }} />
                     <QuestionList 
+                      ref={questionListRef}
                       symptomId={currentSymptom._id} 
                       symptomName={currentSymptom.name}
                       isLoggedIn={isLoggedIn}
                       onDataUpdated={fetchUserAnsweredQuestions}
+                      onAnswersChange={handleAnswersChange}
+                      userAge={userAge}
+                      userGender={userGender}
                     />
                   </Box>
                 </Fade>
@@ -442,7 +496,7 @@ const SymptomAssessment = () => {
                   variant="contained"
                   endIcon={<ArrowForward />}
                   onClick={handleNext}
-                  disabled={!symptoms.length}
+                  disabled={!symptoms.length || !canProceed}
                   sx={{
                     px: 4,
                     py: 1.5,

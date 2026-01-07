@@ -8,14 +8,14 @@ print(f"Current working directory: {os.getcwd()}", file=sys.stderr)
 
 PROJECT_ROOT = os.getenv('PROJECT_ROOT')
 if PROJECT_ROOT:
-    model_path = str(Path(PROJECT_ROOT) / 'Diabetes Model Making')
+    model_path = str(Path(PROJECT_ROOT) / 'DiabetesModel')
     sys.path.append(model_path)
     print(f"Added to Python path: {model_path}", file=sys.stderr)
 else:
     # Fallback: try to find the model directory relative to current script
     script_dir = Path(__file__).parent
     project_root = script_dir.parent.parent.parent
-    model_path = str(project_root / 'Diabetes Model Making')
+    model_path = str(project_root / 'DiabetesModel')
     sys.path.append(model_path)
     PROJECT_ROOT = str(project_root)
     print(f"Using fallback path: {model_path}", file=sys.stderr)
@@ -47,7 +47,7 @@ if not import_success:
     try:
         import importlib.util
         spec = importlib.util.spec_from_file_location("EnhancedDiabetesSystem", 
-                                                    str(Path(PROJECT_ROOT) / 'Diabetes Model Making' / 'EnhancedDiabetesSystem.py'))
+                                                    str(Path(PROJECT_ROOT) / 'DiabetesModel' / 'EnhancedDiabetesSystem.py'))
         EnhancedDiabetesSystem_module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(EnhancedDiabetesSystem_module)
         DiabetesRiskAssessmentSystem = EnhancedDiabetesSystem_module.DiabetesRiskAssessmentSystem
@@ -59,7 +59,7 @@ if not import_success:
 if not import_success or DiabetesRiskAssessmentSystem is None:
     print(f"All import methods failed", file=sys.stderr)
     print(f"Python path: {sys.path}", file=sys.stderr)
-    print(f"Files in model directory: {list(Path(PROJECT_ROOT, 'Diabetes Model Making').glob('*.py'))}", file=sys.stderr)
+    print(f"Files in model directory: {list(Path(PROJECT_ROOT, 'DiabetesModel').glob('*.py'))}", file=sys.stderr)
     print(json.dumps({"error": "Failed to import EnhancedDiabetesSystem module"}))
     sys.exit(1)
 
@@ -71,8 +71,8 @@ def main():
         
         print(f"Received features: {features}", file=sys.stderr)
 
-        # Load model from Diabetes Model Making directory
-        model_path = str(Path(PROJECT_ROOT or '.') / 'Diabetes Model Making' / 'diabetes_xgb_model.pkl')
+        # Load model from DiabetesModel directory
+        model_path = str(Path(PROJECT_ROOT or '.') / 'DiabetesModel' / 'diabetes_xgb_model.pkl')
         print(f"Model path: {model_path}", file=sys.stderr)
         
         # Check if model file exists

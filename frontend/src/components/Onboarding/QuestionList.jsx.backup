@@ -24,7 +24,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../utils/axiosInstance';
 
-const QuestionList = forwardRef(({ symptomId, symptomName, isLoggedIn, onDataUpdated, onAnswersChange, userAge, userGender }, ref) => {
+const QuestionList = forwardRef(({ symptomId, symptomName, isLoggedIn, onDataUpdated, onAnswersChange, userAge }, ref) => {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -58,55 +58,18 @@ const QuestionList = forwardRef(({ symptomId, symptomName, isLoggedIn, onDataUpd
         setQuestions(questionsList);
         setError(null);
         
-        console.log('QuestionList - userAge:', userAge);
-        console.log('QuestionList - userGender:', userGender);
-        console.log('QuestionList - questions loaded:', questionsList.length);
-        
-        // Auto-fill age and gender if questions ask for them and user data is available
-        const updatedAnswers = {};
-        const preFilledQuestionIds = [];
-        
+        // Auto-fill age if question asks for age and userAge is provided
         if (userAge && questionsList.length > 0) {
           const ageQuestion = questionsList.find((q) => 
             q.question_text.toLowerCase().includes('age') && 
             (q.question_type === 'text' || q.question_type === 'number')
           );
-          console.log('Age question found:', ageQuestion);
           if (ageQuestion) {
-            updatedAnswers[ageQuestion._id] = userAge.toString();
-            preFilledQuestionIds.push(ageQuestion._id);
-            console.log('Setting age answer:', userAge.toString());
+            setAnswers((prev) => ({ ...prev, [ageQuestion._id]: userAge.toString() }));
+            if (onAnswersChange) {
+              onAnswersChange({ [ageQuestion._id]: userAge.toString() }, questionsList);
+            }
           }
-        }
-        
-        if (userGender && questionsList.length > 0) {
-          const genderQuestion = questionsList.find((q) => 
-            q.question_text.toLowerCase().includes('gender') && 
-            q.question_type === 'radio'
-          );
-          console.log('Gender question found:', genderQuestion);
-          if (genderQuestion) {
-            // Normalize gender value to match question options (Male/Female)
-            const normalizedGender = userGender.charAt(0).toUpperCase() + userGender.slice(1).toLowerCase();
-            updatedAnswers[genderQuestion._id] = normalizedGender;
-            preFilledQuestionIds.push(genderQuestion._id);
-            console.log('Setting gender answer:', normalizedGender);
-          }
-        }
-        
-        console.log('Updated answers to set:', updatedAnswers);
-        
-        if (Object.keys(updatedAnswers).length > 0) {
-          setAnswers((prev) => {
-            const newAnswers = { ...prev, ...updatedAnswers };
-            // Notify parent after state update
-            setTimeout(() => {
-              if (onAnswersChange) {
-                onAnswersChange(newAnswers, questionsList);
-              }
-            }, 0);
-            return newAnswers;
-          });
         }
         
         // Only fetch user's answered questions if logged in
@@ -119,7 +82,7 @@ const QuestionList = forwardRef(({ symptomId, symptomName, isLoggedIn, onDataUpd
               }
             });
             const ansData = await ansRes.json();
-            const answered = [...preFilledQuestionIds]; // Include pre-filled questions
+            const answered = [];
             if (ansData.data && ansData.data.symptoms && symptomName) {
               // Case-insensitive, trimmed match for symptom name
               const symptomBlock = ansData.data.symptoms.find((s) => s.name.trim().toLowerCase() === symptomName.trim().toLowerCase());
@@ -137,7 +100,7 @@ const QuestionList = forwardRef(({ symptomId, symptomName, isLoggedIn, onDataUpd
             setAnsweredIds([]);
           }
         } else {
-          setAnsweredIds(preFilledQuestionIds);
+          setAnsweredIds([]);
         }
       } catch (err) {
         setError('Error fetching questions.');
@@ -146,7 +109,7 @@ const QuestionList = forwardRef(({ symptomId, symptomName, isLoggedIn, onDataUpd
       }
     };
     fetchQuestions();
-  }, [symptomId, symptomName, isLoggedIn, userAge, userGender, onAnswersChange]);
+  }, [symptomId, symptomName, isLoggedIn, userAge, onAnswersChange]);
 
   const handleInputChange = (questionId, value) => {
     const newAnswers = { ...answers, [questionId]: value };
@@ -238,15 +201,10 @@ const QuestionList = forwardRef(({ symptomId, symptomName, isLoggedIn, onDataUpd
               row
               value={value}
               onChange={(e) => handleInputChange(question._id, e.target.value)}
+              disabled={isAnswered}
             >
               {(question.options || []).map((option) => (
-                <FormControlLabel 
-                  key={option} 
-                  value={option} 
-                  control={<Radio disabled={isAnswered} />} 
-                  label={option} 
-                  disabled={isAnswered}
-                />
+                <FormControlLabel key={option} value={option} control={<Radio />} label={option} />
               ))}
             </RadioGroup>
           </Box>
@@ -399,6 +357,6 @@ const QuestionList = forwardRef(({ symptomId, symptomName, isLoggedIn, onDataUpd
       )}
     </Stack>
   );
-});
+};
 
 export default QuestionList; 

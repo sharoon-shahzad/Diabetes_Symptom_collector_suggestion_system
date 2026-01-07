@@ -86,6 +86,9 @@ const PersonalizedSuggestionSystem = () => {
 
     const loadExistingData = async () => {
         try {
+            // First get user data to pre-fill gender and DOB
+            const user = await getCurrentUser();
+            
             const [personalRes, medicalRes] = await Promise.all([
                 axiosInstance.get('/personalized-system/personal-info'),
                 axiosInstance.get('/personalized-system/medical-info')
@@ -96,8 +99,11 @@ const PersonalizedSuggestionSystem = () => {
                 setFormData(prev => ({
                     ...prev,
                     fullName: personal.fullName || '',
-                    date_of_birth: personal.date_of_birth ? dayjs(personal.date_of_birth) : null,
-                    gender: personal.gender || '',
+                    // Use personal info if exists, otherwise fall back to user model
+                    date_of_birth: personal.date_of_birth 
+                        ? dayjs(personal.date_of_birth) 
+                        : (user?.date_of_birth ? dayjs(user.date_of_birth) : null),
+                    gender: personal.gender || user?.gender || '',
                     country: personal.country || '',
                     country_code: personal.country_code || '',
                     phone_number: personal.phone_number || '',
@@ -105,6 +111,13 @@ const PersonalizedSuggestionSystem = () => {
                     height: personal.height || '',
                     activity_level: personal.activity_level || '',
                     sleep_hours: personal.sleep_hours || ''
+                }));
+            } else {
+                // If no personal info exists, use user model data
+                setFormData(prev => ({
+                    ...prev,
+                    date_of_birth: user?.date_of_birth ? dayjs(user.date_of_birth) : null,
+                    gender: user?.gender || '',
                 }));
             }
 
@@ -123,6 +136,17 @@ const PersonalizedSuggestionSystem = () => {
             }
         } catch (error) {
             console.error('Error loading data:', error);
+            // Still try to get user data even if personal info fetch fails
+            try {
+                const user = await getCurrentUser();
+                setFormData(prev => ({
+                    ...prev,
+                    date_of_birth: user?.date_of_birth ? dayjs(user.date_of_birth) : null,
+                    gender: user?.gender || '',
+                }));
+            } catch (err) {
+                console.error('Error loading user data:', err);
+            }
         }
     };
 

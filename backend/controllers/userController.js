@@ -25,6 +25,10 @@ export const getCurrentUser = async (req, res) => {
                     email: user.email,
                     gender: user.gender,
                     date_of_birth: user.date_of_birth,
+                    phone_number: user.phone_number,
+                    country: user.country,
+                    whatsapp_number: user.whatsapp_number,
+                    diabetes_diagnosed: user.diabetes_diagnosed,
                     isActivated: user.isActivated,
                     roles: roles
                 }
@@ -67,7 +71,7 @@ export const getAllUsers = async (req, res) => {
 export const updateUser = async (req, res) => {
     try {
         const { id } = req.params;
-        const { fullName, email, gender, date_of_birth, isActivated, phone_number, whatsapp_number } = req.body;
+        const { fullName, email, gender, date_of_birth, isActivated, phone_number, whatsapp_number, country } = req.body;
 
         // Find user
         const user = await User.findById(id);
@@ -85,12 +89,6 @@ export const updateUser = async (req, res) => {
         if (!email) {
             return res.status(400).json({ success: false, message: "Email is required" });
         }
-        if (!gender) {
-            return res.status(400).json({ success: false, message: "Gender is required" });
-        }
-        if (!date_of_birth) {
-            return res.status(400).json({ success: false, message: "Date of birth is required" });
-        }
 
         // Normalize email (lowercase and trim)
         const normalizeEmail = (email) => {
@@ -107,18 +105,23 @@ export const updateUser = async (req, res) => {
             }
         }
 
+        // Build update object with only provided fields
+        const updateData = {
+            fullName,
+            email: normalizedEmail,
+        };
+        
+        if (gender) updateData.gender = gender;
+        if (date_of_birth) updateData.date_of_birth = date_of_birth;
+        if (phone_number !== undefined) updateData.phone_number = phone_number;
+        if (whatsapp_number !== undefined) updateData.whatsapp_number = whatsapp_number;
+        if (country !== undefined) updateData.country = country;
+        if (isActivated !== undefined) updateData.isActivated = isActivated;
+
         // Update user (store normalized email)
         const updatedUser = await User.findByIdAndUpdate(
             id,
-            {
-                fullName,
-                email: normalizedEmail,
-                gender,
-                date_of_birth,
-                isActivated,
-                phone_number,
-                whatsapp_number
-            },
+            updateData,
             { new: true, runValidators: true }
         );
 

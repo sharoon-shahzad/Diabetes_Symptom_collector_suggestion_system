@@ -92,7 +92,6 @@ const BlogCard = ({
           transition: 'all 0.3s ease',
           position: 'relative',
           overflow: 'hidden',
-          cursor: 'pointer',
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
           '&:hover': {
             transform: 'translateY(-8px)',
@@ -100,7 +99,6 @@ const BlogCard = ({
             border: `1px solid ${theme.palette.primary.main}40`,
           },
         }}
-        onClick={() => onReadMore(article)}
       >
         {/* Featured Image */}
         {article.featuredImage?.url && (
@@ -232,6 +230,10 @@ const BlogCard = ({
               variant="contained"
               size="small"
               endIcon={<ArrowForwardIcon />}
+              onClick={(e) => {
+                e.stopPropagation();
+                onReadMore(article);
+              }}
               sx={{
                 borderRadius: 2,
                 textTransform: 'none',

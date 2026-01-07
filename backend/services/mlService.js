@@ -4,8 +4,8 @@ import path from 'path';
 // Runs the Python risk assessment script with provided feature payload
 export function assessDiabetesRiskPython(features) {
   return new Promise((resolve, reject) => {
-    // Get the correct project root path - go up from backend to the main project directory
-    const projectRoot = path.resolve(process.cwd(), '..');
+    // DiabetesModel is in the backend directory
+    const projectRoot = path.resolve(process.cwd());
     const scriptPath = path.resolve(process.cwd(), 'services', 'ml', 'diabetes_assess.py');
 
     console.log('Project root:', projectRoot);

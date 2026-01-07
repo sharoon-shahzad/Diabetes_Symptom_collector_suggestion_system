@@ -100,6 +100,7 @@ const Onboarding = () => {
   };
 
   const handleSkip = () => {
+    console.log('Skip button clicked');
     navigate('/symptom-assessment');
   };
 
@@ -114,25 +115,31 @@ const Onboarding = () => {
         position: 'relative',
       }}
     >
-      <Container maxWidth="lg" sx={{ px: { xs: 2.5, md: 4 } }}>
+      <Container maxWidth="lg" sx={{ px: { xs: 2.5, md: 4 }, position: 'relative', zIndex: 1 }}>
         {/* Header with Skip */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2, position: 'relative', zIndex: 1000 }}>
           <Button
-            variant="text"
+            variant="outlined"
             onClick={handleSkip}
             sx={{
               textTransform: 'none',
               fontSize: '0.875rem',
-              fontWeight: 500,
-              color: 'text.secondary',
-              px: 2,
+              fontWeight: 600,
+              color: 'primary.main',
+              borderColor: 'primary.main',
+              px: 3,
               py: 1,
               borderRadius: 2,
+              cursor: 'pointer',
+              pointerEvents: 'auto',
+              position: 'relative',
+              zIndex: 1001,
               '&:hover': {
-                color: 'text.primary',
-                bgcolor: alpha(theme.palette.text.primary, 0.04),
+                bgcolor: 'primary.main',
+                color: 'white',
+                borderColor: 'primary.main',
               },
-              transition: 'color 0.2s ease',
+              transition: 'all 0.2s ease',
             }}
           >
             Skip Tour

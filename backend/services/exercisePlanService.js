@@ -242,6 +242,9 @@ class ExercisePlanService {
             const mets = this.parseNumber(i.mets);
             const estCals = this.parseNumber(i.estimated_calories);
 
+            // Ensure duration_min has a valid value (required by Mongoose)
+            const validDuration = duration != null && duration > 0 ? duration : 15; // Default to 15 min if invalid
+
             // Ensure intensity is always present for Mongoose validation
             let intensity = i.intensity;
             const category = (i.category || '').toLowerCase();
@@ -286,7 +289,7 @@ class ExercisePlanService {
             return {
               exercise: i.exercise.trim(),
               category: i.category || 'General',
-              duration_min: duration,
+              duration_min: validDuration,
               intensity,
               mets,
               estimated_calories: estCals,

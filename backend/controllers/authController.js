@@ -36,7 +36,7 @@ const generateAccessAndRefreshTokens = async (userId, email) => {
 // Registration controller
 export const register = async (req, res) => {
     try {
-        const { fullName, email, password } = req.body;
+        const { fullName, email, password, date_of_birth, gender } = req.body;
         
         // Validation
         if (!fullName || !email || !password) {
@@ -82,11 +82,13 @@ export const register = async (req, res) => {
         const activationToken = crypto.randomBytes(32).toString('hex');
         const activationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
         
-        // Create user (store normalized email)
+        // Create user (store normalized email and optional fields)
         const user = new User({
             fullName,
             email: normalizedEmail,
             password: hashedPassword,
+            date_of_birth: date_of_birth || null,
+            gender: gender || null,
             isActivated: false,
             activationToken,
             activationTokenExpires
@@ -353,6 +355,10 @@ export const getCurrentUser = async (req, res) => {
     try {
         const user = req.user;
         
+        console.log('User ID:', user._id);
+        console.log('Date of birth from User:', user.date_of_birth);
+        console.log('Gender from User:', user.gender);
+        
         return res.status(200).json({
             success: true,
             data: {
@@ -369,6 +375,8 @@ export const getCurrentUser = async (req, res) => {
                     last_assessment_risk_level: user.last_assessment_risk_level,
                     last_assessment_probability: user.last_assessment_probability,
                     last_assessment_at: user.last_assessment_at,
+                    date_of_birth: user.date_of_birth || null,
+                    gender: user.gender || null,
                     createdAt: user.createdAt,
                     updatedAt: user.updatedAt,
                 }

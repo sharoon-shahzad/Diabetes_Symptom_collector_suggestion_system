@@ -34,6 +34,13 @@ const userSchema = new mongoose.Schema({
     whatsapp_number: {
         type: String,
     },
+    date_of_birth: {
+        type: Date,
+    },
+    gender: {
+        type: String,
+        enum: ['Male', 'Female', 'male', 'female', null],
+    },
     isActivated: {
         type: Boolean,
         default: false,

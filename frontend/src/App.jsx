@@ -20,6 +20,7 @@ import PersonalizedSuggestionDashboard from './pages/PersonalizedSuggestionDashb
 import PersonalMedicalInfoPage from './pages/PersonalMedicalInfoPage';
 import ComingSoonPage from './pages/ComingSoonPage';
 import ChatAssistant from './pages/ChatAssistant';
+import ArticlesPage from './pages/ArticlesPage';
 import DietPlanDashboard from './pages/DietPlanDashboard';
 import ExercisePlanDashboard from './pages/ExercisePlanDashboard';
 import LifestyleTipsDashboard from './pages/LifestyleTipsDashboard';
@@ -67,6 +68,7 @@ const AppContent = () => {
           <Route path="/cms" element={<CMSManagement />} />
           <Route path="/content" element={<PublicCMS />} />
           <Route path="/content/:slug" element={<PublicCMS />} />
+          <Route path="/articles" element={<ArticlesPage />} />
           <Route path="/forgotpassword" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/personalized-suggestions/dashboard" element={<PersonalizedSuggestionDashboard />} />
