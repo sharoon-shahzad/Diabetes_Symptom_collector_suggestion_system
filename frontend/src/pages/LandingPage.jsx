@@ -51,6 +51,7 @@ import ThemeToggle from '../components/Common/ThemeToggle';
 import BlogSection from '../components/Common/BlogSection';
 import ArticleModal from '../components/Common/ArticleModal';
 import TestimonialsSection from '../components/Common/TestimonialsSection';
+import { useSettings } from '../context/SettingsContext';
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -60,6 +61,7 @@ const LandingPage = () => {
   const controls = useAnimation();
   const [scrolled, setScrolled] = useState(false);
   const [articleModal, setArticleModal] = useState({ open: false, article: null });
+  const { siteTitle, contactEmail, siteDescription } = useSettings();
 
   useEffect(() => {
     if (inView) {
@@ -647,7 +649,7 @@ const LandingPage = () => {
             <Box sx={{ textAlign: 'center', mb: 8 }}>
               <motion.div variants={itemVariants}>
                 <Typography variant="h3" fontWeight={700} color="text.primary" gutterBottom>
-                  How DiaVise Works
+                  How {siteTitle} Works
                 </Typography>
                 <Typography variant="h6" color="text.secondary" sx={{ maxWidth: 600, mx: 'auto' }}>
                   Our comprehensive 4-step process ensures accurate diabetes risk assessment through advanced AI technology
@@ -1106,11 +1108,11 @@ const LandingPage = () => {
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
                 <HealthAndSafety sx={{ fontSize: 32, color: theme.palette.primary.main }} />
                 <Typography variant="h5" fontWeight={700}>
-                  DiaVise
+                  {siteTitle}
                 </Typography>
               </Box>
               <Typography variant="body2" color="text.secondary" paragraph>
-                Advanced AI-powered diabetes risk assessment platform helping individuals take control of their health through comprehensive symptom analysis.
+                {siteDescription}
               </Typography>
               <Box sx={{ display: 'flex', gap: 1 }}>
                 <IconButton size="small" color="inherit">
@@ -1170,7 +1172,7 @@ const LandingPage = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Email sx={{ fontSize: 16, color: theme.palette.text.secondary }} />
                   <Typography variant="body2" color="text.secondary">
-                    support@diavise.com
+                    {contactEmail}
                   </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -1191,7 +1193,7 @@ const LandingPage = () => {
           <Divider sx={{ my: 4 }} />
           <Box sx={{ textAlign: 'center' }}>
             <Typography variant="body2" color="text.secondary">
-              © 2024 DiaVise. All rights reserved. | Built for better health outcomes.
+              © {new Date().getFullYear()} {siteTitle}. All rights reserved. | Built for better health outcomes.
             </Typography>
           </Box>
         </Container>

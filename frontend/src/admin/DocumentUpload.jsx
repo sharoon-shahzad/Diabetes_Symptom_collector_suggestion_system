@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { useDateFormat } from '../hooks/useDateFormat';
 import {
     Box,
     Paper,
@@ -33,6 +34,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 
 const DocumentUpload = () => {
+    const { formatDate } = useDateFormat();
     const [file, setFile] = useState(null);
     const [dragActive, setDragActive] = useState(false);
     const [formData, setFormData] = useState({
@@ -470,7 +472,7 @@ const DocumentUpload = () => {
                                                         <Chip label={`${doc.chunk_count} chunks`} size="small" variant="outlined" />
                                                     </Stack>
                                                     <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-                                                        Uploaded: {new Date(doc.ingested_on).toLocaleDateString()}
+                                                        Uploaded: {formatDate(doc.ingested_on)}
                                                     </Typography>
                                                 </Box>
                                                 <IconButton

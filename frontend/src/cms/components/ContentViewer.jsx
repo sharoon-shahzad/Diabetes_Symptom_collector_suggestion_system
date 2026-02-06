@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useDateFormat } from '../../hooks/useDateFormat';
 import {
   Box,
   Card,
@@ -27,6 +28,7 @@ import {
 import { fetchContent, fetchContentBySlug, fetchCategories } from '../../utils/api';
 
 const ContentViewer = () => {
+  const { formatDate } = useDateFormat();
   const [content, setContent] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -117,14 +119,6 @@ const ContentViewer = () => {
 
   const handlePageChange = (event, page) => {
     setPagination(prev => ({ ...prev, page }));
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
   };
 
   const truncateText = (text, maxLength) => {

@@ -1,26 +1,19 @@
 import React from 'react';
 import { Card, CardContent, Box, Typography, Avatar, Chip } from '@mui/material';
 import { alpha } from '@mui/material/styles';
+import { useDateFormat } from '../../hooks/useDateFormat';
 import StarIcon from '@mui/icons-material/Star';
 import StarBorderIcon from '@mui/icons-material/StarBorder';
 import PersonIcon from '@mui/icons-material/Person';
 
 export default function FeedbackCard({ feedback }) {
+  const { formatDate } = useDateFormat();
   const renderStars = (rating) => {
     return Array.from({ length: 5 }, (_, index) => {
       if (index < rating) {
         return <StarIcon key={index} sx={{ color: '#FFB800', fontSize: '1.2rem' }} />;
       }
       return <StarBorderIcon key={index} sx={{ color: 'text.disabled', fontSize: '1.2rem' }} />;
-    });
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
     });
   };
 

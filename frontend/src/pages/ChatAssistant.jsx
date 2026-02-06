@@ -5,6 +5,7 @@ import SmartToyIcon from '@mui/icons-material/SmartToy';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import ReactMarkdown from 'react-markdown';
 import axiosInstance from '../utils/axiosInstance';
+import { useSettings } from '../context/SettingsContext';
 
 const ChatAssistant = ({ inModal = false }) => {
   const [messages, setMessages] = useState([]);
@@ -12,6 +13,7 @@ const ChatAssistant = ({ inModal = false }) => {
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
+  const { siteTitle } = useSettings();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -144,7 +146,7 @@ const ChatAssistant = ({ inModal = false }) => {
               </Avatar>
               <Box sx={{ flex: 1 }}>
                 <Typography variant="h5" fontWeight="700" sx={{ color: '#1f2937', mb: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Box component="span">🩺</Box> Dr. DiaCare AI <Box component="span">✨</Box>
+                <Box component="span">🩺</Box> Dr. {siteTitle} AI <Box component="span">✨</Box>
               </Typography>
               <Typography variant="body2" sx={{ color: '#6b7280', fontWeight: 500 }}>
                 {loading ? '🔍 Analyzing your query...' : '💡 Your personalized diabetes assistant'}
@@ -208,7 +210,7 @@ const ChatAssistant = ({ inModal = false }) => {
                 `}</style>
                 
                 <Typography variant="h5" fontWeight="700" sx={{ color: '#1e3c72' }}>
-                  👋 Welcome to DiaCare Assistant!
+                  👋 Welcome to {siteTitle} Assistant!
                 </Typography>
                 <Typography variant="body1" color="text.secondary" textAlign="center" sx={{ maxWidth: 500 }}>
                   💬 Ask me anything about diabetes management, diet, exercise, medications, or symptoms

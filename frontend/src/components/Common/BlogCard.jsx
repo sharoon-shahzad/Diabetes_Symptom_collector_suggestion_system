@@ -1,4 +1,5 @@
 import React from 'react';
+import { useDateFormat } from '../../hooks/useDateFormat';
 import {
   Card,
   CardContent,
@@ -24,14 +25,7 @@ const BlogCard = ({
   index = 0
 }) => {
   const theme = useTheme();
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
+  const { formatDate } = useDateFormat();
 
   const truncateText = (text, maxLength) => {
     if (!text) return '';

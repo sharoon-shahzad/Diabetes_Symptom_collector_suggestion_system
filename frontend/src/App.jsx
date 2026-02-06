@@ -3,6 +3,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Box } from '@mui/material';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { SettingsProvider } from './context/SettingsContext';
 import { useTheme } from './contexts/useThemeContext';
 import LandingPage from './pages/LandingPage';
 import SignInSide from './pages/SignInSide';
@@ -94,9 +95,11 @@ const AppContent = () => {
 const App = () => {
   return (
     <ThemeProvider>
-      <Router>
-        <AppContent />
-      </Router>
+      <SettingsProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </SettingsProvider>
     </ThemeProvider>
   );
 };

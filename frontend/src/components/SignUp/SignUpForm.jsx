@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useDateFormat } from '../../hooks/useDateFormat';
 import axios from 'axios';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
@@ -58,6 +59,7 @@ export default function SignUpForm({ setSuccess, setError }) {
     const [focusedField, setFocusedField] = useState(null);
     const navigate = useNavigate();
     const theme = useTheme();
+    const { formatDate } = useDateFormat();
 
     const validateStep = (step) => {
         if (step === 0) {
@@ -465,7 +467,7 @@ export default function SignUpForm({ setSuccess, setError }) {
                                     <Box sx={{ textAlign: 'left', bgcolor: alpha(theme.palette.background.default, 0.5), p: 2 }}>
                                         <Typography variant="body2"><strong>Name:</strong> {fullName}</Typography>
                                         <Typography variant="body2"><strong>Email:</strong> {email}</Typography>
-                                        <Typography variant="body2"><strong>Date of Birth:</strong> {dob?.toLocaleDateString()}</Typography>
+                                        <Typography variant="body2"><strong>Date of Birth:</strong> {dob ? formatDate(dob) : ''}</Typography>
                                         <Typography variant="body2"><strong>Gender:</strong> {gender}</Typography>
                                     </Box>
                                 </Box>

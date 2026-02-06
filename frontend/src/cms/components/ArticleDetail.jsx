@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useDateFormat } from '../../hooks/useDateFormat';
 import {
   Box,
   Card,
@@ -34,6 +35,7 @@ import { fetchContentBySlug, fetchRelatedContent } from '../../utils/api';
 const ArticleDetail = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const { formatDate } = useDateFormat();
   const [article, setArticle] = useState(null);
   const [relatedContent, setRelatedContent] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -68,14 +70,6 @@ const ArticleDetail = () => {
       loadArticle();
     }
   }, [slug]);
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
 
   const handleBackClick = () => {
     navigate(-1);

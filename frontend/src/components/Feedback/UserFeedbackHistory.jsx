@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useDateFormat } from '../../hooks/useDateFormat';
 import {
   Box,
   Paper,
@@ -34,6 +35,7 @@ const categoryList = [
 ];
 
 export default function UserFeedbackHistory({ showFormOnMount = false }) {
+  const { formatDate } = useDateFormat();
   const [feedback, setFeedback] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -111,16 +113,6 @@ export default function UserFeedbackHistory({ showFormOnMount = false }) {
     });
   };
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
 
   // Derived user stats for a lightweight header
   const totalCount = feedback.length;

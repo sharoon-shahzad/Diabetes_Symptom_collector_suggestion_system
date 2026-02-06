@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDateFormat } from '../../../hooks/useDateFormat';
 import {
   Box,
   Grid,
@@ -25,6 +26,7 @@ function UndiagnosedInsightsView({
   assessmentSummary,
   user
 }) {
+  const { formatDate } = useDateFormat();
   const navigate = useNavigate();
 
   return (
@@ -35,7 +37,7 @@ function UndiagnosedInsightsView({
           <StatWidget
             title="Condition"
             value={diseaseData?.disease || 'Not Set'}
-            caption={diseaseData?.lastUpdated ? `Updated ${new Date(diseaseData.lastUpdated).toLocaleDateString()}` : 'Start onboarding'}
+            caption={diseaseData?.lastUpdated ? `Updated ${formatDate(diseaseData.lastUpdated)}` : 'Start onboarding'}
             color="primary"
           />
         </Grid>

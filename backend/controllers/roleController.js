@@ -1,6 +1,7 @@
 import { Role } from '../models/Role.js';
 import { Permission } from '../models/Permissions.js';
 import { RolePermissions } from '../models/RolePermissions.js';
+import { createAuditLog } from '../middlewares/auditMiddleware.js';
 
 // Get all roles
 export const getAllRoles = async (req, res) => {
@@ -56,6 +57,15 @@ export const updateRolePermissions = async (req, res) => {
             });
         }
         
+        // Get previous permissions for audit log
+        const previousPermissions = await RolePermissions.find({ 
+            role_id: roleId,
+            is_active: true 
+        }).populate('permission_id');
+        
+        // Get role info
+        const role = await Role.findById(roleId);
+        
         // First, deactivate all existing permissions for this role
         await RolePermissions.updateMany(
             { role_id: roleId },
@@ -77,6 +87,25 @@ export const updateRolePermissions = async (req, res) => {
         });
         
         await Promise.all(rolePermissionPromises);
+        
+        // Log permission change to audit trail
+        try {
+            const oldPermissionNames = previousPermissions.map(rp => rp.permission_id?.permission_key);
+            const newPermissions = await RolePermissions.find({ 
+                role_id: roleId,
+                is_active: true 
+            }).populate('permission_id');
+            const newPermissionNames = newPermissions.map(rp => rp.permission_id?.permission_key);
+            
+            await createAuditLog('UPDATE', 'RolePermissions', req, res, roleId, {
+                role: role?.role_name,
+                before: { permissions: oldPermissionNames },
+                after: { permissions: newPermissionNames },
+                action: 'Permissions Modified'
+            });
+        } catch (auditErr) {
+            console.error('Failed to log permission change to audit trail:', auditErr);
+        }
         
         return res.status(200).json({
             success: true,

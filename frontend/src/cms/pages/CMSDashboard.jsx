@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useDateFormat } from '../../hooks/useDateFormat';
 import {
   Alert,
   Box,
@@ -107,6 +108,7 @@ const MetricTile = ({ icon, label, value, helper, accentColor }) => (
 );
 
 const CMSDashboard = () => {
+  const { formatDate } = useDateFormat();
   const [categoryStats, setCategoryStats] = useState(null);
   const [contentStats, setContentStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -853,7 +855,7 @@ const CMSDashboard = () => {
                   <Typography variant="caption" color="text.secondary">
                     {item.category?.name || 'Uncategorised'} •{' '}
                     {item.publishedAt
-                      ? new Date(item.publishedAt).toLocaleDateString()
+                      ? formatDate(item.publishedAt)
                       : 'Draft'}
                   </Typography>
                   <Box display="flex" alignItems="center" gap={0.75}>

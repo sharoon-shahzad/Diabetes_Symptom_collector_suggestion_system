@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useDateFormat } from '../../hooks/useDateFormat';
 import {
   Box,
   Card,
@@ -42,6 +43,7 @@ import { fetchContent, deleteContent, fetchCategories, updateContent } from '../
 import ContentForm from './ContentForm';
 
 const ContentList = () => {
+  const { formatDate } = useDateFormat();
   const [content, setContent] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -217,10 +219,6 @@ const ContentList = () => {
       console.error('Error updating content:', error);
       toast.error('Failed to update some items');
     }
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString();
   };
 
   const renderReviewStatusChip = (item) => {

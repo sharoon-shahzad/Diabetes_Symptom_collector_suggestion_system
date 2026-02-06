@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useDateFormat } from '../hooks/useDateFormat';
 import {
   Box,
   Paper,
@@ -75,6 +76,7 @@ const getCategoryAbbreviation = (categoryName) => {
 };
 
 export default function AdminFeedback() {
+  const { formatDate } = useDateFormat();
   const [tab, setTab] = useState(0);
   const [loading, setLoading] = useState(false);
   const [listData, setListData] = useState([]);
@@ -334,7 +336,7 @@ export default function AdminFeedback() {
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2">
-                            {new Date(fb.submitted_on).toLocaleDateString()}
+                            {formatDate(fb.submitted_on)}
                           </Typography>
                         </TableCell>
                         <TableCell align="right">

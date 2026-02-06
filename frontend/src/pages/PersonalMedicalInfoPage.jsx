@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useDateFormat } from '../hooks/useDateFormat';
 import {
     Box,
     Container,
@@ -43,6 +44,7 @@ import dayjs from 'dayjs';
 import { getCurrentUser } from '../utils/auth.js';
 
 const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
+    const { formatDate } = useDateFormat();
     const navigate = useNavigate();
     const [personalInfo, setPersonalInfo] = useState(null);
     const [medicalInfo, setMedicalInfo] = useState(null);
@@ -767,7 +769,7 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                 {renderField(
                                     'Date of Birth',
                                     personalInfo?.date_of_birth
-                                        ? dayjs(personalInfo.date_of_birth).format('MMM DD, YYYY')
+                                        ? formatDate(personalInfo.date_of_birth)
                                         : 'Not provided',
                                     !personalInfo?.date_of_birth
                                 )}
@@ -860,7 +862,7 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                 {renderField(
                                     'Diagnosis Date',
                                     medicalInfo?.diagnosis_date
-                                        ? dayjs(medicalInfo.diagnosis_date).format('MMM DD, YYYY')
+                                        ? formatDate(medicalInfo.diagnosis_date)
                                         : 'Not provided',
                                     !medicalInfo?.diagnosis_date
                                 )}

@@ -314,3 +314,30 @@ export async function exportAuditLogs(params = {}) {
   });
   return res.data;
 }
+
+// Settings API
+export async function fetchAllSettings() {
+  const res = await axiosInstance.get('/admin/settings');
+  return res.data;
+}
+
+export async function fetchSettingByKey(key) {
+  const res = await axiosInstance.get(`/admin/settings/${key}`);
+  return res.data;
+}
+
+export async function updateSetting(key, value) {
+  // If key is 'bulk', send entire value object as bulk update
+  if (key === 'bulk') {
+    const res = await axiosInstance.put('/admin/settings', value);
+    return res.data;
+  }
+  // Otherwise, update single field
+  const res = await axiosInstance.put(`/admin/settings/${key}`, { value });
+  return res.data;
+}
+
+export async function bulkUpdateSettings(settings) {
+  const res = await axiosInstance.put('/admin/settings', settings);
+  return res.data;
+}

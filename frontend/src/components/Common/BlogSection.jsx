@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useDateFormat } from '../../hooks/useDateFormat';
 import {
   Box,
   Container,
@@ -48,6 +49,7 @@ const BlogSection = ({
 }) => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const { formatDate } = useDateFormat();
   const [content, setContent] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -424,11 +426,7 @@ const BlogSection = ({
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       <CalendarIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
                       <Typography variant="body2" color="text.secondary">
-                        {new Date(selectedArticle.publishedAt).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
+                        {formatDate(selectedArticle.publishedAt)}
                       </Typography>
                     </Box>
                   )}

@@ -1,5 +1,6 @@
 // Diet Plan Dashboard - AI-powered meal planning
 import React, { useState, useEffect } from 'react';
+import { useDateFormat } from '../hooks/useDateFormat';
 import {
   Box,
   Container,
@@ -60,6 +61,7 @@ const StatTile = ({ label, value, accent, icon }) => (
 );
 
 const DietPlanDashboard = ({ inModal = false }) => {
+  const { formatDate } = useDateFormat();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -117,11 +119,7 @@ const DietPlanDashboard = ({ inModal = false }) => {
       date.setDate(today.getDate() + i);
       options.push({
         value: date.toISOString().split('T')[0],
-        label: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : date.toLocaleDateString('en-US', { 
-          weekday: 'long', 
-          month: 'short', 
-          day: 'numeric' 
-        }),
+        label: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : formatDate(date),
         dateObj: date
       });
     }
@@ -402,15 +400,10 @@ const DietPlanDashboard = ({ inModal = false }) => {
                   >
                     <Box sx={{ mb: 2 }}>
                       <Typography variant="h6" fontWeight="700" sx={{ color: '#1e293b', mb: 0.5 }}>
-                        {new Date(plan.target_date).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric'
-                        })}
+                        {formatDate(plan.target_date, 'DD MMMM')}
                       </Typography>
                       <Typography variant="caption" sx={{ color: '#64748b', fontSize: '0.75rem' }}>
-                        {new Date(plan.target_date).toLocaleDateString('en-US', {
-                          weekday: 'long'
-                        })}
+                        {formatDate(plan.target_date)}
                       </Typography>
                     </Box>
                     
@@ -505,11 +498,7 @@ const DietPlanDashboard = ({ inModal = false }) => {
                     <Box>
                       <Typography variant="body1">{option.label}</Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {option.dateObj.toLocaleDateString('en-US', { 
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
+                        {formatDate(option.dateObj)}
                       </Typography>
                     </Box>
                   }

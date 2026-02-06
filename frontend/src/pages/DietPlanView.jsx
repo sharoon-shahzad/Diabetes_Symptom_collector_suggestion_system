@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useDateFormat } from '../hooks/useDateFormat';
 import {
   Box,
   Container,
@@ -24,6 +25,7 @@ import {
 } from '@mui/icons-material';
 
 const DietPlanView = ({ plan, onBack, onDelete }) => {
+  const { formatDate } = useDateFormat();
   const [expandedMeals, setExpandedMeals] = useState({});
 
   if (!plan) return null;
@@ -126,11 +128,7 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
                 Diet Plan Details
               </Typography>
               <Typography variant="body1" sx={{ color: '#64748b', fontSize: '0.95rem' }}>
-                {targetDate.toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric'
+                {formatDate(targetDate)}
                 })}
               </Typography>
             </Box>

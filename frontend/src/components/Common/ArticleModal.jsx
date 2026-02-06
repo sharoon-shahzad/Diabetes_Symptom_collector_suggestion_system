@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useDateFormat } from '../../hooks/useDateFormat';
 import {
   Dialog,
   DialogTitle,
@@ -35,6 +36,7 @@ const ArticleModal = ({
   onArticleClick 
 }) => {
   const theme = useTheme();
+  const { formatDate } = useDateFormat();
   const [fullArticle, setFullArticle] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -59,14 +61,6 @@ const ArticleModal = ({
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
   };
 
   const handleClose = () => {

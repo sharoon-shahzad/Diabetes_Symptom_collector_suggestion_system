@@ -1,4 +1,5 @@
 ﻿import { useMemo } from 'react';
+import { formatDate } from '../utils/dateFormatter';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import TrendingFlatIcon from '@mui/icons-material/TrendingFlat';
@@ -51,7 +52,7 @@ const useHealthMetrics = ({
     if (user?.last_assessment_at) {
       items.push({
         title: 'Assessment Completed',
-        time: new Date(user.last_assessment_at).toLocaleDateString(),
+        time: formatDate(user.last_assessment_at),
         icon: 'CheckCircle',
         color: 'success'
       });
@@ -60,7 +61,7 @@ const useHealthMetrics = ({
     if (diseaseData?.lastUpdated) {
       items.push({
         title: 'Disease Data Updated',
-        time: new Date(diseaseData.lastUpdated).toLocaleDateString(),
+        time: formatDate(diseaseData.lastUpdated),
         icon: 'Edit',
         color: 'primary'
       });
@@ -238,7 +239,7 @@ const useHealthMetrics = ({
 
       return {
         key: date,
-        label: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        label: formatDate(date, 'DD MMMM'),
         dietCalories,
         dietCarbs,
         exerciseMinutes,

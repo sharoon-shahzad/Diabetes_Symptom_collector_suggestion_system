@@ -29,7 +29,9 @@ const generateAccessAndRefreshTokens = async (userId, email) => {
 
         return { accessToken, refreshToken };
     } catch (error) {
-        throw new Error('Error generating tokens');
+        console.error('Token generation error:', error && error.message ? error.message : error);
+        // Re-throw the original error so callers can see the cause
+        throw error;
     }
 };
 
@@ -220,6 +222,17 @@ export const login = async (req, res) => {
             maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         });
         
+        // Log successful login to audit trail
+        try {
+            await createAuditLog('LOGIN', 'Auth', req, res, user._id, {
+                email: user.email,
+                roles: roles,
+                timestamp: new Date()
+            });
+        } catch (auditErr) {
+            console.error('Failed to log login to audit trail:', auditErr);
+        }
+        
         return res.status(200).json({
             success: true,
             message: 'Login successful.',
@@ -325,12 +338,23 @@ export const logout = async (req, res) => {
     try {
         // Get user ID from request (if authenticated)
         const userId = req.user?._id;
+        const userEmail = req.user?.email;
         
         if (userId) {
             // Clear refresh token from database
             await User.findByIdAndUpdate(userId, {
                 refreshToken: null
             });
+            
+            // Log logout to audit trail
+            try {
+                await createAuditLog('LOGOUT', 'Auth', req, res, userId, {
+                    email: userEmail,
+                    timestamp: new Date()
+                });
+            } catch (auditErr) {
+                console.error('Failed to log logout to audit trail:', auditErr);
+            }
         }
 
         // Clear cookies
@@ -476,6 +500,17 @@ export const changePassword = async (req, res) => {
         const hashedPassword = await bcrypt.hash(newPassword, 10);
         user.password = hashedPassword;
         await user.save();
+
+        // Log password change to audit trail
+        try {
+            await createAuditLog('UPDATE', 'Auth', req, res, userId, {
+                action: 'Password Changed',
+                email: user.email,
+                timestamp: new Date()
+            });
+        } catch (auditErr) {
+            console.error('Failed to log password change to audit trail:', auditErr);
+        }
 
         return res.status(200).json({ message: 'Password changed successfully.' });
     } catch (error) {

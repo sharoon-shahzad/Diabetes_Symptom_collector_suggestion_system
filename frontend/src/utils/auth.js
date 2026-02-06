@@ -1,5 +1,6 @@
 import axiosInstance from './axiosInstance';
 import axios from 'axios';
+import { clearPermissionsCache } from './permissions';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -19,6 +20,8 @@ export async function refreshToken() {
 export async function logout() {
   await axiosInstance.get(`/auth/logout`, { withCredentials: true });
   localStorage.removeItem('accessToken');
+  // Clear permission cache on logout
+  clearPermissionsCache();
 }
 export async function getCurrentUser() {
   try {

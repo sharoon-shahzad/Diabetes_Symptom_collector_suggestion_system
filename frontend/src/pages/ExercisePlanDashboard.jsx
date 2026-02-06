@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useDateFormat } from '../hooks/useDateFormat';
 import {
   Alert,
   Box,
@@ -48,6 +49,7 @@ const StatTile = ({ label, value, accent }) => (
 );
 
 const ExercisePlanDashboard = ({ inModal = false }) => {
+  const { formatDate } = useDateFormat();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -246,7 +248,7 @@ const ExercisePlanDashboard = ({ inModal = false }) => {
                             </Typography>
                           </Box>
                           <Typography variant="body2" fontWeight="600" sx={{ color: '#1e293b' }}>
-                            {new Date(p.target_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', year: 'numeric' })}
+                            {formatDate(p.target_date)}
                           </Typography>
                         </Box>
                         <Divider sx={{ my: 1.5 }} />
@@ -305,7 +307,7 @@ const ExercisePlanDashboard = ({ inModal = false }) => {
             {generateDateOptions().map(d => (
               <Chip 
                 key={d} 
-                label={new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} 
+                label={formatDate(d, 'DD MMMM')} 
                 onClick={()=>setSelectedDate(d)}
                 clickable
                 sx={{ 

@@ -41,6 +41,7 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import EventIcon from '@mui/icons-material/Event';
+import BarChartIcon from '@mui/icons-material/BarChart';
 import {
     LineChart,
     Line,
@@ -51,6 +52,7 @@ import {
     CartesianGrid,
     BarChart,
     Bar,
+    Cell,
     Legend,
     Area,
     AreaChart,
@@ -284,75 +286,46 @@ export default function AuditLogs() {
     })) || [];
 
     return (
-        <Box sx={{ 
-            p: 4, 
-            minHeight: '100vh',
-        }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {/* Header */}
-            <Fade in timeout={800}>
-                <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Box>
-                        <Typography 
-                            variant="h3" 
-                            sx={{ 
-                                fontWeight: 700,
-                                color: 'text.primary',
-                                mb: 0.5,
-                            }}
-                        >
-                            Audit Logs
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                            Track and monitor all system activities
-                        </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', gap: 1.5 }}>
-                        <Tooltip title="Refresh Data">
-                            <IconButton 
-                                onClick={handleRefresh} 
-                                disabled={loading || analyticsLoading}
-                                color="primary"
-                            >
-                                <RefreshIcon />
-                            </IconButton>
-                        </Tooltip>
-                        <Button
-                            variant="contained"
-                            startIcon={<FileDownloadIcon />}
-                            onClick={() => handleExport('csv')}
-                            disabled={exporting || logs.length === 0}
-                            sx={{
-                                borderRadius: '8px',
-                                px: 3,
-                                textTransform: 'none',
-                                fontWeight: 500,
-                            }}
-                        >
-                            Export CSV
-                        </Button>
-                        <Button
-                            variant="outlined"
-                            startIcon={<FileDownloadIcon />}
-                            onClick={() => handleExport('json')}
-                            disabled={exporting || logs.length === 0}
-                            sx={{
-                                borderRadius: '8px',
-                                px: 3,
-                                textTransform: 'none',
-                                fontWeight: 500,
-                            }}
-                        >
-                            Export JSON
-                        </Button>
-                    </Box>
+            <Box display="flex" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={2}>
+                <Box>
+                    <Typography variant="h5" fontWeight={900} gutterBottom color="text.primary">
+                        Audit Logs
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                        Track and monitor all system activities
+                    </Typography>
                 </Box>
-            </Fade>
+                <Box display="flex" gap={1}>
+                    <IconButton onClick={handleRefresh} disabled={loading || analyticsLoading}>
+                        <RefreshIcon />
+                    </IconButton>
+                    <Button
+                        variant="contained"
+                        startIcon={<FileDownloadIcon />}
+                        onClick={() => handleExport('csv')}
+                        disabled={exporting || logs.length === 0}
+                        sx={{ textTransform: 'none', fontWeight: 600, boxShadow: 'none', '&:hover': { boxShadow: 2 } }}
+                    >
+                        Export CSV
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        startIcon={<FileDownloadIcon />}
+                        onClick={() => handleExport('json')}
+                        disabled={exporting || logs.length === 0}
+                        sx={{ textTransform: 'none', fontWeight: 600 }}
+                    >
+                        Export JSON
+                    </Button>
+                </Box>
+            </Box>
 
             {/* Key Metrics */}
-            <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid container spacing={2}>
                 <Grid item xs={12} sm={6} md={3}>
-                    <Zoom in timeout={600}>
-                        <StatsCard>
+                    <StatsCard>
                             <CardContent>
                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                                     <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
@@ -371,11 +344,9 @@ export default function AuditLogs() {
                                 </Box>
                             </CardContent>
                         </StatsCard>
-                    </Zoom>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
-                    <Zoom in timeout={700}>
-                        <StatsCard>
+                    <StatsCard>
                             <CardContent>
                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                                     <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
@@ -394,11 +365,9 @@ export default function AuditLogs() {
                                 </Box>
                             </CardContent>
                         </StatsCard>
-                    </Zoom>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
-                    <Zoom in timeout={800}>
-                        <StatsCard>
+                    <StatsCard>
                             <CardContent>
                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                                     <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
@@ -417,11 +386,9 @@ export default function AuditLogs() {
                                 </Box>
                             </CardContent>
                         </StatsCard>
-                    </Zoom>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
-                    <Zoom in timeout={900}>
-                        <StatsCard>
+                    <StatsCard>
                             <CardContent>
                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                                     <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
@@ -448,141 +415,213 @@ export default function AuditLogs() {
                                 </Box>
                             </CardContent>
                         </StatsCard>
-                    </Zoom>
                 </Grid>
             </Grid>
 
             {/* Charts */}
-            <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid container spacing={2}>
                 <Grid item xs={12} md={6}>
-                    <Fade in timeout={1000}>
-                        <ModernPaper sx={{ p: 3 }}>
-                            <Typography 
-                                variant="h6" 
-                                sx={{ 
-                                    mb: 3, 
-                                    fontWeight: 700,
-                                    color: 'text.primary',
-                                }}
-                            >
+                    <Paper
+                        elevation={0}
+                        sx={{
+                            p: 3,
+                            borderRadius: 3,
+                            border: (t) => `1px solid ${t.palette.divider}`,
+                            height: '100%',
+                        }}
+                    >
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                            <Typography variant="h6" fontWeight={600}>
                                 Activity by Hour
                             </Typography>
-                            {analyticsLoading ? (
-                                <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-                                    <CircularProgress />
-                                </Box>
-                            ) : (
-                                <ResponsiveContainer width="100%" height={320}>
-                                    <AreaChart data={chartData}>
-                                        <defs>
-                                            <linearGradient id="colorEvents" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#667eea" stopOpacity={0.3}/>
-                                                <stop offset="95%" stopColor="#667eea" stopOpacity={0}/>
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                                        <XAxis 
-                                            dataKey="time" 
-                                            stroke="#64748b"
-                                            style={{ fontSize: '12px' }}
-                                        />
-                                        <YAxis 
-                                            stroke="#64748b"
-                                            style={{ fontSize: '12px' }}
-                                        />
-                                        <ReTooltip 
-                                            contentStyle={{
-                                                background: '#fff',
-                                                border: 'none',
-                                                borderRadius: '8px',
-                                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                            }}
-                                        />
-                                        <Area 
-                                            type="monotone" 
-                                            dataKey="events" 
-                                            stroke="#667eea" 
-                                            strokeWidth={3}
-                                            fillOpacity={1}
-                                            fill="url(#colorEvents)"
-                                        />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            )}
-                        </ModernPaper>
-                    </Fade>
+                            <Chip 
+                                label="Last 7 Days" 
+                                size="small" 
+                                sx={{ 
+                                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                    color: 'white',
+                                    fontWeight: 600,
+                                    fontSize: '11px'
+                                }}
+                            />
+                        </Box>
+                        {analyticsLoading ? (
+                            <Box display="flex" justifyContent="center" alignItems="center" height={350}>
+                                <CircularProgress />
+                            </Box>
+                        ) : chartData.length === 0 ? (
+                            <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" height={350}>
+                                <EventIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+                                <Typography variant="body1" color="text.secondary">No activity data available</Typography>
+                                <Typography variant="caption" color="text.disabled">Perform actions to see hourly patterns</Typography>
+                            </Box>
+                        ) : (
+                            <ResponsiveContainer width="100%" height={350}>
+                                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <defs>
+                                        <linearGradient id="colorEvents" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#667eea" stopOpacity={0.4}/>
+                                            <stop offset="95%" stopColor="#764ba2" stopOpacity={0.05}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                    <XAxis 
+                                        dataKey="time" 
+                                        stroke="#94a3b8"
+                                        tick={{ fontSize: 11, fill: '#64748b' }}
+                                        tickLine={false}
+                                        axisLine={{ stroke: '#e2e8f0' }}
+                                    />
+                                    <YAxis 
+                                        stroke="#94a3b8"
+                                        tick={{ fontSize: 11, fill: '#64748b' }}
+                                        tickLine={false}
+                                        axisLine={{ stroke: '#e2e8f0' }}
+                                        allowDecimals={false}
+                                    />
+                                    <ReTooltip 
+                                        contentStyle={{
+                                            background: 'rgba(255, 255, 255, 0.98)',
+                                            border: 'none',
+                                            borderRadius: '12px',
+                                            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                                            padding: '12px 16px'
+                                        }}
+                                        labelStyle={{ color: '#1e293b', fontWeight: 600, marginBottom: '4px' }}
+                                        itemStyle={{ color: '#667eea', fontSize: '13px' }}
+                                    />
+                                    <Area 
+                                        type="monotone" 
+                                        dataKey="events" 
+                                        stroke="#667eea" 
+                                        strokeWidth={3}
+                                        fillOpacity={1}
+                                        fill="url(#colorEvents)"
+                                        name="Events"
+                                        dot={{ fill: '#667eea', strokeWidth: 2, r: 4 }}
+                                        activeDot={{ r: 6, strokeWidth: 2, stroke: '#fff' }}
+                                    />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        )}
+                    </Paper>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                    <Fade in timeout={1100}>
-                        <ModernPaper sx={{ p: 3 }}>
-                            <Typography 
-                                variant="h6" 
-                                sx={{ 
-                                    mb: 3, 
-                                    fontWeight: 700,
-                                    color: 'text.primary',
-                                }}
-                            >
+                    <Paper
+                        elevation={0}
+                        sx={{
+                            p: 3,
+                            borderRadius: 3,
+                            border: (t) => `1px solid ${t.palette.divider}`,
+                            height: '100%',
+                        }}
+                    >
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+                            <Typography variant="h6" fontWeight={600}>
                                 Events by Type
                             </Typography>
-                            {analyticsLoading ? (
-                                <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-                                    <CircularProgress />
-                                </Box>
-                            ) : (
-                                <ResponsiveContainer width="100%" height={320}>
-                                    <BarChart data={actionChartData}>
-                                        <defs>
-                                            <linearGradient id="colorBar" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#667eea" stopOpacity={1}/>
-                                                <stop offset="95%" stopColor="#764ba2" stopOpacity={0.9}/>
-                                            </linearGradient>
-                                        </defs>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                                        <XAxis 
-                                            dataKey="name" 
-                                            stroke="#64748b"
-                                            style={{ fontSize: '12px' }}
-                                        />
-                                        <YAxis 
-                                            stroke="#64748b"
-                                            style={{ fontSize: '12px' }}
-                                        />
-                                        <ReTooltip 
-                                            contentStyle={{
-                                                background: '#fff',
-                                                border: 'none',
-                                                borderRadius: '8px',
-                                                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                            }}
-                                        />
-                                        <Bar 
-                                            dataKey="value" 
-                                            fill="url(#colorBar)"
-                                            radius={[8, 8, 0, 0]}
-                                        />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            )}
-                        </ModernPaper>
-                    </Fade>
+                            <Chip 
+                                label={`${actionChartData.length} Types`} 
+                                size="small" 
+                                sx={{ 
+                                    background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                                    color: 'white',
+                                    fontWeight: 600,
+                                    fontSize: '11px'
+                                }}
+                            />
+                        </Box>
+                        {analyticsLoading ? (
+                            <Box display="flex" justifyContent="center" alignItems="center" height={350}>
+                                <CircularProgress />
+                            </Box>
+                        ) : actionChartData.length === 0 ? (
+                            <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" height={350}>
+                                <BarChartIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
+                                <Typography variant="body1" color="text.secondary">No event type data available</Typography>
+                                <Typography variant="caption" color="text.disabled">Different actions will appear here</Typography>
+                            </Box>
+                        ) : (
+                            <ResponsiveContainer width="100%" height={350}>
+                                <BarChart data={actionChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                    <defs>
+                                        {actionChartData.map((entry, index) => {
+                                            const colors = [
+                                                ['#667eea', '#764ba2'],
+                                                ['#f093fb', '#f5576c'],
+                                                ['#4facfe', '#00f2fe'],
+                                                ['#43e97b', '#38f9d7'],
+                                                ['#fa709a', '#fee140'],
+                                                ['#30cfd0', '#330867'],
+                                                ['#a8edea', '#fed6e3'],
+                                                ['#ff9a9e', '#fecfef'],
+                                            ];
+                                            const colorPair = colors[index % colors.length];
+                                            return (
+                                                <linearGradient key={`gradient-${index}`} id={`colorBar${index}`} x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor={colorPair[0]} stopOpacity={1}/>
+                                                    <stop offset="95%" stopColor={colorPair[1]} stopOpacity={0.9}/>
+                                                </linearGradient>
+                                            );
+                                        })}
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                    <XAxis 
+                                        dataKey="name" 
+                                        stroke="#94a3b8"
+                                        tick={{ fontSize: 11, fill: '#64748b' }}
+                                        tickLine={false}
+                                        axisLine={{ stroke: '#e2e8f0' }}
+                                        angle={-15}
+                                        textAnchor="end"
+                                        height={60}
+                                    />
+                                    <YAxis 
+                                        stroke="#94a3b8"
+                                        tick={{ fontSize: 11, fill: '#64748b' }}
+                                        tickLine={false}
+                                        axisLine={{ stroke: '#e2e8f0' }}
+                                        allowDecimals={false}
+                                    />
+                                    <ReTooltip 
+                                        contentStyle={{
+                                            background: 'rgba(255, 255, 255, 0.98)',
+                                            border: 'none',
+                                            borderRadius: '12px',
+                                            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                                            padding: '12px 16px'
+                                        }}
+                                        labelStyle={{ color: '#1e293b', fontWeight: 600, marginBottom: '4px' }}
+                                        cursor={{ fill: 'rgba(102, 126, 234, 0.1)' }}
+                                    />
+                                    <Bar 
+                                        dataKey="value" 
+                                        radius={[8, 8, 0, 0]}
+                                        maxBarSize={60}
+                                        name="Count"
+                                    >
+                                        {actionChartData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={`url(#colorBar${index})`} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        )}
+                    </Paper>
                 </Grid>
             </Grid>
 
             {/* Filters */}
-            <Fade in timeout={1200}>
-                <ModernPaper sx={{ p: 3, mb: 4 }}>
-                    <Typography 
-                        variant="h6" 
-                        sx={{ 
-                            mb: 3, 
-                            fontWeight: 700,
-                            color: 'text.primary',
-                        }}
-                    >
-                        Filters
-                    </Typography>
-                    <Grid container spacing={2.5}>
+            <Paper
+                elevation={0}
+                sx={{
+                    p: 2,
+                    borderRadius: 3,
+                    background: (t) => t.palette.background.paper,
+                    border: (t) => `1px solid ${t.palette.divider}`,
+                }}
+            >
+                <Grid container spacing={2}>
                     <Grid item xs={12} sm={6} md={3}>
                         <TextField
                             fullWidth
@@ -670,42 +709,43 @@ export default function AuditLogs() {
                             size="small"
                         />
                     </Grid>
-                    </Grid>
-                </ModernPaper>
-            </Fade>
+                </Grid>
+            </Paper>
 
             {/* Logs Table */}
-            <Fade in timeout={1300}>
-                <ModernPaper>
-                    <TableContainer>
-                    {loading ? (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-                            <CircularProgress />
-                        </Box>
-                    ) : logs.length === 0 ? (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                            <Typography color="textSecondary">No audit logs found</Typography>
-                        </Box>
-                    ) : (
-                        <>
-                            <Table>
+            <Paper
+                elevation={0}
+                sx={{
+                    borderRadius: 3,
+                    border: (t) => `1px solid ${t.palette.divider}`,
+                }}
+            >
+                {loading ? (
+                    <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
+                        <CircularProgress size={60} />
+                    </Box>
+                ) : logs.length === 0 ? (
+                    <Box display="flex" justifyContent="center" p={5}>
+                        <Typography color="text.secondary">No audit logs found</Typography>
+                    </Box>
+                ) : (
+                    <>
+                        <TableContainer>
+                            <Table size="small">
                                 <TableHead>
-                                    <TableRow sx={{ bgcolor: 'action.hover' }}>
-                                        <TableCell sx={{ fontWeight: 700 }}>Timestamp</TableCell>
-                                        <TableCell sx={{ fontWeight: 700 }}>User Email</TableCell>
-                                        <TableCell sx={{ fontWeight: 700 }}>Action</TableCell>
-                                        <TableCell sx={{ fontWeight: 700 }}>Resource</TableCell>
-                                        <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                                        <TableCell sx={{ fontWeight: 700 }}>IP Address</TableCell>
-                                        <TableCell align="center" sx={{ fontWeight: 700 }}>
-                                            Actions
-                                        </TableCell>
+                                    <TableRow>
+                                        <TableCell sx={{ fontWeight: 600 }}>Timestamp</TableCell>
+                                        <TableCell sx={{ fontWeight: 600 }}>User Email</TableCell>
+                                        <TableCell sx={{ fontWeight: 600 }}>Action</TableCell>
+                                        <TableCell sx={{ fontWeight: 600 }}>Resource</TableCell>
+                                        <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
+                                        <TableCell sx={{ fontWeight: 600 }}>IP Address</TableCell>
+                                        <TableCell align="center" sx={{ fontWeight: 600 }}>Actions</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                    {logs.map((log, index) => (
-                                        <Fade in timeout={200 + (index * 50)} key={log._id}>
-                                            <TableRow hover>
+                                    {logs.map((log) => (
+                                        <TableRow key={log._id} hover>
                                                 <TableCell>
                                                     <Typography variant="body2" sx={{ fontWeight: 500 }}>
                                                         {formatTimestamp(log.timestamp)}
@@ -774,23 +814,25 @@ export default function AuditLogs() {
                                                     </Tooltip>
                                                 </TableCell>
                                             </TableRow>
-                                        </Fade>
                                     ))}
                                 </TableBody>
                             </Table>
-                            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                                <Pagination
-                                    count={totalPages}
-                                    page={page}
-                                    onChange={(e, value) => setPage(value)}
-                                    color="primary"
-                                />
-                            </Box>
-                        </>
-                    )}
-                </TableContainer>
-            </ModernPaper>
-        </Fade>
+                        </TableContainer>
+                        <Box display="flex" justifyContent="space-between" alignItems="center" p={2}>
+                            <Typography variant="body2" color="text.secondary">
+                                Showing {logs.length} of {total} logs
+                            </Typography>
+                            <Pagination
+                                count={totalPages}
+                                page={page}
+                                onChange={(_, value) => setPage(value)}
+                                color="primary"
+                                size="small"
+                            />
+                        </Box>
+                    </>
+                )}
+            </Paper>
 
             {/* Detail Modal */}
             <Dialog 

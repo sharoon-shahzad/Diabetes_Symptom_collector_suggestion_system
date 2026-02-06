@@ -3,6 +3,7 @@ import {
   Box, Card, CardContent, Typography, Chip, Grid, Stack, Divider, Paper, 
   LinearProgress, Avatar, IconButton, Collapse, Badge, Tooltip
 } from '@mui/material';
+import { useDateFormat } from '../hooks/useDateFormat';
 import {
   FitnessCenter as FitnessCenterIcon,
   Timer as TimerIcon,
@@ -51,6 +52,7 @@ const getExerciseEmoji = (category) => {
 };
 
 const ExercisePlanView = ({ plan }) => {
+  const { formatDate } = useDateFormat();
   const [expandedSessions, setExpandedSessions] = useState({});
 
   if (!plan) return null;
@@ -86,7 +88,7 @@ const ExercisePlanView = ({ plan }) => {
                 sx={{ bgcolor: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0', fontWeight: 500 }} 
               />
               <Chip 
-                label={new Date(target_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} 
+                label={formatDate(target_date)} 
                 size="small"
                 sx={{ bgcolor: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0', fontWeight: 500 }} 
               />

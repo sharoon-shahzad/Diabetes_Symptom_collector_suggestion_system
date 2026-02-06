@@ -1,6 +1,21 @@
-// Load environment variables FIRST, before any other imports
+// Load environment variables FIRST using ESM-friendly entry
 import dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Load .env located next to this file (ensures correct .env is used even if cwd differs)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const envPath = path.join(__dirname, '.env');
+console.log('Loading .env from', envPath);
+import fs from 'fs';
+console.log('.env exists:', fs.existsSync(envPath));
+const result = dotenv.config({ path: envPath });
+if (result.error) console.warn('dotenv.load error:', result.error);
+
+// Show presence of critical secrets (do not log actual secrets)
+console.log('ENV: JWT_SECRET set=', !!process.env.JWT_SECRET);
+console.log('ENV: REFRESH_TOKEN_SECRET set=', !!process.env.REFRESH_TOKEN_SECRET);
 
 import express from 'express';
 import mongoose from 'mongoose';
@@ -30,6 +45,8 @@ import lifestyleTipsRoutes from './routes/lifestyleTipsRoutes.js';
 import feedbackRoutes from './routes/feedbackRoutes.js';
 import adminFeedbackRoutes from './routes/adminFeedbackRoutes.js';
 import auditRoutes from './routes/auditRoutes.js';
+import settingsRoutes from './routes/settingsRoutes.js';
+import testSettingsRoutes from './routes/testSettingsRoutes.js';
 import { captureAuditContext } from './middlewares/auditMiddleware.js';
 import AuditLog from './models/AuditLog.js';
 import os from 'os';
@@ -146,6 +163,8 @@ app.use('/api/v1/lifestyle-tips', lifestyleTipsRoutes);
 app.use('/api/v1/feedback', feedbackRoutes);
 app.use('/api/v1/admin/feedback', adminFeedbackRoutes);
 app.use('/api/v1/admin/audit-logs', auditRoutes);
+app.use('/api/v1/admin/settings', settingsRoutes);
+app.use('/api/v1', testSettingsRoutes); // Public test endpoint
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);

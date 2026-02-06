@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useDateFormat } from '../hooks/useDateFormat';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -31,6 +32,7 @@ const categoryConfig = {
 };
 
 const LifestyleTipsDashboard = ({ inModal = false }) => {
+  const { formatDate } = useDateFormat();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -349,11 +351,7 @@ const LifestyleTipsDashboard = ({ inModal = false }) => {
                       <Stack direction="row" justifyContent="space-between" alignItems="center">
                         <Box>
                           <Typography fontWeight={700} sx={{ color: '#1e293b', mb: 0.5 }}>
-                            {new Date(tips.target_date).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                            })}
+                            {formatDate(tips.target_date)}
                           </Typography>
                           <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 500 }}>
                             {tips.region}
@@ -414,7 +412,7 @@ const LifestyleTipsDashboard = ({ inModal = false }) => {
               {generateDateOptions().map((d) => (
                 <Chip
                   key={d}
-                  label={new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  label={formatDate(d, 'DD MMMM')}
                   color={selectedDate === d ? 'primary' : 'default'}
                   onClick={() => setSelectedDate(d)}
                   clickable

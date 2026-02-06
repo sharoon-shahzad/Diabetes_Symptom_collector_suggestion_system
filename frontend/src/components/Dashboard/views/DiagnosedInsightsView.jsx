@@ -1,5 +1,6 @@
 import React, { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDateFormat } from '../../../hooks/useDateFormat';
 import {
   Box,
   Grid,
@@ -37,6 +38,7 @@ function DiagnosedInsightsView({
   medicalInfo,
   user
 }) {
+  const { formatDate } = useDateFormat();
   const navigate = useNavigate();
   const labsRef = useRef(null);
 
@@ -424,7 +426,7 @@ function DiagnosedInsightsView({
                 </Typography>
                 <Typography variant="body1" fontWeight={600} sx={{ mt: 0.5 }}>
                   {medicalInfo?.diagnosis_date
-                    ? new Date(medicalInfo.diagnosis_date).toLocaleDateString()
+                    ? formatDate(medicalInfo.diagnosis_date)
                     : 'Not specified'}
                 </Typography>
               </Grid>
@@ -452,7 +454,7 @@ function DiagnosedInsightsView({
                 </Typography>
                 <Typography variant="body1" fontWeight={600} sx={{ mt: 0.5 }}>
                   {medicalInfo?.last_medical_checkup
-                    ? new Date(medicalInfo.last_medical_checkup).toLocaleDateString()
+                    ? formatDate(medicalInfo.last_medical_checkup)
                     : 'Not specified'}
                 </Typography>
               </Grid>

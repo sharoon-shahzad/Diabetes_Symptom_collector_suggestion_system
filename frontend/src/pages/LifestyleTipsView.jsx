@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useDateFormat } from '../hooks/useDateFormat';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -53,6 +54,7 @@ const PriorityChip = ({ priority }) => {
 };
 
 const LifestyleTipsView = ({ tips: propsTips, onBack: propsOnBack, onDelete: propsOnDelete }) => {
+  const { formatDate } = useDateFormat();
   const { tipsId } = useParams();
   const navigate = useNavigate();
   const [tips, setTips] = useState(propsTips || null);
@@ -234,12 +236,7 @@ const LifestyleTipsView = ({ tips: propsTips, onBack: propsOnBack, onDelete: pro
                 Lifestyle Wellness Tips
               </Typography>
               <Typography variant="body2" sx={{ opacity: 0.95, mt: 0.5 }}>
-                {new Date(tips.target_date).toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  month: 'long',
-                  day: 'numeric',
-                  year: 'numeric',
-                })}{' '}
+                {formatDate(tips.target_date)}{' '}
                 • {tips.region}
               </Typography>
             </Box>

@@ -7,6 +7,7 @@ import { Disease } from '../models/Disease.js';
 import { Answer } from '../models/Answer.js';
 import { QuestionsAnswers } from '../models/Questions_Answers.js';
 import { Role } from '../models/Role.js';
+import { createAuditLog } from '../middlewares/auditMiddleware.js';
 
 
 // Get current user controller
@@ -83,11 +84,11 @@ export const updateUser = async (req, res) => {
         }
 
         // Validate required fields
-        if (!fullName) {
-            return res.status(400).json({ success: false, message: "Full name is required" });
+        if (!fullName || !fullName.trim()) {
+            return res.status(400).json({ success: false, message: "Full name is required and cannot be empty" });
         }
-        if (!email) {
-            return res.status(400).json({ success: false, message: "Email is required" });
+        if (!email || !email.trim()) {
+            return res.status(400).json({ success: false, message: "Email is required and cannot be empty" });
         }
 
         // Normalize email (lowercase and trim)
@@ -97,6 +98,15 @@ export const updateUser = async (req, res) => {
         };
         const normalizedEmail = normalizeEmail(email);
         
+        // Email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(normalizedEmail)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Please enter a valid email address" 
+            });
+        }
+        
         // Check for email uniqueness if email is being changed (compare normalized emails)
         if (normalizedEmail !== normalizeEmail(user.email)) {
             const existingUser = await User.findOne({ email: normalizedEmail });
@@ -105,9 +115,39 @@ export const updateUser = async (req, res) => {
             }
         }
 
+        // Validate date of birth if provided
+        if (date_of_birth) {
+            const dobDate = new Date(date_of_birth);
+            const today = new Date();
+            
+            if (isNaN(dobDate.getTime())) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: "Invalid date of birth format" 
+                });
+            }
+            
+            if (dobDate > today) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: "Date of birth cannot be in the future" 
+                });
+            }
+            
+            // Check if user is at least 5 years old (reasonable minimum)
+            const minAge = new Date();
+            minAge.setFullYear(minAge.getFullYear() - 5);
+            if (dobDate > minAge) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: "User must be at least 5 years old" 
+                });
+            }
+        }
+
         // Build update object with only provided fields
         const updateData = {
-            fullName,
+            fullName: fullName.trim(),
             email: normalizedEmail,
         };
         
@@ -124,6 +164,17 @@ export const updateUser = async (req, res) => {
             updateData,
             { new: true, runValidators: true }
         );
+
+        // Log user update to audit trail
+        try {
+            await createAuditLog('UPDATE', 'User', req, res, id, {
+                before: { email: user.email, fullName: user.fullName },
+                after: { email: updatedUser.email, fullName: updatedUser.fullName },
+                fields_modified: Object.keys(updateData)
+            });
+        } catch (auditErr) {
+            console.error('Failed to log user update to audit trail:', auditErr);
+        }
 
         return res.status(200).json({
             success: true,
@@ -149,10 +200,40 @@ export const deleteUser = async (req, res) => {
                 message: "User not found"
             });
         }
+        
+        // CRITICAL PROTECTION: Check if user has super_admin role
+        const userRoles = await UsersRoles.find({ user_id: id }).populate('role_id');
+        const isSuperAdmin = userRoles.some(ur => ur.role_id?.role_name === 'super_admin');
+        
+        if (isSuperAdmin) {
+            return res.status(403).json({
+                success: false,
+                message: "Super Admins cannot be deleted! This is a protected role for system security."
+            });
+        }
+        
+        // PROTECTION: Prevent self-deletion
+        // Log user deletion to audit trail
+        try {
+            await createAuditLog('DELETE', 'User', req, res, id, {
+                email: user.email,
+                fullName: user.fullName,
+                deleted_at: user.deleted_at
+            });
+        } catch (auditErr) {
+            console.error('Failed to log user deletion to audit trail:', auditErr);
+        }
+
+        if (user._id.toString() === req.user._id.toString()) {
+            return res.status(403).json({
+                success: false,
+                message: "You cannot delete your own account!"
+            });
+        }
+        
         // Soft delete: set deleted_at to current date
         user.deleted_at = new Date();
         await user.save();
-
 
         console.log(`User with id ${id} soft deleted by admin at ${user.deleted_at}`);
         return res.status(200).json({
@@ -583,13 +664,35 @@ export const updateUserRole = async (req, res) => {
             });
         }
 
-        // Find the role
+        // Find the target role
         const targetRole = await Role.findOne({ role_name: role });
         if (!targetRole) {
             return res.status(400).json({
                 success: false,
                 message: 'Invalid role'
             });
+        }
+
+        // Get current roles of the user being updated
+        const currentUserRoles = await UsersRoles.find({ user_id: id }).populate('role_id');
+        const isTargetSuperAdmin = currentUserRoles.some(ur => ur.role_id?.role_name === 'super_admin');
+        
+        // CRITICAL PROTECTION: Prevent changing a super admin's role to something lower
+        if (isTargetSuperAdmin && role !== 'super_admin') {
+            // Check if the user is trying to change their own role
+            const isSelfUpdate = id === req.user._id.toString();
+            
+            if (isSelfUpdate) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'You cannot downgrade your own Super Admin role! This would permanently lock you out of the system.'
+                });
+            } else {
+                return res.status(403).json({
+                    success: false,
+                    message: 'You cannot change another Super Admin\'s role! Super Admins are protected.'
+                });
+            }
         }
 
         // Remove existing roles for this user
@@ -600,6 +703,22 @@ export const updateUserRole = async (req, res) => {
             user_id: id,
             role_id: targetRole._id
         });
+
+        // Get user details for audit log
+        const user = await User.findById(id);
+
+        // Log role change to audit trail
+        try {
+            const oldRoles = currentUserRoles.map(ur => ur.role_id?.role_name);
+            await createAuditLog('UPDATE', 'UserRole', req, res, id, {
+                before: { roles: oldRoles },
+                after: { roles: [role] },
+                user_email: user?.email,
+                action: 'Role Change'
+            });
+        } catch (auditErr) {
+            console.error('Failed to log role change to audit trail:', auditErr);
+        }
 
         return res.status(200).json({
             success: true,
