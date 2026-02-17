@@ -33,21 +33,6 @@ export async function getCurrentUser() {
     throw err;
   }
 }
-// Axios interceptor for automatic token refresh
-axios.interceptors.response.use(
-  response => response,
-  async error => {
-    const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      const newToken = await refreshToken();
-      if (newToken) {
-        originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
-        return axios(originalRequest);
-      }
-      // If refresh fails, redirect to login
-      window.location.href = '/signin';
-    }
-    return Promise.reject(error);
-  }
-); 
+
+// NOTE: Token refresh interceptor is handled in axiosInstance.js
+// Do NOT add duplicate interceptors here to avoid infinite loops 

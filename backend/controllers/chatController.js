@@ -80,17 +80,17 @@ export const completeChat = async (req, res) => {
     console.log('[CHAT] UserId:', userId, 'Message:', message?.substring(0, 50));
 
     if (!message || typeof message !== 'string' || !message.trim()) {
-      return res.status(400).json({ success: false, message: 'Message is required.' });
+      return res.status(400).json({ success: false, error: 'Message is required.' });
     }
     if (message.length > MAX_INPUT_CHARS) {
-      return res.status(400).json({ success: false, message: `Message too long. Limit ${MAX_INPUT_CHARS} characters.` });
+      return res.status(400).json({ success: false, error: `Message too long. Limit ${MAX_INPUT_CHARS} characters.` });
     }
 
-    // Fetch profile data
+    // Fetch profile data (without .lean() to trigger decryption middleware)
     console.log('[CHAT] Fetching profile data for user:', userId);
     const [personal, medical] = await Promise.all([
-      UserPersonalInfo.findOne({ user_id: userId }).lean(),
-      UserMedicalInfo.findOne({ user_id: userId }).lean(),
+      UserPersonalInfo.findOne({ user_id: userId }),
+      UserMedicalInfo.findOne({ user_id: userId }),
     ]);
     console.log('[CHAT] Profile fetched - personal:', !!personal, 'medical:', !!medical);
 
@@ -98,128 +98,92 @@ export const completeChat = async (req, res) => {
     const recentHistory = clipHistory(history);
 
     // **RAG Enhancement**
-    let ragEnhancement = { systemPrompt: null, sources: [], contextUsed: false, intent: 'none' };
-    
-    console.log('[CHAT] RAG_ENABLED:', process.env.RAG_ENABLED);
-    if (process.env.RAG_ENABLED === 'true') {
-      try {
-        console.log('[CHAT] RAG enabled, enhancing query...');
-        ragEnhancement = await enhanceChatWithRAG(message, personal, medical, recentHistory);
-        console.log('[CHAT] RAG enhancement complete - contextUsed:', ragEnhancement.contextUsed);
-        console.log(`[CHAT] RAG Enhancement - Intent: ${ragEnhancement.intent}, Context used: ${ragEnhancement.contextUsed}`);
-      } catch (ragError) {
-        console.error('[CHAT] RAG failed, continuing without RAG:', ragError);
-      }
-    } else {
-      console.log('[CHAT] RAG disabled');
+    const { ragContext, sources } = await enhanceChatWithRAG(message, userId, personal, recentHistory);
+
+    const systemPrompt = `You are Diabuddy, a helpful and empathetic AI assistant for diabetes management. Your goal is to provide safe, accurate, and supportive information.
+
+User Profile Summary:
+${profileSnippet}
+
+${ragContext ? `Relevant Information from Health Documents:
+${ragContext}` : ''}
+
+CRITICAL SAFETY INSTRUCTIONS:
+- ALWAYS prioritize user safety.
+- NEVER give medical advice. Do not diagnose, treat, or prescribe.
+- ALWAYS use disclaimers like "As an AI, I cannot give medical advice. Please consult your doctor for any health concerns."
+- If the user seems distressed or mentions a medical emergency, strongly advise them to contact a healthcare professional or emergency services immediately.
+- Be encouraging and supportive, but maintain professional boundaries.
+- Keep responses concise and easy to understand.
+- If you don't know the answer, say so. Do not make up information.
+- If the retrieved information seems contradictory or unclear, state that and recommend consulting a doctor.`;
+
+    const finalHistory = [
+      { role: 'system', content: systemPrompt },
+      ...recentHistory,
+      { role: 'user', content: message },
+    ];
+
+    console.log('[CHAT] Sending to LM Studio. History length:', finalHistory.length);
+
+    const response = await fetch(`${LM_STUDIO_BASE_URL}/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: LM_STUDIO_MODEL,
+        messages: finalHistory,
+        temperature: 0.7,
+        max_tokens: 500,
+        stream: false,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error('[CHAT] LM Studio API error:', response.status, errorBody);
+      throw new Error(`AI service failed with status: ${response.status}`);
     }
 
-    // Build messages array
-    const messages = [];
-    
-    if (ragEnhancement.systemPrompt) {
-      // Use RAG-enhanced prompt
-      console.log('[CHAT] Using RAG-enhanced system prompt');
-      messages.push({
-        role: 'system',
-        content: ragEnhancement.systemPrompt
-      });
-    } else {
-      // Fallback to basic prompt
-      console.log('[CHAT] Using basic system prompt (no RAG context)');
-      messages.push(
-        {
-          role: 'system',
-          content: 'You are a concise, safe diabetes assistant. Use the provided user profile. Be region-aware and avoid unsafe or hallucinated advice.',
-        },
-        { role: 'system', content: `User profile: ${profileSnippet}` }
-      );
+    const completion = await response.json();
+    const aiMessage = completion.choices[0]?.message?.content?.trim();
+
+    if (!aiMessage) {
+      throw new Error('AI service returned an empty response.');
     }
-    
-    messages.push(...recentHistory);
-    messages.push({ role: 'user', content: message.trim() });
 
-    const maxTokens = parseInt(process.env.LM_STUDIO_MAX_TOKENS) || 512;
-    
-    console.log('[CHAT] Sending to LM Studio with max_tokens:', maxTokens);
-    console.log('[CHAT] Total messages:', messages.length);
-    console.log('[CHAT] LM Studio URL:', `${LM_STUDIO_BASE_URL}/v1/chat/completions`);
-    
-    // Add timeout to prevent hanging
-    const controller = new AbortController();
-    const timeout = setTimeout(() => {
-      controller.abort();
-      console.error('[CHAT] LM Studio request timed out after 50s');
-    }, 50000); // 50 second timeout
-    
-    try {
-      const response = await fetch(`${LM_STUDIO_BASE_URL}/v1/chat/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: LM_STUDIO_MODEL,
-          messages,
-          temperature: 0.7,
-          max_tokens: maxTokens,
-          top_p: 0.95,
-          stream: false,
-        }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-    
-      console.log('[CHAT] LM Studio response status:', response.status);
+    console.log('[CHAT] Received AI response:', aiMessage.substring(0, 100));
 
-      if (!response.ok) {
-        const text = await response.text();
-        console.error('LM Studio error response:', text);
-        return res.status(502).json({ success: false, message: 'LM Studio error', detail: text });
-      }
+    // Save user message and AI response to a Chat model (implementation needed)
+    // For now, just return the response
 
-      const data = await response.json();
-      console.log('LM Studio response tokens:', data?.usage || 'No usage data');
-      console.log('Finish reason:', data?.choices?.[0]?.finish_reason);
-      
-      const reply = data?.choices?.[0]?.message?.content;
-      if (!reply) {
-        return res.status(502).json({ success: false, message: 'No reply from model.' });
-      }
-      
-      console.log('[CHAT] Success! Reply length:', reply.length);
-      
-      // **Return with sources and context info**
-      return res.status(200).json({ 
-        success: true, 
-        reply,
-        sources: ragEnhancement.sources || [],
-        context_used: ragEnhancement.contextUsed || false,
-        intent: ragEnhancement.intent || 'none'
-      });
-    } catch (fetchErr) {
-      clearTimeout(timeout);
-      if (fetchErr.name === 'AbortError') {
-        console.error('[CHAT] LM Studio request aborted (timeout)');
-        return res.status(504).json({ 
-          success: false, 
-          message: 'AI model response timeout. Please try again with a shorter message.' 
-        });
-      }
-      throw fetchErr; // Re-throw to outer catch
-    }
-  } catch (err) {
-    console.error('Chat completion error:', err);
-    console.error('Error stack:', err.stack);
-    console.error('Error message:', err.message);
-    
-    // More detailed error response
-    const errorMessage = err.response?.data?.error?.message 
-        || err.message 
-        || 'Chat completion failed.';
-    
-    return res.status(500).json({ 
-      success: false, 
-      message: errorMessage,
-      details: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    return res.status(200).json({
+      success: true,
+      data: {
+        _id: completion.id,
+        text: aiMessage,
+        createdAt: new Date(),
+        sender: 'ai',
+        sources: sources, // Include sources from RAG
+      },
+    });
+
+  } catch (error) {
+    console.error('[CHAT] Error in completeChat controller:', error);
+    res.status(500).json({
+      success: false,
+      error: 'An error occurred while communicating with the AI assistant. Please try again later.',
+      details: error.message,
     });
   }
+};
+
+export const getChatHistory = async (req, res) => {
+  // Placeholder: Implement logic to retrieve chat history from the database
+  // For now, returns an empty array
+  return res.status(200).json({ success: true, data: [] });
+};
+
+export const clearChatHistory = async (req, res) => {
+  // Placeholder: Implement logic to delete chat history from the database
+  return res.status(200).json({ success: true, message: 'Chat history cleared.' });
 };

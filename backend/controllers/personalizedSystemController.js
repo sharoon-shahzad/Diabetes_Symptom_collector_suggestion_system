@@ -164,25 +164,39 @@ export const upsertPersonalInfo = async (req, res) => {
         // Log what we're about to save
         console.log('💾 Attempting to save country data:', { country, country_code, phone_number });
         
-        // Update User model with country and phone - use .save() to trigger encryption middleware
+        // Update User model with country, phone, gender, and date_of_birth - use .save() to trigger encryption middleware
         const oldUser = await User.findById(userId);
         let userUpdated = false;
         
         if (oldUser) {
-            const userBefore = { country: oldUser.country, country_code: oldUser.country_code, phone_number: oldUser.phone_number };
+            const userBefore = { 
+                country: oldUser.country, 
+                country_code: oldUser.country_code, 
+                phone_number: oldUser.phone_number,
+                gender: oldUser.gender,
+                date_of_birth: oldUser.date_of_birth
+            };
             
-            // Only update if values are provided
+            // Update fields if values are provided
             if (country !== undefined) oldUser.country = country;
             if (country_code !== undefined) oldUser.country_code = country_code;
             if (phone_number !== undefined) oldUser.phone_number = phone_number;
+            if (gender !== undefined) oldUser.gender = gender;
+            if (date_of_birth !== undefined) oldUser.date_of_birth = date_of_birth;
             
             await oldUser.save(); // Triggers pre-save encryption middleware
             
-            console.log('✅ User updated with country:', oldUser.country, oldUser.country_code, oldUser.phone_number);
+            console.log('✅ User updated with country and personal data:', oldUser.country, oldUser.country_code, oldUser.phone_number, oldUser.gender, oldUser.date_of_birth);
             
             await createAuditLog('UPDATE', 'User', req, res, userId, {
                 before: userBefore,
-                after: { country: oldUser.country, country_code: oldUser.country_code, phone_number: oldUser.phone_number }
+                after: { 
+                    country: oldUser.country, 
+                    country_code: oldUser.country_code, 
+                    phone_number: oldUser.phone_number,
+                    gender: oldUser.gender,
+                    date_of_birth: oldUser.date_of_birth
+                }
             });
             userUpdated = true;
         }

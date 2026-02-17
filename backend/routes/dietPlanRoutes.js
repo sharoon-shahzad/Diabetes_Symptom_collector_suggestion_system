@@ -16,6 +16,27 @@ router.use(verifyAccessTokenMiddleware);
 router.post('/generate', dietPlanController.generateDietPlan);
 
 /**
+ * @route   GET /api/v1/diet-plan
+ * @desc    Get all diet plans for the user
+ * @access  Private
+ */
+router.get('/', dietPlanController.getAllDietPlans);
+
+/**
+ * @route   GET /api/v1/diet-plan/:id
+ * @desc    Get a single diet plan by ID
+ * @access  Private
+ */
+router.get('/:id', dietPlanController.getDietPlanById);
+
+/**
+ * @route   GET /api/v1/diet-plan/:id/download
+ * @desc    Download a diet plan as a PDF
+ * @access  Private
+ */
+router.get('/:id/download', dietPlanController.downloadDietPlanPDF);
+
+/**
  * @route   GET /api/diet-plan/current
  * @desc    Get today's diet plan
  * @access  Private
@@ -39,12 +60,12 @@ router.get('/date/:date', dietPlanController.getDietPlanByDate);
 router.get('/history', dietPlanController.getDietPlanHistory);
 
 /**
- * @route   DELETE /api/diet-plan/:planId
+ * @route   DELETE /api/diet-plan/:id
  * @desc    Delete a specific diet plan
  * @access  Private
  * @params  planId
  */
-router.delete('/:planId', dietPlanController.deleteDietPlan);
+router.delete('/:id', dietPlanController.deleteDietPlan);
 
 /**
  * @route   GET /api/diet-plan/region-coverage

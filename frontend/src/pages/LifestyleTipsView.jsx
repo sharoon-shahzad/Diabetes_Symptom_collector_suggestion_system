@@ -31,6 +31,9 @@ const categoryConfig = {
   foot_care: { icon: '🦶', color: '#ec4899', name: 'Foot Care' },
   dental_health: { icon: '🪥', color: '#14b8a6', name: 'Dental Health' },
   social_support: { icon: '💝', color: '#f43f5e', name: 'Social Support' },
+  nutrition: { icon: '🥗', color: '#84cc16', name: 'Nutrition' },
+  activity: { icon: '🏃', color: '#06b6d4', name: 'Physical Activity' },
+  monitoring: { icon: '📈', color: '#f59e0b', name: 'Health Monitoring' },
 };
 
 const PriorityChip = ({ priority }) => {

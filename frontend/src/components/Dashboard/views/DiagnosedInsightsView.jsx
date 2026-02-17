@@ -21,7 +21,12 @@ import {
   Add as AddIcon,
   Close as CloseIcon,
   Lock as LockIcon,
-  ArrowForward as ArrowForwardIcon
+  ArrowForward as ArrowForwardIcon,
+  PriorityHigh as HighPriorityIcon,
+  FitnessCenter as FitnessCenterIcon,
+  Restaurant as RestaurantIcon,
+  Psychology as PsychologyIcon,
+  LocalHospital as LocalHospitalIcon
 } from '@mui/icons-material';
 
 // Import extracted components
@@ -45,64 +50,231 @@ function DiagnosedInsightsView({
   // Check if personal info is completed (100%)
   const isPersonalInfoCompleted = personalInfoCompletion >= 100;
 
-  console.log('DiagnosedInsightsView Props:', {
-    planUsageAnalytics,
-    macronutrientBalance,
-    mealWiseDistribution,
-    bmiAnalytics,
-    personalInfo,
-    medicalInfo,
-    user,
-    personalInfoCompletion,
-    isPersonalInfoCompleted
-  });
-
   const handleNavigateToPersonalizedSuggestions = () => {
     navigate('/personalized-suggestions');
   };
 
   return (
     <Box sx={{ position: 'relative' }}>
-      {/* Main grid - Comprehensive Health Analytics Dashboard */}
-      <Grid container spacing={3}>
-        {/* Page Header with Key Metrics */}
-        <Grid item xs={12}>
+      {/* === QUICK ACTIONS - Top Center === */}
+      {isPersonalInfoCompleted && (
+        <Paper elevation={2} sx={{ 
+          p: { xs: 2, md: 2.5 }, 
+          mb: 3, 
+          borderRadius: 3,
+          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)',
+          maxWidth: { xs: '100%', sm: '95%', md: '90%', lg: '85%' },
+          mx: 'auto'
+        }}>
           <Box sx={{ 
-            mb: 5, 
-            pb: 3, 
-            borderBottom: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 2
           }}>
-            <Typography 
-              variant="h3" 
-              fontWeight={900} 
-              sx={{ 
-                mb: 1.5, 
-                color: 'text.primary', 
-                letterSpacing: -1,
-                fontSize: { xs: '1.875rem', md: '2.5rem' },
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text'
-              }}
-            >
-              Health Analytics Dashboard
+            <Typography variant="h6" fontWeight="bold" sx={{ 
+              color: '#1976d2',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1
+            }}>
+              Quick Actions
             </Typography>
-            <Typography 
-              variant="body1" 
-              sx={{ 
-                color: 'text.secondary', 
-                fontSize: { xs: '0.938rem', md: '1.063rem' }, 
-                lineHeight: 1.7,
-                maxWidth: '800px',
-                fontWeight: 400
-              }}
-            >
-              Comprehensive insights from your personalized diet, exercise, and lifestyle data
-            </Typography>
+            
+            <Box sx={{ 
+              display: 'flex', 
+              gap: { xs: 1.5, md: 2 },
+              flexWrap: 'wrap',
+              flex: 1,
+              justifyContent: { xs: 'flex-start', sm: 'flex-end' }
+            }}>
+              <Button
+                variant="contained"
+                startIcon={<PersonIcon />}
+                onClick={() => navigate('/personalized-suggestions/personal-medical')}
+                sx={{ 
+                  textTransform: 'none',
+                  px: { xs: 2, md: 3 },
+                  py: 1,
+                  borderRadius: 2,
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #5568d3 0%, #653a8b 100%)',
+                    boxShadow: '0 6px 16px rgba(102, 126, 234, 0.4)',
+                  }
+                }}
+              >
+                Update Profile
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<FitnessCenterIcon />}
+                onClick={() => navigate('/testing-dashboard/habits')}
+                sx={{ 
+                  textTransform: 'none',
+                  px: { xs: 2, md: 3 },
+                  py: 1,
+                  borderRadius: 2,
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #0d9668 0%, #047857 100%)',
+                    boxShadow: '0 6px 16px rgba(16, 185, 129, 0.4)',
+                  }
+                }}
+              >
+                Track Habits
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<RestaurantIcon />}
+                onClick={() => navigate('/personalized-suggestions/diet-plan')}
+                sx={{ 
+                  textTransform: 'none',
+                  px: { xs: 2, md: 3 },
+                  py: 1,
+                  borderRadius: 2,
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+                    boxShadow: '0 6px 16px rgba(245, 158, 11, 0.4)',
+                  }
+                }}
+              >
+                Diet Plan
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<PsychologyIcon />}
+                onClick={() => navigate('/personalized-suggestions/chat-assistant')}
+                sx={{ 
+                  textTransform: 'none',
+                  px: { xs: 2, md: 3 },
+                  py: 1,
+                  borderRadius: 2,
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                    boxShadow: '0 6px 16px rgba(59, 130, 246, 0.4)',
+                  }
+                }}
+              >
+                AI Assistant
+              </Button>
+            </Box>
           </Box>
-        </Grid>
-      </Grid>
+        </Paper>
+      )}
+
+      {/* === YOUR CARE PRIORITIES SECTION === */}
+      <Paper elevation={2} sx={{ p: { xs: 2, md: 3 }, mb: 3, borderRadius: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            width: 48, 
+            height: 48, 
+            borderRadius: 2, 
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+          }}>
+            <HighPriorityIcon sx={{ color: '#fff', fontSize: 24 }} />
+          </Box>
+          <Typography variant="h5" fontWeight="bold" sx={{ color: '#1976d2' }}>
+            Your Care Priorities
+          </Typography>
+        </Box>
+        
+        <Paper elevation={0} sx={{ 
+          p: 2.5, 
+          borderLeft: `4px solid ${!isPersonalInfoCompleted ? '#dc2626' : '#10b981'}`,
+          border: '1px solid',
+          borderColor: 'divider',
+          borderRadius: 2,
+          '&:hover': { boxShadow: 2 }
+        }}>
+          <Box display="flex" alignItems="flex-start" justifyContent="space-between" flexWrap="wrap" gap={2}>
+            <Box flex={1}>
+              <Box display="flex" alignItems="center" gap={1} mb={1} flexWrap="wrap">
+                <HighPriorityIcon sx={{ color: !isPersonalInfoCompleted ? '#dc2626' : '#10b981', fontSize: 20 }} />
+                <Chip 
+                  label={!isPersonalInfoCompleted ? 'HIGH' : 'ONGOING'} 
+                  size="small"
+                  sx={{ 
+                    bgcolor: !isPersonalInfoCompleted ? '#dc2626' : '#10b981',
+                    color: 'white',
+                    fontWeight: 'bold'
+                  }}
+                />
+                <Chip 
+                  label={!isPersonalInfoCompleted ? 'now' : 'daily'} 
+                  size="small"
+                  variant="outlined"
+                  sx={{ fontWeight: 500 }}
+                />
+              </Box>
+              <Typography variant="h6" fontWeight="bold" gutterBottom>
+                {!isPersonalInfoCompleted ? 'Complete Your Health Profile' : 'Track Your Daily Habits'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" paragraph>
+                {!isPersonalInfoCompleted 
+                  ? 'Please provide your complete health information for personalized care recommendations'
+                  : 'Monitor and maintain your daily health habits to effectively manage your diabetes'
+                }
+              </Typography>
+              <Typography variant="caption" sx={{ 
+                fontStyle: 'italic',
+                color: '#666',
+                backgroundColor: '#f5f5f5',
+                p: 1,
+                borderRadius: 1,
+                display: 'block'
+              }}>
+                Medical note: {!isPersonalInfoCompleted 
+                  ? 'Complete health data is essential for generating personalized diabetes management priorities'
+                  : 'Consistent habit tracking helps identify patterns and optimize your diabetes management plan'
+                }
+              </Typography>
+            </Box>
+            {!isPersonalInfoCompleted ? (
+              <Button
+                variant="contained"
+                endIcon={<ArrowForwardIcon />}
+                onClick={() => navigate('/personalized-suggestions/personal-medical')}
+                sx={{ 
+                  minWidth: 200,
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #5568d3 0%, #653a8b 100%)',
+                  }
+                }}
+              >
+                COMPLETE PROFILE
+              </Button>
+            ) : (
+              <Button
+                variant="contained"
+                endIcon={<ArrowForwardIcon />}
+                onClick={() => navigate('/testing-dashboard/habits')}
+                sx={{ 
+                  minWidth: 240,
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  '&:hover': {
+                    background: 'linear-gradient(135deg, #0d9668 0%, #047857 100%)',
+                  }
+                }}
+              >
+                GO TO DAILY HABIT TRACKER
+              </Button>
+            )}
+          </Box>
+        </Paper>
+      </Paper>
 
       {/* === SECTION 1: NUTRITION ANALYTICS === */}
       <Box

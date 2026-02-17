@@ -124,6 +124,9 @@ const useDashboardHandlers = ({
   };
 
   const handleLogout = useCallback(async () => {
+    // Clear assessment insight popup flags for next login
+    sessionStorage.removeItem('assessmentPopupPostLogin');
+    sessionStorage.removeItem('assessmentPopupShown');
     await logout();
     navigate('/signin');
   }, [navigate]);
@@ -159,6 +162,10 @@ const useDashboardHandlers = ({
       if (answerKey === 'diagnosed_diabetic' || answerKey === 'diagnosed_not_diabetic') {
         const diagnosisValue = answerKey === 'diagnosed_diabetic' ? 'yes' : 'no';
         await handleDiagnosisAnswer(diagnosisValue);
+        // Diagnosis saved - popup won't show again as user is now diagnosed
+      } else if (answerKey === 'not_tested_yet') {
+        // User hasn't been tested yet - don't clear the flag, so popup won't show again this session
+        // It will show again on next login
       }
       setShowAssessmentPopup(false);
     } catch (err) {

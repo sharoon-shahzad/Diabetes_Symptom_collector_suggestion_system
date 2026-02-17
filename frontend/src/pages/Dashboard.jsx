@@ -6,7 +6,7 @@ import {
 import { alpha } from '@mui/material/styles';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import HealingIcon from '@mui/icons-material/Healing';
-import InsightsIcon from '@mui/icons-material/Insights';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import EditIcon from '@mui/icons-material/Edit';
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -52,7 +52,7 @@ const drawerWidth = 220;
 const miniDrawerWidth = 64;
 
 const undiagnosedSections = [
-  { label: 'Insights', icon: <InsightsIcon /> },
+  { label: 'Dashboard', icon: <DashboardIcon /> },
   { label: 'My Account', icon: <AccountCircleIcon /> },
   { label: 'My Disease Data', icon: <HealingIcon /> },
   { label: 'Check My Risk', icon: <AutoAwesomeIcon /> },
@@ -60,7 +60,7 @@ const undiagnosedSections = [
 ];
 
 const diagnosedSections = [
-  { label: 'Insights', icon: <InsightsIcon /> },
+  { label: 'Dashboard', icon: <DashboardIcon /> },
   { label: 'My Account', icon: <AccountCircleIcon /> },
   { label: 'Personalized Suggestions', icon: <AutoAwesomeIcon /> },
   { label: 'Chat Assistant', icon: <ChatIcon /> },
@@ -191,7 +191,12 @@ function Dashboard() {
     <Box sx={{ 
       display: 'flex', 
       minHeight: '100vh', 
-      background: '#e8eaf6'
+      background: { 
+        xs: '#f8fafb',
+        md: 'linear-gradient(135deg, #667eea08 0%, #764ba208 100%)'
+      },
+      position: 'relative',
+      overflow: 'hidden',
     }}>
       <CssBaseline />
       
@@ -228,49 +233,75 @@ function Dashboard() {
         ml: 0, 
         mt: 0, 
         minHeight: '100vh', 
-        bgcolor: '#f8fafb',
+        bgcolor: 'transparent',
         position: 'relative',
-        transition: 'margin 0.3s ease',
-        width: { xs: '100%', md: `calc(100% - ${sidebarOpen ? drawerWidth : miniDrawerWidth}px)` }
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        width: { 
+          xs: '100%', 
+          md: `calc(100% - ${sidebarOpen ? drawerWidth : miniDrawerWidth}px)` 
+        },
+        pt: { xs: 7, md: 0 },
       }}>
-        {/* Mobile Menu Button */}
+        {/* Mobile Menu Button - Enhanced */}
         <IconButton
           onClick={() => setMobileOpen(true)}
           sx={{
             display: { xs: 'flex', md: 'none' },
             position: 'fixed',
-            top: 16,
-            left: 16,
+            top: { xs: 12, sm: 16 },
+            left: { xs: 12, sm: 16 },
             zIndex: 1200,
             bgcolor: 'background.paper',
-            boxShadow: 3,
+            boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+            backdropFilter: 'blur(10px)',
+            border: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`,
+            width: { xs: 44, sm: 48 },
+            height: { xs: 44, sm: 48 },
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             '&:hover': {
               bgcolor: 'primary.main',
               color: 'white',
+              transform: 'scale(1.05)',
+              boxShadow: '0 6px 24px rgba(102, 126, 234, 0.3)',
+            },
+            '&:active': {
+              transform: 'scale(0.95)',
             }
           }}
         >
-          <MenuIcon />
+          <MenuIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
         </IconButton>
-        {/* Content container */}
+        {/* Content container - Responsive Padding */}
         <Box sx={{ 
-          px: currentSection === 'Chat Assistant' ? 0 : { xs: 2, sm: 3, md: 4 }, 
-          pt: currentSection === 'Chat Assistant' ? 0 : { xs: 3, md: 5 }, 
-          pb: currentSection === 'Chat Assistant' ? 0 : 6, 
+          px: currentSection === 'Chat Assistant' ? 0 : { xs: 2, sm: 2.5, md: 3, lg: 4 }, 
+          pt: currentSection === 'Chat Assistant' ? 0 : { xs: 2, sm: 3, md: 4, lg: 5 }, 
+          pb: currentSection === 'Chat Assistant' ? 0 : { xs: 4, sm: 5, md: 6 }, 
           display: 'flex', 
           justifyContent: 'center', 
           position: 'relative', 
           zIndex: 1,
-          height: currentSection === 'Chat Assistant' ? '100vh' : 'auto'
+          height: currentSection === 'Chat Assistant' ? '100vh' : 'auto',
+          animation: 'fadeIn 0.4s ease-out',
+          '@keyframes fadeIn': {
+            from: { opacity: 0, transform: 'translateY(10px)' },
+            to: { opacity: 1, transform: 'translateY(0)' }
+          }
         }}>
           <Box sx={{ 
             width: '100%', 
             maxWidth: selectedIndex === 2 
               ? '100%'
-              : { xs: '100%', sm: '100%', md: 'clamp(1200px, 90vw, 1440px)' },
-            height: currentSection === 'Chat Assistant' ? '100%' : 'auto'
+              : { 
+                  xs: '100%', 
+                  sm: '100%', 
+                  md: 'min(1200px, 95vw)', 
+                  lg: 'min(1400px, 92vw)',
+                  xl: '1440px'
+                },
+            height: currentSection === 'Chat Assistant' ? '100%' : 'auto',
+            margin: '0 auto',
           }}>
-            {currentSection === 'Insights' && (
+            {currentSection === 'Dashboard' && (
               <Box>
                 {user?.diabetes_diagnosed === 'yes' ? (
                   <DiagnosedInsightsView 
@@ -320,7 +351,12 @@ function Dashboard() {
             )}
 
             {currentSection === 'Personalized Suggestions' && (
-              <Box sx={{ bgcolor: 'transparent', borderRadius: '16px', p: 5, minHeight: '70vh' }}>
+              <Box sx={{ 
+                bgcolor: 'transparent', 
+                borderRadius: { xs: 2, md: 3 }, 
+                p: { xs: 0, sm: 2, md: 3, lg: 5 }, 
+                minHeight: { xs: 'auto', md: '70vh' }
+              }}>
                 <PersonalizedSuggestionsView 
                   personalInfoCompletion={personalInfoCompletion}
                   setOpenCardModal={setOpenCardModal}
@@ -411,11 +447,11 @@ function Dashboard() {
         onSelectAnswer={handleAssessmentPopupAnswer}
       />
 
-      {/* Diabetes Diagnosis Popup */}
-      <DiabetesDiagnosisPopup
+      {/* Diabetes Diagnosis Popup - REMOVED as per requirement */}
+      {/* <DiabetesDiagnosisPopup
         open={showDiagnosisPopup}
         onAnswer={handleDiagnosisAnswer}
-      />
+      /> */}
 
       {/* Edit Disease Data Modal */}
       <Modal

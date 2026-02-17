@@ -36,10 +36,12 @@ const userSchema = new mongoose.Schema({
     },
     date_of_birth: {
         type: Date,
+        required: true,  // Required for Age calculation in ML model
     },
     gender: {
         type: String,
-        enum: ['Male', 'Female', 'male', 'female', null],
+        enum: ['Male', 'Female', 'male', 'female'],
+        required: true,  // Required for Gender feature in ML model
     },
     isActivated: {
         type: Boolean,

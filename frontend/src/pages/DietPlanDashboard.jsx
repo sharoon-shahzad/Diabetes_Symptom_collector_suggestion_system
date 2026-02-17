@@ -22,7 +22,9 @@ import {
   DialogContent,
   DialogActions,
   Divider,
-  Stack
+  Stack,
+  Tabs,
+  Tab
 } from '@mui/material';
 import {
   Restaurant as RestaurantIcon,
@@ -30,10 +32,13 @@ import {
   TrendingUp as TrendingUpIcon,
   CheckCircle as CheckCircleIcon,
   Warning as WarningIcon,
-  Public as PublicIcon
+  Public as PublicIcon,
+  Today as TodayIcon,
+  DateRange as DateRangeIcon
 } from '@mui/icons-material';
 import axiosInstance from '../utils/axiosInstance';
 import DietPlanView from './DietPlanView';
+import MonthlyDietPlanDashboard from './MonthlyDietPlanDashboard';
 
 const StatTile = ({ label, value, accent, icon }) => (
   <Paper
@@ -62,6 +67,7 @@ const StatTile = ({ label, value, accent, icon }) => (
 
 const DietPlanDashboard = ({ inModal = false }) => {
   const { formatDate } = useDateFormat();
+  const [activeTab, setActiveTab] = useState(0); // 0 = Daily, 1 = Monthly
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
@@ -72,6 +78,10 @@ const DietPlanDashboard = ({ inModal = false }) => {
   const [showGenerator, setShowGenerator] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [generating, setGenerating] = useState(false);
+
+  const handleTabChange = (event, newValue) => {
+    setActiveTab(newValue);
+  };
 
   // Calculate actual calories from meals - ALWAYS calculate from actual meal data
   const calculateActualCalories = (plan) => {
@@ -247,6 +257,61 @@ const DietPlanDashboard = ({ inModal = false }) => {
     );
   }
 
+  // If Monthly tab is active, show MonthlyDietPlanDashboard
+  if (activeTab === 1) {
+    return (
+      <Box>
+        {/* Tab Navigation */}
+        <Container maxWidth="lg" sx={{ pt: inModal ? 2 : 4, mt: inModal ? 0 : 6 }}>
+          <Paper
+            elevation={0}
+            sx={{
+              borderRadius: 3,
+              p: { xs: 2, md: 3 },
+              mb: 3,
+              background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+              border: '1px solid #d1fae5'
+            }}
+          >
+            <Tabs
+              value={activeTab}
+              onChange={handleTabChange}
+              sx={{
+                '& .MuiTabs-indicator': {
+                  backgroundColor: '#10b981',
+                  height: 3,
+                  borderRadius: '3px 3px 0 0'
+                },
+                '& .MuiTab-root': {
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                  minHeight: 56,
+                  color: '#64748b',
+                  '&.Mui-selected': {
+                    color: '#10b981'
+                  }
+                }
+              }}
+            >
+              <Tab
+                icon={<TodayIcon sx={{ fontSize: 20 }} />}
+                iconPosition="start"
+                label="Daily Plans"
+              />
+              <Tab
+                icon={<DateRangeIcon sx={{ fontSize: 20 }} />}
+                iconPosition="start"
+                label="Monthly Plans"
+              />
+            </Tabs>
+          </Paper>
+        </Container>
+        <MonthlyDietPlanDashboard inModal={inModal} />
+      </Box>
+    );
+  }
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
@@ -268,6 +333,50 @@ const DietPlanDashboard = ({ inModal = false }) => {
       />
 
       <Stack spacing={3}>
+        {/* Tabs Navigation */}
+        <Paper
+          elevation={0}
+          sx={{
+            borderRadius: 3,
+            p: { xs: 2, md: 2 },
+            background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
+            border: '1px solid #d1fae5'
+          }}
+        >
+          <Tabs
+            value={activeTab}
+            onChange={handleTabChange}
+            sx={{
+              '& .MuiTabs-indicator': {
+                backgroundColor: '#10b981',
+                height: 3,
+                borderRadius: '3px 3px 0 0'
+              },
+              '& .MuiTab-root': {
+                textTransform: 'none',
+                fontWeight: 600,
+                fontSize: '1rem',
+                minHeight: 56,
+                color: '#64748b',
+                '&.Mui-selected': {
+                  color: '#10b981'
+                }
+              }
+            }}
+          >
+            <Tab
+              icon={<TodayIcon sx={{ fontSize: 20 }} />}
+              iconPosition="start"
+              label="Daily Plans"
+            />
+            <Tab
+              icon={<DateRangeIcon sx={{ fontSize: 20 }} />}
+              iconPosition="start"
+              label="Monthly Plans"
+            />
+          </Tabs>
+        </Paper>
+
         {/* Hero Header */}
         <Paper
           elevation={0}

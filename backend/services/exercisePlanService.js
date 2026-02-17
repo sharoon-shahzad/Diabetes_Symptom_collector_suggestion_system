@@ -24,8 +24,8 @@ class ExercisePlanService {
     const n = parseFloat(matches[0]);
     return Number.isNaN(n) ? null : n;
   }
-  async generateExercisePlan(userId, targetDate) {
-    console.log(`📋 Generating exercise plan for userId: ${userId}, targetDate: ${targetDate}`);
+  async generateExercisePlan(userId, targetDate, goal = 'improve_fitness') {
+    console.log(`📋 Generating exercise plan for userId: ${userId}, targetDate: ${targetDate}, goal: ${goal}`);
     
     const user = await User.findById(userId);
     if (!user) throw new Error('User not found');
@@ -49,7 +49,7 @@ class ExercisePlanService {
       weight: personalInfo.weight,
       height: personalInfo.height,
       activity_level: personalInfo.activity_level || 'Sedentary',
-      goal: 'improve_fitness',
+      goal: goal,
       country: user.country || 'Global'
     };
     const medical = {
@@ -87,9 +87,8 @@ class ExercisePlanService {
       structured = this.parseExercisePlan(aiResponse);
       console.log('✅ Exercise plan parsed successfully:', JSON.stringify(structured, null, 2));
     } catch (lmError) {
-      console.warn('⚠️  LM Studio unavailable or timed out, using fallback exercise plan generator');
-      console.error('LM Error details:', lmError.message);
-      structured = this.generateFallbackExercisePlan(personal, medical);
+      console.error('❌ LM Studio error:', lmError.message);
+      throw new Error(`LM Studio is required for exercise plan generation. ${lmError.message}`);
     }
 
     if (!structured || !structured.sessions || structured.sessions.length === 0) {
@@ -100,34 +99,69 @@ class ExercisePlanService {
     const totals = this.calculateTotals(structured.sessions, personal.weight);
     console.log('✅ Calculated totals:', totals);
 
+    const startDate = new Date(targetDateObj);
+    const endDate = new Date(targetDateObj);
+    endDate.setDate(startDate.getDate() + 6);
+
     const plan = new ExercisePlan({
       user_id: userId,
-      target_date: targetDateObj,
-      region: userRegion,
-      sessions: structured.sessions,
-      totals,
+      start_date: startDate,
+      end_date: endDate,
+      goal: personal.goal,
+      weekly_schedule: structured.sessions,
+      total_weekly_calories: totals.totalCalories,
+      total_weekly_duration: totals.totalDuration,
+      general_recommendations: structured.recommendations,
       sources: context.sources,
-      tips: structured.tips || [],
-      status: 'pending',
-      generated_at: new Date()
+      generated_at: new Date(),
     });
-    
-    console.log('💾 Saving exercise plan to database...');
-    await plan.save();
-    console.log('✅ Exercise plan saved successfully');
 
-    return { success: true, plan, region_coverage: regionCoverage };
-  } catch (error) {
-    console.error('❌ Error in generateExercisePlan:', error.message);
-    console.error('Stack trace:', error.stack);
-    throw error;
+    await plan.save();
+    console.log(`✅ Exercise plan saved with ID: ${plan._id}`);
+
+    return {
+      success: true,
+      plan: plan,
+      region_coverage: regionCoverage,
+    };
+  }
+
+  async getExercisePlanById(userId, planId) {
+    try {
+      const plan = await ExercisePlan.findOne({ _id: planId, user_id: userId });
+      return plan;
+    } catch (error) {
+      console.error(`Error fetching exercise plan by ID ${planId}:`, error);
+      throw error;
+    }
+  }
+
+  async getExercisePlanHistory(userId, limit = 10) {
+    try {
+      const plans = await ExercisePlan.find({ user_id: userId })
+        .sort({ start_date: -1 })
+        .limit(limit);
+      return plans;
+    } catch (error) {
+      console.error(`Error fetching exercise plan history for user ${userId}:`, error);
+      throw error;
+    }
+  }
+
+  async deleteExercisePlan(userId, planId) {
+    try {
+      const result = await ExercisePlan.findOneAndDelete({ _id: planId, user_id: userId });
+      return result !== null;
+    } catch (error) {
+      console.error(`Error deleting exercise plan ${planId}:`, error);
+      throw error;
+    }
   }
 
   async queryRegionalExercise(region) {
-    // Allow skipping Chroma/RAG entirely if offline
+    // Chroma is required - no fallback content
     if (process.env.CHROMA_DISABLED === 'true') {
-      console.log('ℹ️ CHROMA_DISABLED=true, using fallback exercise context');
-      return this.getFallbackExerciseContext(region);
+      throw new Error('ChromaDB is required for exercise plan generation. Please enable ChromaDB.');
     }
 
     const queries = [
@@ -140,13 +174,13 @@ class ExercisePlanService {
     const filter = { country: region, doc_type: 'exercise_recommendation' };
     for (const q of queries) {
       try {
-        const results = await processQuery(q, filter, 5);
+        const response = await processQuery(q, { filter, topK: 5 });
+        const results = response.results || [];
         results.forEach(r => { const k = (r.text||'').substring(0,100); if (!seen.has(k)) { seen.add(k); all.push(r); } });
       } catch (e) { 
         console.log(`⚠️ Query failed for "${q}" with filter:`, e.message);
         if (e.message?.includes('Cannot reach ChromaDB')) {
-          console.log('ℹ️ Chroma unreachable; using fallback exercise context');
-          return this.getFallbackExerciseContext(region);
+          throw new Error('Cannot reach ChromaDB. Please ensure ChromaDB is running.');
         }
       }
     }
@@ -154,20 +188,20 @@ class ExercisePlanService {
       console.log('⚠️ No results with region filter, trying without filter...');
       for (const q of queries) {
         try {
-          const results = await processQuery(q, { doc_type: 'exercise_recommendation' }, 5);
+          const response = await processQuery(q, { filter: { doc_type: 'exercise_recommendation' }, topK: 5 });
+          const results = response.results || [];
           results.forEach(r => { const k = (r.text||'').substring(0,100); if (!seen.has(k)) { seen.add(k); all.push(r); } });
         } catch (e) { 
           console.log(`⚠️ Fallback query failed for "${q}":`, e.message);
           if (e.message?.includes('Cannot reach ChromaDB')) {
-            console.log('ℹ️ Chroma unreachable on fallback; using fallback exercise context');
-            return this.getFallbackExerciseContext(region);
+            throw new Error('Cannot reach ChromaDB. Please ensure ChromaDB is running.');
           }
         }
       }
     }
     if (all.length === 0) {
-      console.log('⚠️ No RAG results available - using fallback exercise context');
-      return this.getFallbackExerciseContext(region);
+      console.log('⚠️ No RAG results available');
+      throw new Error(`No exercise documents found for region: ${region}. Please upload exercise guidelines or use a different region.`);
     }
     return { chunks: all.map(r => r.text), sources: this.extractSources(all) };
   }
@@ -178,17 +212,6 @@ class ExercisePlanService {
       const t = r.metadata?.title; if (t && !map.has(t)) map.set(t, { title: t, country: r.metadata.country || 'Global', doc_type: r.metadata.doc_type || 'exercise_recommendation' });
     });
     return Array.from(map.values());
-  }
-
-  getFallbackExerciseContext(region) {
-    return {
-      chunks: [
-        'WHO Physical Activity: Adults should do at least 150–300 minutes of moderate-intensity, or 75–150 minutes of vigorous-intensity aerobic physical activity weekly, plus muscle-strengthening activities on 2+ days per week.',
-        'Diabetes-specific precautions: Monitor glucose before/after exercise; carry fast-acting carbs; avoid exercising during peak insulin action if prone to hypoglycemia; inspect feet; adjust intensity if neuropathy/retinopathy present.',
-        'Session structure: Warm-up 5–10 min; main set 30–45 min aerobic (walking, cycling) at moderate intensity; 2–3 sets resistance for major muscle groups; cool-down 5–10 min; flexibility 5–10 min.'
-      ],
-      sources: [ { title: 'WHO Global Recommendations on Physical Activity', country: 'Global', doc_type: 'exercise_recommendation' } ]
-    };
   }
 
   buildExercisePrompt(personal, medical, context, dateObj) {
@@ -393,145 +416,6 @@ class ExercisePlanService {
       }
     });
     return totals;
-  }
-
-  async getExercisePlanByDate(userId, targetDate) {
-    // Normalize to UTC midnight to avoid timezone issues
-    const targetDateObj = new Date(targetDate);
-    targetDateObj.setUTCHours(0, 0, 0, 0);
-    const plan = await ExercisePlan.findOne({ user_id: userId, target_date: targetDateObj });
-    return plan;
-  }
-
-  async getExercisePlanHistory(userId, limit = 10) {
-    const plans = await ExercisePlan.find({ user_id: userId })
-      .sort({ target_date: -1 })
-      .limit(limit);
-    return plans;
-  }
-
-  async deleteExercisePlan(userId, planId) {
-    const plan = await ExercisePlan.findOne({ _id: planId, user_id: userId });
-    if (!plan) throw new Error('Exercise plan not found or unauthorized');
-    await ExercisePlan.deleteOne({ _id: planId });
-    return { success: true };
-  }
-
-  /**
-   * Generate fallback exercise plan when LM Studio is unavailable
-   * @param {Object} personal - User personal info (age, gender, weight, height, activity_level)
-   * @param {Object} medical - User medical info (diabetes_type, medications)
-   * @returns {Object} - Basic structured exercise plan
-   */
-  generateFallbackExercisePlan(personal, medical) {
-    const activityMultiplier = {
-      'Sedentary': 1.2,
-      'Lightly Active': 1.375,
-      'Moderately Active': 1.55,
-      'Very Active': 1.725,
-      'Extremely Active': 1.9
-    };
-
-    const multiplier = activityMultiplier[personal.activity_level] || 1.375;
-    const bmr = 10 * personal.weight + 6.25 * personal.height - 5 * personal.age + (personal.gender === 'Male' ? 5 : -161);
-    const tdee = Math.round(bmr * multiplier);
-    const exerciseCalories = Math.round(tdee * 0.25); // Aim for 25% of TDEE from exercise
-
-    const sessions = [
-      {
-        name: 'Morning Cardio',
-        time: '7:00 AM - 8:00 AM',
-        type: 'cardio',
-        items: [
-          {
-            exercise: 'Brisk Walking',
-            category: 'cardio',
-            duration_min: 30,
-            intensity: 'Moderate',
-            mets: 5,
-            estimated_calories: 150,
-            heart_rate_zone: '120-140 bpm',
-            notes: 'Warm-up with 5 min slow walk, then maintain steady pace',
-            precautions: ['Check blood sugar before exercise', 'Stay hydrated', 'Carry water and snacks']
-          },
-          {
-            exercise: 'Light Stretching',
-            category: 'flexibility',
-            duration_min: 10,
-            intensity: 'Low',
-            mets: 1,
-            estimated_calories: 20,
-            heart_rate_zone: 'N/A',
-            notes: 'Focus on major muscle groups',
-            precautions: []
-          }
-        ],
-        total_duration_min: 40,
-        total_estimated_calories: 170
-      },
-      {
-        name: 'Evening Strength Training',
-        time: '5:30 PM - 6:30 PM',
-        type: 'strength',
-        items: [
-          {
-            exercise: 'Bodyweight Exercises',
-            category: 'strength',
-            duration_min: 30,
-            intensity: 'Moderate',
-            mets: 6,
-            estimated_calories: 180,
-            heart_rate_zone: '100-130 bpm',
-            notes: '3 sets of 10 reps: squats, push-ups, lunges',
-            precautions: ['Controlled movements', 'Proper form important', 'Monitor for dizziness']
-          },
-          {
-            exercise: 'Cool-down & Relaxation',
-            category: 'flexibility',
-            duration_min: 15,
-            intensity: 'Low',
-            mets: 2,
-            estimated_calories: 30,
-            heart_rate_zone: 'N/A',
-            notes: 'Deep breathing and gentle stretching',
-            precautions: []
-          }
-        ],
-        total_duration_min: 45,
-        total_estimated_calories: 210
-      },
-      {
-        name: 'Afternoon Yoga or Light Activity',
-        time: '3:00 PM - 4:00 PM',
-        type: 'flexibility',
-        items: [
-          {
-            exercise: 'Gentle Yoga or Walking',
-            category: 'flexibility',
-            duration_min: 30,
-            intensity: 'Low',
-            mets: 3,
-            estimated_calories: 90,
-            heart_rate_zone: '80-110 bpm',
-            notes: 'Focus on flexibility and balance to improve mobility',
-            precautions: ['Avoid impact exercises', 'Stop if you feel fatigued', 'Keep sessions relaxed']
-          }
-        ],
-        total_duration_min: 30,
-        total_estimated_calories: 90
-      }
-    ];
-
-    return {
-      sessions,
-      tips: [
-        'This is a basic template plan. For personalized recommendations, ensure LM Studio is running.',
-        'Always check your blood sugar before, during, and after exercise.',
-        'Stay well hydrated throughout the day.',
-        'Gradually increase intensity based on your fitness level.',
-        'Consult your healthcare provider before starting any new exercise program.'
-      ]
-    };
   }
 }
 

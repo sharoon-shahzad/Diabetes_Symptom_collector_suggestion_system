@@ -124,10 +124,29 @@ export default function SignUpForm({ setSuccess, setError }) {
                 gender,
                 date_of_birth: dob,
             });
-            const successMsg = res.data.message || 'Check your email to activate your account.';
-            setSuccessLocal(successMsg);
-            if (setSuccess) setSuccess(successMsg);
-            setTimeout(() => navigate('/signin'), 3000);
+            
+            // Check if user came from onboarding
+            const fromOnboarding = sessionStorage.getItem('pendingOnboardingAnswers');
+            const returnToAssessment = sessionStorage.getItem('returnToSymptomAssessment');
+            
+            if (fromOnboarding || returnToAssessment) {
+                const successMsg = 'Account created! Please check your email to activate your account. After activation, your onboarding answers will be saved.';
+                setSuccessLocal(successMsg);
+                if (setSuccess) setSuccess(successMsg);
+                // Don't clear pending answers yet - they'll be saved after email verification and login
+                
+                // Redirect to signin with returnTo parameter if needed
+                if (returnToAssessment === 'true') {
+                    setTimeout(() => navigate('/signin?returnTo=symptom-assessment'), 3000);
+                } else {
+                    setTimeout(() => navigate('/signin'), 3000);
+                }
+            } else {
+                const successMsg = res.data.message || 'Check your email to activate your account.';
+                setSuccessLocal(successMsg);
+                if (setSuccess) setSuccess(successMsg);
+                setTimeout(() => navigate('/signin'), 3000);
+            }
         } catch (err) {
             const errorMsg = err.response?.data?.message || 'Registration failed.';
             setErrorLocal(errorMsg);
@@ -518,7 +537,7 @@ export default function SignUpForm({ setSuccess, setError }) {
                     Already have an account?{' '}
                     <Link
                         component={RouterLink}
-                        to="/signin"
+                        to={sessionStorage.getItem('returnToSymptomAssessment') === 'true' ? '/signin?returnTo=symptom-assessment' : '/signin'}
                         sx={{
                             color: theme.palette.primary.main,
                             fontWeight: 600,

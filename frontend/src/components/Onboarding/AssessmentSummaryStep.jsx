@@ -14,26 +14,11 @@ import {
   Alert,
 } from '@mui/material';
 import { motion } from 'framer-motion';
-import axios from 'axios';
+import axiosInstance from '../../utils/axiosInstance'; // Use central axios instance
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-// Create axios instance with base URL
-const axiosInstance = axios.create({
-  baseURL: `${API_BASE_URL}/api/v1`,
-});
-
-// Add request interceptor to include auth token
-axiosInstance.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+// NOTE: Using central axiosInstance from utils to avoid duplicate interceptors
 
 const AssessmentSummaryStep = ({ onComplete, answers, isLoggedIn }) => {
   const theme = useTheme();

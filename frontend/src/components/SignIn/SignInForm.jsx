@@ -65,11 +65,108 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
 
             if (res.data.data && res.data.data.user && res.data.data.accessToken) {
                 localStorage.setItem('accessToken', res.data.data.accessToken);
+                
+                // Check for pending onboarding answers from sessionStorage
+                const pendingAnswers = sessionStorage.getItem('pendingOnboardingAnswers');
+                console.log('🔍 Checking for pending answers in sessionStorage...');
+                console.log('🔍 Raw pendingAnswers:', pendingAnswers);
+                
+                if (pendingAnswers) {
+                    try {
+                        const parsedAnswers = JSON.parse(pendingAnswers);
+                        console.log('🔍 Parsed answers:', parsedAnswers);
+                        
+                        // ✅ FIX: pendingAnswers is already an array, not an object with .answers property
+                        const answersArray = Array.isArray(parsedAnswers) 
+                            ? parsedAnswers 
+                            : Object.entries(parsedAnswers.answers || {}).map(([questionId, answerText]) => ({
+                                questionId,
+                                answerText: String(answerText)
+                            }));
+                        
+                        console.log('🔍 Final answersArray:', answersArray);
+                        
+                        if (answersArray.length > 0) {
+                            console.log(`\n💾 ========== SAVING PENDING ANSWERS ==========`);
+                            console.log(`📤 Sending ${answersArray.length} answers to backend...`);
+                            console.log('📤 Answers data:', answersArray);
+                            
+                            try {
+                                // Save answers to backend
+                                const saveResult = await axios.post(
+                                    'http://localhost:5000/api/v1/questions/batch-save-answers',
+                                    { answers: answersArray },
+                                    {
+                                        headers: {
+                                            'Authorization': `Bearer ${res.data.data.accessToken}`
+                                        },
+                                        withCredentials: true
+                                    }
+                                );
+                                console.log('✅ ========== BACKEND RESPONSE ==========');
+                                console.log('✅ Success:', saveResult.data.success);
+                                console.log('✅ Message:', saveResult.data.message);
+                                console.log('✅ Saved count:', saveResult.data.savedCount);
+                                console.log('✅ Verified count:', saveResult.data.verifiedCount);
+                                console.log('✅ Full response:', saveResult.data);
+                                
+                                // Check if all answers were saved successfully
+                                if (saveResult.data.savedCount !== answersArray.length) {
+                                    console.warn(`⚠️  Only ${saveResult.data.savedCount}/${answersArray.length} answers were saved!`);
+                                    if (saveResult.data.errors) {
+                                        console.error('❌ Save errors:', saveResult.data.errors);
+                                    }
+                                }
+                                
+                                // Clear ALL onboarding-related sessionStorage
+                                sessionStorage.removeItem('pendingOnboardingAnswers');
+                                sessionStorage.removeItem('onboardingState');
+                                sessionStorage.removeItem('returnToSymptomAssessment');
+                                // Set flag to indicate answers were just saved
+                                sessionStorage.setItem('answersSavedAfterLogin', 'true');
+                                console.log('💾 ========== SAVE COMPLETE ==========');
+                                console.log('🧹 Cleared all temporary onboarding storage');
+                                console.log('💾 ========== END ==========\n');
+                            } catch (saveError) {
+                                console.error('\n❌ ========== SAVE FAILED ==========');
+                                console.error('❌ Error message:', saveError.message);
+                                console.error('❌ Response status:', saveError.response?.status);
+                                console.error('❌ Response data:', saveError.response?.data);
+                                console.error('❌ Full error:', saveError);
+                                console.error('❌ ========== END ERROR ==========\n');
+                                
+                                // Show error to user
+                                setError(`Failed to save your answers: ${saveError.response?.data?.message || saveError.message}. Please contact support.`);
+                                // Don't clear pending answers if save failed
+                                throw saveError; // Re-throw to be caught by outer catch
+                            }
+                        }
+                    } catch (answerErr) {
+                        console.error('❌ Exception in answer saving process:', answerErr);
+                        // Don't block login if answer save fails, but show error
+                        if (!error) {
+                            setError('Your answers could not be saved. Please try again or contact support.');
+                        }
+                    }
+                }
+                
                 const roles = res.data.data.user.roles || [];
+
+                // Assessment insight popup: allow showing once after login
+                sessionStorage.removeItem('assessmentPopupShown');
+                sessionStorage.setItem('assessmentPopupPostLogin', 'true');
+                
                 if (roles.includes('admin') || roles.includes('super_admin')) {
                     navigate('/admin-dashboard');
                 } else {
-                    navigate('/dashboard');
+                    // Check if there's a returnTo parameter or if came from onboarding
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const returnTo = urlParams.get('returnTo');
+                    if (returnTo === 'symptom-assessment') {
+                        navigate('/symptom-assessment'); // Go back to symptom assessment to show dialog
+                    } else {
+                        navigate('/dashboard');
+                    }
                 }
             } else {
                 const errorMsg = res.data.message || 'Login failed.';

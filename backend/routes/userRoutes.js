@@ -2,6 +2,8 @@ import express from 'express';
 import { verifyAccessTokenMiddleware } from '../middlewares/authMiddleware.js';
 import { requirePermission } from '../middlewares/permissionMiddleware.js';
 import { 
+  getProfile,
+  updateProfile,
   getCurrentUser, 
   getAllUsers, 
   updateUser, 
@@ -18,7 +20,8 @@ import {
 const router = express.Router();
 
 // User profile - accessible to authenticated users
-router.get('/profile', verifyAccessTokenMiddleware, getCurrentUser);
+router.get('/profile', verifyAccessTokenMiddleware, getProfile);
+router.put('/profile', verifyAccessTokenMiddleware, updateProfile);
 
 // Get all users - requires user read permission
 router.get('/allUsers', verifyAccessTokenMiddleware, requirePermission('user:read:all'), getAllUsers);

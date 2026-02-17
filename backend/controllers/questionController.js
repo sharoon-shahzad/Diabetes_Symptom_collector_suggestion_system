@@ -344,3 +344,164 @@ export const completeOnboarding = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Error completing onboarding', error: err.message });
   }
 };
+
+// Batch save onboarding answers (for post-login submission)
+export const batchSaveOnboardingAnswers = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    const { answers } = req.body; // Array of { questionId, answerText }
+    
+    console.log('\n🔵 ========== BATCH SAVE ANSWERS START ==========');
+    console.log('📥 User ID:', userId);
+    console.log('📥 Received answers count:', answers?.length);
+    console.log('📥 Answers data:', JSON.stringify(answers, null, 2));
+    
+    if (!userId) {
+      console.error('❌ Not authenticated - no user ID');
+      return res.status(401).json({ success: false, message: 'Not authenticated' });
+    }
+    
+    if (!answers || !Array.isArray(answers) || answers.length === 0) {
+      console.error('❌ Invalid answers array');
+      return res.status(400).json({ success: false, message: 'Invalid answers array' });
+    }
+
+    const savedAnswers = [];
+    const errors = [];
+    
+    // Process each answer
+    for (const item of answers) {
+      const { questionId, answerText } = item;
+      
+      console.log(`\n📝 Processing answer for question ${questionId}...`);
+      console.log(`   Answer text: "${answerText}"`);
+      
+      if (!questionId || !answerText) {
+        console.warn('⚠️  Skipping invalid answer (missing questionId or answerText):', item);
+        errors.push({ questionId, error: 'Missing questionId or answerText' });
+        continue;
+      }
+
+      try {
+        // Find or create the answer
+        console.log(`   🔍 Looking for existing answer: "${answerText}"`);
+        let answer = await Answer.findOne({ answer_text: answerText, deleted_at: null });
+        if (!answer) {
+          console.log('   ➕ Creating new answer in database...');
+          answer = await Answer.create({ answer_text: answerText });
+          console.log(`   ✅ Answer created with ID: ${answer._id}`);
+        } else {
+          console.log(`   ✅ Found existing answer with ID: ${answer._id}`);
+        }
+
+        // Ensure Questions_Answers entry exists
+        console.log(`   🔗 Linking question ${questionId} with answer ${answer._id}...`);
+        let qa = await QuestionsAnswers.findOne({ 
+          question_id: questionId, 
+          answer_id: answer._id, 
+          deleted_at: null 
+        });
+        if (!qa) {
+          console.log('   ➕ Creating Questions_Answers link...');
+          qa = await QuestionsAnswers.create({ 
+            question_id: questionId, 
+            answer_id: answer._id 
+          });
+          console.log(`   ✅ Link created with ID: ${qa._id}`);
+        } else {
+          console.log(`   ✅ Link already exists with ID: ${qa._id}`);
+        }
+
+        // Remove previous Users_Answers entries for this user and question
+        console.log(`   🗑️  Soft-deleting any previous answers...`);
+        const deleteResult = await UsersAnswers.updateMany(
+          { user_id: userId, question_id: questionId, deleted_at: null },
+          { $set: { deleted_at: new Date() } }
+        );
+        console.log(`   🗑️  Deleted ${deleteResult.modifiedCount} previous answers`);
+
+        // Create new Users_Answers entry
+        console.log(`   ➕ Creating Users_Answers entry...`);
+        const ua = await UsersAnswers.create({ 
+          user_id: userId, 
+          question_id: questionId, 
+          answer_id: answer._id 
+        });
+        console.log(`   ✅ Users_Answers created with ID: ${ua._id}`);
+
+        savedAnswers.push({ questionId, answerId: answer._id, usersAnswersId: ua._id });
+        console.log(`   ✅ Successfully saved answer for question ${questionId}`);
+      } catch (err) {
+        console.error(`   ❌ Error saving answer for question ${questionId}:`, err.message);
+        console.error('   Error stack:', err.stack);
+        errors.push({ questionId, error: err.message });
+      }
+    }
+
+    console.log('\n📊 Summary:');
+    console.log(`   ✅ Successfully saved: ${savedAnswers.length} answers`);
+    console.log(`   ❌ Failed: ${errors.length} answers`);
+    if (errors.length > 0) {
+      console.log('   ❌ Errors:', errors);
+    }
+    
+    // Verify data was actually written to database
+    console.log('\n🔍 Verifying database writes...');
+    const verifyCount = await UsersAnswers.countDocuments({ 
+      user_id: userId, 
+      deleted_at: null 
+    });
+    console.log(`✅ Total answers in database for user: ${verifyCount}`);
+
+    // Check if user has completed onboarding
+    console.log('\n🔍 Checking onboarding completion status...');
+    const user = await (await import('../models/User.js')).User.findById(userId);
+    
+    // Find the disease from the first question
+    if (answers.length > 0) {
+      const firstQuestion = await Question.findById(answers[0].questionId)
+        .populate({ path: 'symptom_id', populate: { path: 'disease_id' } });
+      const disease = firstQuestion?.symptom_id?.disease_id;
+      
+      if (disease && !user.onboardingCompleted) {
+        // Count total questions for this disease
+        const allSymptoms = await Symptom.find({ disease_id: disease._id, deleted_at: null });
+        const symptomIds = allSymptoms.map(s => s._id);
+        const totalQuestions = await Question.countDocuments({ 
+          symptom_id: { $in: symptomIds }, 
+          deleted_at: null 
+        });
+        
+        // Count user's answered questions
+        const userAnswers = await UsersAnswers.find({ user_id: userId, deleted_at: null });
+        const answeredQuestions = new Set(userAnswers.map(ua => String(ua.question_id))).size;
+        
+        console.log(`📊 Progress: ${answeredQuestions}/${totalQuestions} questions answered`);
+        
+        if (totalQuestions > 0 && answeredQuestions >= totalQuestions) {
+          user.onboardingCompleted = true;
+          await user.save();
+          console.log('🎉 User completed onboarding via batch save!');
+        }
+      }
+    }
+    
+    console.log('🔵 ========== BATCH SAVE ANSWERS END ==========\n');
+
+    return res.status(200).json({ 
+      success: true, 
+      message: `Successfully saved ${savedAnswers.length} answers`,
+      savedCount: savedAnswers.length,
+      totalSubmitted: answers.length,
+      errors: errors.length > 0 ? errors : undefined,
+      verifiedCount: verifyCount
+    });
+  } catch (err) {
+    console.error('Error in batchSaveOnboardingAnswers:', err);
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Error batch saving answers', 
+      error: err.message 
+    });
+  }
+};

@@ -40,6 +40,7 @@ import queryRoutes from './routes/queryRoutes.js';
 import personalizedSystemRoutes from './routes/personalizedSystemRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import dietPlanRoutes from './routes/dietPlanRoutes.js';
+import monthlyDietPlanRoutes from './routes/monthlyDietPlanRoutes.js';
 import exercisePlanRoutes from './routes/exercisePlanRoutes.js';
 import lifestyleTipsRoutes from './routes/lifestyleTipsRoutes.js';
 import feedbackRoutes from './routes/feedbackRoutes.js';
@@ -47,6 +48,9 @@ import adminFeedbackRoutes from './routes/adminFeedbackRoutes.js';
 import auditRoutes from './routes/auditRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import testSettingsRoutes from './routes/testSettingsRoutes.js';
+import prioritiesRoutes from './routes/priorities.js';
+import habitsRoutes from './routes/habitsRoutes.js';
+import healthRoutes from './routes/healthRoutes.js';
 import { captureAuditContext } from './middlewares/auditMiddleware.js';
 import AuditLog from './models/AuditLog.js';
 import os from 'os';
@@ -158,6 +162,7 @@ app.use('/api/v1/query', queryRoutes);
 app.use('/api/v1/personalized-system', personalizedSystemRoutes);
 app.use('/api/v1/chat', chatRoutes);
 app.use('/api/v1/diet-plan', dietPlanRoutes);
+app.use('/api/v1/monthly-diet-plan', monthlyDietPlanRoutes);
 app.use('/api/v1/exercise-plan', exercisePlanRoutes);
 app.use('/api/v1/lifestyle-tips', lifestyleTipsRoutes);
 app.use('/api/v1/feedback', feedbackRoutes);
@@ -165,6 +170,16 @@ app.use('/api/v1/admin/feedback', adminFeedbackRoutes);
 app.use('/api/v1/admin/audit-logs', auditRoutes);
 app.use('/api/v1/admin/settings', settingsRoutes);
 app.use('/api/v1', testSettingsRoutes); // Public test endpoint
+
+// Development/Testing route for clearing plans
+if (process.env.NODE_ENV !== 'production') {
+  const devRoutes = (await import('./routes/devRoutes.js')).default;
+  app.use('/api/v1/dev', devRoutes);
+  console.log('🔧 Dev routes enabled');
+}
+app.use('/api/v1/priorities', prioritiesRoutes);
+app.use('/api/v1/habits', habitsRoutes);
+app.use('/api/v1/health', healthRoutes);
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);

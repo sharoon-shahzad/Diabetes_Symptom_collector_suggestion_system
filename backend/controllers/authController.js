@@ -41,10 +41,10 @@ export const register = async (req, res) => {
         const { fullName, email, password, date_of_birth, gender } = req.body;
         
         // Validation
-        if (!fullName || !email || !password) {
+        if (!fullName || !email || !password || !date_of_birth || !gender) {
             return res.status(400).json({ 
                 success: false,
-                message: 'All fields are required.' 
+                message: 'All fields are required (name, email, password, date of birth, and gender).' 
             });
         }
         
@@ -65,6 +65,14 @@ export const register = async (req, res) => {
             return res.status(400).json({ 
                 success: false,
                 message: 'Password must be at least 8 characters.' 
+            });
+        }
+        
+        // Gender validation
+        if (!['Male', 'Female', 'male', 'female'].includes(gender)) {
+            return res.status(400).json({ 
+                success: false,
+                message: 'Gender must be either Male or Female.' 
             });
         }
         
@@ -476,29 +484,21 @@ export const resetPassword = async (req, res) => {
 
 // Change password controller
 export const changePassword = async (req, res) => {
+    const { oldPassword, newPassword } = req.body;
+    const userId = req.user.id;
+
     try {
-        const userId = req.user._id;
-        const { currentPassword, newPassword } = req.body;
-
-        if (!currentPassword || !newPassword) {
-            return res.status(400).json({ message: 'Current and new password are required.' });
-        }
-        if (newPassword.length < 8) {
-            return res.status(400).json({ message: 'New password must be at least 8 characters.' });
-        }
-
         const user = await User.findById(userId);
         if (!user) {
-            return res.status(404).json({ message: 'User not found.' });
+            return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        const isMatch = await user.matchPassword(oldPassword);
         if (!isMatch) {
-            return res.status(400).json({ message: 'Current password is incorrect.' });
+            return res.status(400).json({ success: false, message: 'Invalid old password' });
         }
 
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-        user.password = hashedPassword;
+        user.password = newPassword;
         await user.save();
 
         // Log password change to audit trail
@@ -512,10 +512,9 @@ export const changePassword = async (req, res) => {
             console.error('Failed to log password change to audit trail:', auditErr);
         }
 
-        return res.status(200).json({ message: 'Password changed successfully.' });
+        return res.status(200).json({ success: true, message: 'Password changed successfully' });
     } catch (error) {
-        console.error('Change password error:', error);
-        return res.status(500).json({ message: 'Error changing password.' });
+        res.status(500).json({ success: false, message: 'Server error', error: error.message });
     }
 }; 
 
@@ -549,4 +548,4 @@ export const resendActivationLink = async (req, res) => {
         console.error('Resend activation link error:', error);
         return res.status(500).json({ message: 'Error resending activation link.' });
     }
-}; 
+};

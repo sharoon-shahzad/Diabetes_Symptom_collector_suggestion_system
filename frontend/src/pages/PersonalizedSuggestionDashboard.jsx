@@ -48,7 +48,7 @@ const PersonalizedSuggestionDashboard = () => {
 
   const sections = [
     { id: 'personal-medical', title: 'Personal & Medical Information', description: 'Manage your personal details and medical history', icon: <PersonIcon sx={{ fontSize: 40 }} />, color: '#2563eb', route: '/personalized-suggestions/personal-medical', completion: personalInfoCompletion, isActive: true },
-    { id: 'diet-plan', title: 'Diet Plan', description: 'AI-powered meal plans based on regional guidelines', icon: <RestaurantIcon sx={{ fontSize: 40 }} />, color: '#10b981', route: '/personalized-suggestions/diet-plan', completion: 0, isActive: true },
+    { id: 'diet-plan', title: 'Nutrition & Diet Plan', description: 'Daily and monthly meal plans with AI', icon: <RestaurantIcon sx={{ fontSize: 40 }} />, color: '#10b981', route: '/personalized-suggestions/diet-plan', completion: 0, isActive: true },
     { id: 'exercise-plan', title: 'Exercise Plan', description: 'Customized fitness routines and workouts', icon: <FitnessCenterIcon sx={{ fontSize: 40 }} />, color: '#f59e0b', route: '/personalized-suggestions/exercise-plan', completion: 0, isActive: true },
     { id: 'lifestyle-tips', title: 'Lifestyle Tips', description: 'Daily habits and wellness recommendations', icon: <LightbulbIcon sx={{ fontSize: 40 }} />, color: '#8b5cf6', route: '/personalized-suggestions/lifestyle-tips', completion: 0, isActive: true },
     { id: 'pro-tips', title: 'Pro Tips', description: 'Expert advice and best practices', icon: <EmojiEventsIcon sx={{ fontSize: 40 }} />, color: '#ec4899', route: '/personalized-suggestions/pro-tips', completion: 0, isActive: false },

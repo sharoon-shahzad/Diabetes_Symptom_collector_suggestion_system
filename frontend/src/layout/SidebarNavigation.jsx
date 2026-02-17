@@ -3,6 +3,7 @@ import {
   Drawer,
   List,
   ListItem,
+  ListItemButton,
   ListItemIcon,
   ListItemText,
   Typography,
@@ -45,49 +46,33 @@ export default function SidebarNavigation({
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          background: '#ffffff',
-          borderRight: '1px solid #e5e7eb',
-          boxShadow: 'none',
+          background: (t) => t.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff',
+          borderRight: (t) => `1px solid ${t.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)'}`,
           transition: 'width 0.3s ease, padding 0.3s ease',
           overflowX: 'hidden',
-          overflowY: 'auto',
-          scrollbarWidth: 'none',
-          '-ms-overflow-style': 'none',
-          '&::-webkit-scrollbar': { display: 'none' },
         },
       }}
     >
       <Box>
-        {/* User Profile Header */}
+        {/* User Profile Header - Clean & Minimal */}
         <Box 
           sx={{ 
             display: 'flex', 
-            alignItems: 'center', 
+            alignItems: 'center',
             justifyContent: sidebarOpen ? 'flex-start' : 'center',
             gap: 1.5, 
-            px: sidebarOpen ? 2 : 0,
-            py: 2.5,
+            px: sidebarOpen ? 1.5 : 0,
+            py: 2,
             mb: 3,
-            borderRadius: 2,
-            background: (t) => t.palette.mode === 'dark'
-              ? alpha(t.palette.primary.main, 0.08)
-              : alpha(t.palette.primary.main, 0.04),
-            border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.12)}`,
-            transition: 'all 0.2s ease',
-            '&:hover': {
-              background: (t) => alpha(t.palette.primary.main, 0.12),
-              borderColor: (t) => alpha(t.palette.primary.main, 0.25),
-            }
           }}
         >
           <Avatar 
             sx={{ 
-              width: 44,
-              height: 44,
+              width: 40,
+              height: 40,
               background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
               fontWeight: 700,
-              fontSize: '1.2rem',
-              boxShadow: (t) => `0 4px 12px ${alpha(t.palette.primary.main, 0.3)}`,
+              fontSize: '1.1rem',
             }}
           >
             {user?.fullName?.[0]?.toUpperCase() || 'U'}
@@ -98,12 +83,10 @@ export default function SidebarNavigation({
                 variant="body2" 
                 fontWeight={700}
                 sx={{ 
-                  color: 'text.primary',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
                   mb: 0.25,
-                  fontSize: '0.9rem',
                 }}
               >
                 {user?.fullName || 'User'}
@@ -112,10 +95,7 @@ export default function SidebarNavigation({
                 variant="caption" 
                 sx={{ 
                   color: 'text.secondary',
-                  fontWeight: 600,
-                  fontSize: '0.7rem',
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.5,
+                  fontWeight: 500,
                 }}
               >
                 Dashboard
@@ -124,89 +104,88 @@ export default function SidebarNavigation({
           )}
         </Box>
         
-        {/* Navigation Menu */}
+        {/* Navigation Menu - Clean List */}
         <List sx={{ px: 0 }}>
           {sections.map((sec, index) => (
             <Tooltip title={!sidebarOpen ? sec.label : ''} placement="right" key={sec.label}>
-              <ListItem 
-                button 
-                selected={selectedIndex === index} 
-                onClick={() => onSectionChange(index)} 
-                sx={{ 
-                  borderRadius: 2,
-                  mb: 1,
-                  px: sidebarOpen ? 2 : 1,
-                  py: 1.5,
-                  justifyContent: sidebarOpen ? 'flex-start' : 'center',
-                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: '4px',
-                    background: (t) => `linear-gradient(180deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
-                    opacity: 0,
-                    transition: 'opacity 0.2s ease',
-                  },
-                  '&.Mui-selected': {
-                    bgcolor: (t) => t.palette.mode === 'dark' 
-                      ? alpha(t.palette.primary.main, 0.12)
-                      : alpha(t.palette.primary.main, 0.08),
-                    border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.2)}`,
-                    '&::before': {
-                      opacity: 1,
-                    },
-                    '& .MuiListItemIcon-root': {
-                      color: 'primary.main',
-                      transform: 'scale(1.1)',
-                    },
-                    '& .MuiListItemText-primary': {
-                      color: 'primary.main',
-                      fontWeight: 700,
-                    },
-                  },
-                  '&:hover': {
-                    bgcolor: (t) => t.palette.mode === 'dark' 
-                      ? alpha(t.palette.primary.main, 0.08)
-                      : alpha(t.palette.primary.main, 0.04),
-                    transform: sidebarOpen ? 'translateX(4px)' : 'none',
-                  }
-                }}
-              >
-                <ListItemIcon 
-                  sx={{ 
-                    minWidth: sidebarOpen ? 40 : 'auto',
-                    color: 'text.secondary',
+              <ListItem disablePadding>
+                <ListItemButton
+                  selected={selectedIndex === index}
+                  onClick={() => onSectionChange(index)}
+                  sx={{
+                    borderRadius: 1.5,
+                    mb: 0.5,
+                    px: sidebarOpen ? 1.5 : 1,
+                    py: 1.25,
+                    justifyContent: sidebarOpen ? 'flex-start' : 'center',
                     transition: 'all 0.2s ease',
-                    justifyContent: 'center',
+                    position: 'relative',
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      left: 0,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      width: '3px',
+                      height: '60%',
+                      borderRadius: '0 4px 4px 0',
+                      background: (t) => `linear-gradient(180deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
+                      opacity: 0,
+                      transition: 'opacity 0.2s ease',
+                    },
+                    '&.Mui-selected': {
+                      bgcolor: (t) => t.palette.mode === 'dark' 
+                        ? 'rgba(255,255,255,0.08)' 
+                        : 'rgba(0,0,0,0.04)',
+                      '&::before': {
+                        opacity: 1,
+                      },
+                      '& .MuiListItemIcon-root': {
+                        color: 'primary.main',
+                      },
+                      '& .MuiListItemText-primary': {
+                        color: 'text.primary',
+                        fontWeight: 700,
+                      },
+                    },
+                    '&:hover': {
+                      bgcolor: (t) => t.palette.mode === 'dark' 
+                        ? 'rgba(255,255,255,0.05)' 
+                        : 'rgba(0,0,0,0.03)',
+                    }
                   }}
                 >
-                  {sec.icon}
-                </ListItemIcon>
-                {sidebarOpen && (
-                  <ListItemText 
-                    primary={sec.label}
-                    primaryTypographyProps={{
-                      fontWeight: 600,
-                      fontSize: '0.9rem',
+                  <ListItemIcon 
+                    sx={{ 
+                      minWidth: sidebarOpen ? 36 : 'auto',
                       color: 'text.secondary',
-                      transition: 'all 0.2s ease',
+                      transition: 'color 0.2s ease',
+                      justifyContent: 'center',
                     }}
-                  />
-                )}
+                  >
+                    {sec.icon}
+                  </ListItemIcon>
+                  {sidebarOpen && (
+                    <ListItemText 
+                      primary={sec.label}
+                      primaryTypographyProps={{
+                        component: 'span',
+                        fontWeight: 600,
+                        fontSize: '0.9rem',
+                        color: 'text.secondary',
+                      }}
+                    />
+                  )}
+                </ListItemButton>
               </ListItem>
             </Tooltip>
           ))}
         </List>
       </Box>
       
-      {/* Bottom Section */}
+      {/* Bottom Section - Minimal */}
       <Box sx={{ px: 0.5 }}>
-        {/* Theme Toggle */}
+        {/* Theme Toggle - Integrated */}
         <Box 
           sx={{ 
             display: 'flex', 
@@ -218,34 +197,27 @@ export default function SidebarNavigation({
           <ThemeToggle size="medium" />
         </Box>
         
-        {/* Logout Button */}
+        {/* Logout Button - Subtle */}
         <Tooltip title={!sidebarOpen ? 'Logout' : ''} placement="right">
           <Button
             fullWidth
-            variant="outlined"
-            color="error"
-            startIcon={sidebarOpen ? <LogoutIcon /> : null}
+            variant="text"
             onClick={onLogout}
             sx={{ 
-              borderRadius: 2, 
-              fontWeight: 700,
-              py: 1.5,
-              px: sidebarOpen ? 2 : 1,
+              borderRadius: 1.5, 
+              fontWeight: 600,
+              py: 1.25,
+              px: sidebarOpen ? 1.5 : 1,
               justifyContent: sidebarOpen ? 'flex-start' : 'center',
-              textTransform: 'none',
-              borderColor: (t) => alpha(t.palette.error.main, 0.3),
-              color: 'error.main',
-              transition: 'all 0.2s ease',
+              color: 'text.secondary',
               minWidth: sidebarOpen ? 'auto' : '48px',
               '&:hover': {
-                bgcolor: (t) => alpha(t.palette.error.main, 0.1),
-                borderColor: 'error.main',
-                transform: 'translateY(-2px)',
-                boxShadow: (t) => `0 4px 12px ${alpha(t.palette.error.main, 0.25)}`,
+                bgcolor: (t) => `rgba(${t.palette.mode === 'dark' ? '244, 67, 54' : '211, 47, 47'}, 0.08)`,
+                color: 'error.main',
               }
             }}
           >
-            {sidebarOpen ? 'Logout' : <LogoutIcon />}
+            {sidebarOpen ? 'Logout' : '⎋'}
           </Button>
         </Tooltip>
         
@@ -256,28 +228,30 @@ export default function SidebarNavigation({
             variant="text"
             onClick={onSidebarToggle}
             sx={{ 
-              borderRadius: 2, 
+              borderRadius: 1.5, 
               fontWeight: 600,
-              py: 1.5,
-              px: sidebarOpen ? 2 : 1,
+              py: 1.25,
+              px: sidebarOpen ? 1.5 : 1,
               mt: 1,
               justifyContent: sidebarOpen ? 'flex-start' : 'center',
               textTransform: 'none',
               color: 'text.secondary',
               minWidth: sidebarOpen ? 'auto' : '48px',
               '&:hover': {
-                bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
+                bgcolor: (t) => t.palette.mode === 'dark'
+                  ? 'rgba(255,255,255,0.05)'
+                  : 'rgba(0,0,0,0.03)',
                 color: 'primary.main',
               }
             }}
           >
             {sidebarOpen ? (
               <>
-                <ChevronLeftIcon sx={{ mr: 1 }} />
-                Collapse
+                <ChevronLeftIcon sx={{ mr: 1, fontSize: '1.2rem' }} />
+                <Typography variant="body2" fontWeight={600}>Collapse</Typography>
               </>
             ) : (
-              <ChevronRightIcon />
+              <ChevronRightIcon fontSize="small" />
             )}
           </Button>
         </Tooltip>

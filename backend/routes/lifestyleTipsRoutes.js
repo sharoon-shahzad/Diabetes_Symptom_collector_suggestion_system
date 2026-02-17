@@ -7,6 +7,9 @@ const router = express.Router();
 // All routes require authentication
 router.use(verifyAccessTokenMiddleware);
 
+// Auto-generate lifestyle tips for today
+router.post('/auto-generate', lifestyleTipsController.autoGenerateLifestyleTips);
+
 // Generate lifestyle tips for a specific date
 router.post('/generate', lifestyleTipsController.generateLifestyleTips);
 
@@ -18,6 +21,9 @@ router.get('/date/:date', lifestyleTipsController.getTipsByDate);
 
 // Get tips history with limit
 router.get('/history', lifestyleTipsController.getHistory);
+
+// Get tips by ID
+router.get('/:tipsId', lifestyleTipsController.getTipsById);
 
 // Delete lifestyle tips
 router.delete('/:tipsId', lifestyleTipsController.deleteLifestyleTips);

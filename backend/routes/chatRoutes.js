@@ -1,9 +1,13 @@
 import express from 'express';
-import { completeChat } from '../controllers/chatController.js';
+import { completeChat, getChatHistory, clearChatHistory } from '../controllers/chatController.js';
 import { verifyAccessTokenMiddleware } from '../middlewares/authMiddleware.js';
 
 const router = express.Router();
 
-router.post('/complete', verifyAccessTokenMiddleware, completeChat);
+router.use(verifyAccessTokenMiddleware);
+
+router.post('/send', completeChat);
+router.get('/history', getChatHistory);
+router.delete('/history', clearChatHistory);
 
 export default router;

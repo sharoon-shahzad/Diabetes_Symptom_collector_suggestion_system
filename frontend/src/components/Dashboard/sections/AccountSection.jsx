@@ -30,30 +30,42 @@ export default function AccountSection({ user, setUser, profileError, savingProf
     <Paper 
       elevation={0} 
       sx={{ 
-        p: { xs: 3, md: 4 }, 
-        borderRadius: 3,
+        p: { xs: 2, sm: 3, md: 4, lg: 5 }, 
+        borderRadius: { xs: 2, md: 3 },
         background: (t) => t.palette.background.paper,
-        border: (t) => `1px solid ${t.palette.divider}`,
+        border: (t) => `1px solid ${alpha(t.palette.divider, 0.1)}`,
+        boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+        transition: 'box-shadow 0.3s ease',
+        '&:hover': {
+          boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
+        }
       }}
     >
-      {/* Header */}
+      {/* Header - Responsive */}
       <Box sx={{ 
-        mb: 5,
+        mb: { xs: 3, sm: 4, md: 5 },
         animation: 'slideIn 0.7s ease-out',
         '@keyframes slideIn': {
           from: { opacity: 0, transform: 'translateX(-20px)' },
           to: { opacity: 1, transform: 'translateX(0)' }
         }
       }}>
-        <Box display="flex" alignItems="center" gap={3} mb={2}>
+        <Box 
+          display="flex" 
+          flexDirection={{ xs: 'column', sm: 'row' }}
+          alignItems={{ xs: 'flex-start', sm: 'center' }} 
+          gap={{ xs: 2, sm: 3 }} 
+          mb={2}
+        >
           <Avatar 
             sx={{ 
-              width: 72, 
-              height: 72,
+              width: { xs: 64, sm: 72, md: 80 }, 
+              height: { xs: 64, sm: 72, md: 80 },
               bgcolor: 'primary.main',
-              fontSize: '1.75rem',
+              fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
               fontWeight: 800,
               color: 'primary.contrastText',
+              boxShadow: '0 4px 16px rgba(102, 126, 234, 0.3)',
             }}
           >
             {user?.fullName?.[0]?.toUpperCase() || 'U'}
@@ -62,11 +74,23 @@ export default function AccountSection({ user, setUser, profileError, savingProf
             <Typography 
               variant="h5" 
               fontWeight={800}
-              sx={{ mb: 0.5 }}
+              sx={{ 
+                mb: 0.5,
+                fontSize: { xs: '1.25rem', sm: '1.5rem', md: '1.75rem' },
+                lineHeight: 1.2,
+              }}
             >
               {user?.fullName || 'User'}
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              sx={{ 
+                mb: 1.5,
+                fontSize: { xs: '0.875rem', sm: '0.9375rem' },
+                wordBreak: 'break-word',
+              }}
+            >
               {user?.email}
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
@@ -77,6 +101,7 @@ export default function AccountSection({ user, setUser, profileError, savingProf
                   size="small" 
                   sx={{ 
                     fontWeight: 600,
+                    fontSize: { xs: '0.75rem', sm: '0.8125rem' },
                     background: (t) => alpha(t.palette.primary.main, 0.08),
                     border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.2)}`,
                   }} 
@@ -89,12 +114,21 @@ export default function AccountSection({ user, setUser, profileError, savingProf
 
       <Divider sx={{ mb: 4 }} />
 
-      {/* Profile Info Section */}
+      {/* Profile Info Section - Responsive */}
       <Box sx={{ 
-        mb: 4,
+        mb: { xs: 3, md: 4 },
         animation: 'fadeInUp 0.8s ease-out 0.2s backwards',
       }}>
-        <Typography variant="h6" fontWeight={800} sx={{ mb: 3.5 }}>Personal Information</Typography>
+        <Typography 
+          variant="h6" 
+          fontWeight={800} 
+          sx={{ 
+            mb: { xs: 2.5, md: 3.5 },
+            fontSize: { xs: '1.125rem', sm: '1.25rem', md: '1.375rem' },
+          }}
+        >
+          Personal Information
+        </Typography>
         
         {profileError && (
           <Alert 

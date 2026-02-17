@@ -66,8 +66,10 @@ const QuestionFlowStep = ({ onBack, onAnswersSubmit, isLoggedIn, initialSymptomI
         if (!initialSymptomId && state.currentSymptomIndex) {
           setCurrentSymptomIndex(state.currentSymptomIndex);
         }
-        // Clear saved state after restoring
+        // Clear ALL saved onboarding state after restoring
         localStorage.removeItem('onboardingState');
+        localStorage.removeItem('redirectAfterLogin');
+        console.log('🧹 Cleared onboarding state from localStorage after restore');
       } catch (err) {
         console.error('Error restoring onboarding state:', err);
       }
@@ -183,8 +185,25 @@ const QuestionFlowStep = ({ onBack, onAnswersSubmit, isLoggedIn, initialSymptomI
       if (user && user.date_of_birth) {
         // Calculate age from DOB
         const dob = typeof user.date_of_birth === 'string' ? parseISO(user.date_of_birth) : user.date_of_birth;
-        const calculatedAge = differenceInYears(new Date(), dob);
-        const ageStr = calculatedAge.toString();
+        const now = new Date();
+        const years = differenceInYears(now, dob);
+        
+        // Calculate months
+        const dobMonth = dob.getMonth();
+        const dobDay = dob.getDate();
+        const nowMonth = now.getMonth();
+        const nowDay = now.getDate();
+        
+        let months = nowMonth - dobMonth;
+        if (nowDay < dobDay) {
+          months--;
+        }
+        if (months < 0) {
+          months += 12;
+        }
+        
+        // Format as "X years and Y months"
+        const ageStr = months > 0 ? `${years} years and ${months} months` : `${years} years`;
         // Store a temporary age value in answers; it will be migrated to the real question id when that question renders
         setAnswers(prev => ({ ...prev, _age_temp: ageStr }));
       }
@@ -245,7 +264,14 @@ const QuestionFlowStep = ({ onBack, onAnswersSubmit, isLoggedIn, initialSymptomI
 
         await Promise.all(answerPromises);
         
-        console.log('All answers submitted successfully');
+        console.log('✅ All answers submitted successfully to database');
+        
+        // Clear all temporary storage after successful database save
+        sessionStorage.removeItem('pendingOnboardingAnswers');
+        sessionStorage.removeItem('onboardingState');
+        localStorage.removeItem('onboardingState');
+        localStorage.removeItem('redirectAfterLogin');
+        console.log('🧹 Cleared all temporary onboarding storage after database save');
         
   // Call parent's onAnswersSubmit with collected answers
   onAnswersSubmit({...answers});

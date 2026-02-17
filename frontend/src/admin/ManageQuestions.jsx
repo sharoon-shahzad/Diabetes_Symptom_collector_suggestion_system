@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, Button, Paper, FormControl, InputLabel, Select, MenuItem, CircularProgress, List, ListItem, ListItemText, IconButton, ListItemSecondaryAction } from '@mui/material';
+import { Box, Typography, Button, Paper, FormControl, InputLabel, Select, MenuItem, CircularProgress, List, ListItem, ListItemText, IconButton, ListItemSecondaryAction, Chip, Stack, Alert } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import WarningIcon from '@mui/icons-material/Warning';
 import { fetchDiseases, fetchSymptomsByDisease, fetchQuestionsBySymptom, addQuestion, updateQuestion, deleteQuestion } from '../utils/api';
 import QuestionForm from './QuestionForm';
 import ConfirmDialog from './ConfirmDialog';
@@ -223,62 +225,139 @@ export default function ManageQuestions() {
             </Paper>
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-              {questions.map((question) => (
-                <Paper 
-                  key={question._id}
-                  sx={{ 
-                    p: 2.5,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    transition: 'all 0.2s ease',
-                    '&:hover': {
-                      boxShadow: (t) => t.palette.mode === 'dark' 
-                        ? '0 4px 12px rgba(0,0,0,0.3)' 
-                        : '0 4px 12px rgba(0,0,0,0.08)',
-                    }
-                  }}
-                >
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography variant="subtitle1" fontWeight={700} gutterBottom>
-                      {question.question_text}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {question.question_type === 'text'
-                        ? 'Text Field'
-                        : `${question.question_type.charAt(0).toUpperCase() + question.question_type.slice(1)}: ${question.options?.join(', ')}`}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ display: 'flex', gap: 1, ml: 2 }}>
-                    <IconButton 
-                      color="primary" 
-                      onClick={() => handleEdit(question)}
-                      sx={{ 
-                        '&:hover': { 
-                          bgcolor: (t) => t.palette.mode === 'dark' 
-                            ? 'rgba(144, 202, 249, 0.08)' 
-                            : 'rgba(25, 118, 210, 0.08)' 
-                        }
-                      }}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton 
-                      color="error" 
-                      onClick={() => handleDelete(question._id)}
-                      sx={{ 
-                        '&:hover': { 
-                          bgcolor: (t) => t.palette.mode === 'dark' 
-                            ? 'rgba(244, 67, 54, 0.08)' 
-                            : 'rgba(211, 47, 47, 0.08)' 
-                        }
-                      }}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </Box>
-                </Paper>
-              ))}
+              {questions.map((question) => {
+                const hasMlMapping = question.ml_feature_mapping && question.ml_feature_mapping.feature_name;
+                const isRequired = question.ml_feature_mapping?.is_required;
+                const hasRenderConfig = question.render_config && question.render_config.type !== 'default';
+                
+                return (
+                  <Paper 
+                    key={question._id}
+                    sx={{ 
+                      p: 2.5,
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      justifyContent: 'space-between',
+                      transition: 'all 0.2s ease',
+                      borderLeft: hasMlMapping ? '4px solid' : 'none',
+                      borderLeftColor: isRequired ? 'success.main' : 'info.main',
+                      '&:hover': {
+                        boxShadow: (t) => t.palette.mode === 'dark' 
+                          ? '0 4px 12px rgba(0,0,0,0.3)' 
+                          : '0 4px 12px rgba(0,0,0,0.08)',
+                      }
+                    }}
+                  >
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography variant="subtitle1" fontWeight={700} gutterBottom>
+                        {question.question_text}
+                      </Typography>
+                      
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                        Type: {question.question_type === 'text' ? 'Text Field' :
+                               question.question_type === 'number' ? 'Number Field' :
+                               question.question_type === 'radio' ? 'Radio Buttons' :
+                               question.question_type === 'dropdown' ? 'Dropdown' :
+                               question.question_type === 'checkbox' ? 'Checkboxes' :
+                               question.question_type}
+                        {question.options && question.options.length > 0 && (
+                          <span> • Options: {question.options.join(', ')}</span>
+                        )}
+                      </Typography>
+                      
+                      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                        {hasMlMapping ? (
+                          <>
+                            <Chip 
+                              icon={<CheckCircleIcon />}
+                              label={`ML: ${question.ml_feature_mapping.feature_name}`}
+                              size="small"
+                              color={isRequired ? 'success' : 'info'}
+                              variant="outlined"
+                            />
+                            {isRequired && (
+                              <Chip 
+                                label="Required for Assessment" 
+                                size="small" 
+                                color="success"
+                              />
+                            )}
+                            {question.ml_feature_mapping.transformation && question.ml_feature_mapping.transformation !== 'none' && (
+                              <Chip 
+                                label={`Transform: ${question.ml_feature_mapping.transformation}`}
+                                size="small"
+                                variant="outlined"
+                              />
+                            )}
+                          </>
+                        ) : (
+                          <Chip 
+                            icon={<WarningIcon />}
+                            label="No ML Mapping"
+                            size="small"
+                            color="warning"
+                            variant="outlined"
+                          />
+                        )}
+                        
+                        {hasRenderConfig && (
+                          <Chip 
+                            label={`Custom Render: ${question.render_config.type}`}
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                          />
+                        )}
+                      </Stack>
+                    </Box>
+                    
+                    <Box sx={{ display: 'flex', gap: 1, ml: 2 }}>
+                      <IconButton 
+                        color="primary" 
+                        onClick={() => handleEdit(question)}
+                        sx={{ 
+                          '&:hover': { 
+                            bgcolor: (t) => t.palette.mode === 'dark' 
+                              ? 'rgba(144, 202, 249, 0.08)' 
+                              : 'rgba(25, 118, 210, 0.08)' 
+                          }
+                        }}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton 
+                        color="error" 
+                        onClick={() => handleDelete(question._id)}
+                        sx={{ 
+                          '&:hover': { 
+                            bgcolor: (t) => t.palette.mode === 'dark' 
+                              ? 'rgba(244, 67, 54, 0.08)' 
+                              : 'rgba(211, 47, 47, 0.08)' 
+                          }
+                        }}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Box>
+                  </Paper>
+                );
+              })}
+              
+              {/* ML Feature Coverage Summary */}
+              {questions.length > 0 && (
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom>
+                    ML Integration Status:
+                  </Typography>
+                  <Typography variant="body2">
+                    • Questions with ML mapping: <strong>{questions.filter(q => q.ml_feature_mapping?.feature_name).length} / {questions.length}</strong>
+                    <br />
+                    • Required questions: <strong>{questions.filter(q => q.ml_feature_mapping?.is_required).length}</strong>
+                    <br />
+                    • Custom rendering: <strong>{questions.filter(q => q.render_config && q.render_config.type !== 'default').length}</strong>
+                  </Typography>
+                </Alert>
+              )}
             </Box>
           )}
         </>

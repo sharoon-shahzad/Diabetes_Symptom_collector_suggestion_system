@@ -24,11 +24,16 @@ axiosInstance.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     
-    // Skip redirect for certain paths
-    const noRedirectPaths = ['/auth/login', '/auth/register', '/auth/refresh-token'];
-    const isNoRedirectPath = noRedirectPaths.some(path => originalRequest.url?.includes(path));
+    // Skip redirect and token refresh for public paths or when no token exists
+    const publicPaths = ['/auth/login', '/auth/register', '/auth/refresh-token', '/public', '/diseases/public', '/symptoms/public'];
+    const isPublicPath = publicPaths.some(path => originalRequest.url?.includes(path));
+    const hasToken = localStorage.getItem('accessToken');
     
-    if (error.response?.status === 401 && !originalRequest._retry && !isNoRedirectPath) {
+    // Only attempt token refresh if:
+    // 1. Not a public path
+    // 2. Not already retried
+    // 3. User has a token
+    if (error.response?.status === 401 && !originalRequest._retry && !isPublicPath && hasToken) {
       originalRequest._retry = true;
       try {
         // Try to refresh token

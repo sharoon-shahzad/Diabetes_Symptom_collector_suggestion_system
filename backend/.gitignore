@@ -67,5 +67,5 @@ chroma_db/
 *.md
 
 node_modules/
-*.sqlite3
+chroma_db/chroma.sqlite3
 .DS_Store

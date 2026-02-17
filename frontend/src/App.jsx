@@ -4,14 +4,17 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 import { Box } from '@mui/material';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { SettingsProvider } from './context/SettingsContext';
+import { OnboardingProvider } from './contexts/OnboardingContext';
 import { useTheme } from './contexts/useThemeContext';
 import LandingPage from './pages/LandingPage';
 import SignInSide from './pages/SignInSide';
 import SignUpSide from './pages/SignUpSide';
 import ActivateAccount from './pages/ActivateAccount';
 import Dashboard from './pages/Dashboard';
+import HabitsTracker from './pages/HabitsTracker';
 import Assessment from './pages/Assessment';
 import Onboarding from './pages/Onboarding';
+import DiagnosisQuestion from './pages/DiagnosisQuestion';
 import SymptomAssessment from './pages/SymptomAssessment';
 import AdminDashboard from './pages/AdminDashboard';
 import ForgotPassword from './pages/ForgotPassword';
@@ -23,6 +26,7 @@ import ComingSoonPage from './pages/ComingSoonPage';
 import ChatAssistant from './pages/ChatAssistant';
 import ArticlesPage from './pages/ArticlesPage';
 import DietPlanDashboard from './pages/DietPlanDashboard';
+import MonthlyDietPlanDashboard from './pages/MonthlyDietPlanDashboard';
 import ExercisePlanDashboard from './pages/ExercisePlanDashboard';
 import LifestyleTipsDashboard from './pages/LifestyleTipsDashboard';
 import LifestyleTipsView from './pages/LifestyleTipsView';
@@ -40,7 +44,7 @@ const AppContent = () => {
   const { isDarkMode } = useTheme();
   
   // Pages where we don't want the universal header
-  const noHeaderPages = ['/signin', '/signup', '/forgotpassword', '/reset-password', '/'];
+  const noHeaderPages = ['/signin', '/signup', '/forgotpassword', '/reset-password', '/', '/onboarding', '/diagnosis-question'];
   const shouldShowHeader = !noHeaderPages.includes(location.pathname) && 
                           !location.pathname.startsWith('/activate/') &&
                           !location.pathname.startsWith('/reset-password/') &&
@@ -60,7 +64,9 @@ const AppContent = () => {
           <Route path="/signup" element={<SignUpSide />} />
           <Route path="/activate/:token" element={<ActivateAccount />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/testing-dashboard/habits" element={<HabitsTracker />} />
           <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/diagnosis-question" element={<DiagnosisQuestion />} />
           <Route path="/symptom-assessment" element={<SymptomAssessment />} />
           <Route path="/assessment" element={<Assessment />} />
           <Route path="/feedback" element={<CommunityFeedbackDashboard />} />
@@ -76,6 +82,7 @@ const AppContent = () => {
           <Route path="/personalized-suggestions/personal-medical" element={<PersonalMedicalInfoPage />} />
           <Route path="/personalized-suggestions/chat-assistant" element={<ChatAssistant />} />
           <Route path="/personalized-suggestions/diet-plan" element={<DietPlanDashboard />} />
+          <Route path="/personalized-suggestions/monthly-diet-plan" element={<MonthlyDietPlanDashboard />} />
           <Route path="/personalized-suggestions/exercise-plan" element={<ExercisePlanDashboard />} />
           <Route path="/personalized-suggestions/lifestyle-tips" element={<LifestyleTipsDashboard />} />
           <Route path="/personalized-suggestions/lifestyle-tips-view/:tipsId" element={<LifestyleTipsView />} />
@@ -96,9 +103,12 @@ const App = () => {
   return (
     <ThemeProvider>
       <SettingsProvider>
-        <Router>
-          <AppContent />
-        </Router>
+      <SettingsProvider>
+        <OnboardingProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </OnboardingProvider>
       </SettingsProvider>
     </ThemeProvider>
   );

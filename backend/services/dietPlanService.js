@@ -754,6 +754,25 @@ Example of INCORRECT structure (DO NOT DO THIS):
     }
   }
 
+  /**
+   * Get a single diet plan by its ID
+   * @param {string} userId - User ID
+   * @param {string} planId - Plan ID
+   * @returns {Promise<Object|null>}
+   */
+  async getDietPlanById(userId, planId) {
+    try {
+      const plan = await DietPlan.findOne({
+        _id: planId,
+        user_id: userId,
+      });
+      return plan;
+    } catch (error) {
+      console.error('Error getting diet plan by ID:', error);
+      throw error;
+    }
+  }
+
   
   /**
    * Delete a diet plan

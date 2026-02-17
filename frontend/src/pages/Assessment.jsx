@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getCurrentUser } from '../utils/auth';
 import {
   Box,
   Typography,
@@ -10,7 +11,12 @@ import {
   Chip,
   LinearProgress,
   Container,
-  Paper
+  Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  DialogContentText
 } from '@mui/material';
 import {
   ArrowBack,
@@ -19,11 +25,12 @@ import {
   Assignment,
   Warning,
   CheckCircle,
-  Refresh
+  Refresh,
+  PlayArrow
 } from '@mui/icons-material';
 import { motion } from 'framer-motion';
 import Chart from 'react-apexcharts';
-import { assessDiabetesRisk } from '../utils/api';
+import { assessDiabetesRisk, getLatestDiabetesAssessment } from '../utils/api';
 
 const getRiskColor = (risk) => {
   const level = (risk || '').toLowerCase();
@@ -46,15 +53,99 @@ const Assessment = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchAssessmentData();
-  }, []);
+    const checkAuthAndFetch = async () => {
+      try {
+        // Check if user is authenticated
+        const token = localStorage.getItem('accessToken');
+        if (!token) {
+          navigate('/signin', { 
+            state: { 
+              message: 'Please sign in to view your risk assessment',
+              returnTo: '/assessment'
+            } 
+          });
+          return;
+        }
 
-  const fetchAssessmentData = async () => {
+        // Verify token is valid by fetching user
+        const user = await getCurrentUser();
+        if (!user) {
+          navigate('/signin', { 
+            state: { 
+              message: 'Session expired. Please sign in again.',
+              returnTo: '/assessment'
+            } 
+          });
+          return;
+        }
+
+        // Token is valid, fetch assessment
+        fetchAssessmentData();
+      } catch (err) {
+        console.error('Auth check error:', err);
+        navigate('/signin', { 
+          state: { 
+            message: 'Authentication error. Please sign in again.',
+            returnTo: '/assessment'
+          } 
+        });
+      }
+    };
+
+    checkAuthAndFetch();
+  }, [navigate]);
+
+  const fetchAssessmentData = async (forceNew = false) => {
     try {
       setLoading(true);
       setError('');
 
-      const response = await assessDiabetesRisk();
+      let response;
+      
+      if (forceNew) {
+        // Explicitly force a new assessment
+        console.log('🔄 Running new assessment (force_new=true)...');
+        response = await assessDiabetesRisk(true);
+        // Allow showing assessment insight popup once when user returns to dashboard
+        if (response && response.is_cached === false) {
+          sessionStorage.setItem('assessmentPopupPostLogin', 'true');
+        }
+      } else {
+        // Try to get cached assessment first
+        console.log('📊 Attempting to fetch cached assessment...');
+        try {
+          response = await getLatestDiabetesAssessment();
+          console.log('✅ Cached assessment found:', response);
+        } catch (cacheError) {
+          // If no cached assessment exists, automatically run first assessment
+          console.log('⚠️ No cached assessment found. Running first assessment...');
+          console.log('Cache error:', cacheError.response?.data || cacheError.message);
+          response = await assessDiabetesRisk(false);
+          console.log('✅ First assessment completed:', response);
+          // Allow showing assessment insight popup once when user returns to dashboard
+          if (response && response.is_cached === false) {
+            sessionStorage.setItem('assessmentPopupPostLogin', 'true');
+          }
+        }
+      }
+      
+      // Validate response structure
+      if (!response) {
+        console.error('❌ No response received from assessment API');
+        setError('No response from server. Please try again.');
+        setLoading(false);
+        return;
+      }
+      
+      console.log('📦 Assessment response:', response);
+      
+      if (!response.has_assessment && !response.result) {
+        console.error('❌ Invalid response structure:', response);
+        setError('Please complete the symptom questionnaire first, then return here to view your results.');
+        setLoading(false);
+        return;
+      }
+      
       const result = response?.result || {};
       const features = response?.features || {};
 
@@ -87,6 +178,15 @@ const Assessment = () => {
       };
 
       setAssessmentData(normalized);
+      
+      // Clear all temporary onboarding storage after successful assessment load
+      sessionStorage.removeItem('pendingOnboardingAnswers');
+      sessionStorage.removeItem('onboardingState');
+      sessionStorage.removeItem('returnToSymptomAssessment');
+      sessionStorage.removeItem('answersSavedAfterLogin');
+      localStorage.removeItem('onboardingState');
+      localStorage.removeItem('redirectAfterLogin');
+      console.log('🧹 Cleared all temporary storage after loading assessment');
     } catch (err) {
       console.error('Assessment fetch error:', err);
       setError(err.response?.data?.message || 'Failed to fetch assessment data');
@@ -242,19 +342,21 @@ const Assessment = () => {
             <Typography variant="h6" sx={{ fontWeight: 900, color: 'white', letterSpacing: -0.3 }}>
               Comprehensive Analytics Dashboard
             </Typography>
-            <Button
-              startIcon={<Refresh />}
-              onClick={fetchAssessmentData}
-              sx={{
-                background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
-                color: 'white',
-                fontWeight: 800,
-                px: 3,
-                '&:hover': { background: 'linear-gradient(135deg, #7c3aed, #4f46e5)' }
-              }}
-            >
-              Refresh
-            </Button>
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              <Button
+                startIcon={<Refresh />}
+                onClick={() => fetchAssessmentData(false)}
+                sx={{
+                  background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+                  color: 'white',
+                  fontWeight: 800,
+                  px: 3,
+                  '&:hover': { background: 'linear-gradient(135deg, #16a34a, #15803d)' }
+                }}
+              >
+                Refresh
+              </Button>
+            </Box>
           </Box>
         </Container>
       </Box>

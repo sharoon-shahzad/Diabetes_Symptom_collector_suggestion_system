@@ -3,6 +3,7 @@ import {
   Drawer,
   List,
   ListItem,
+  ListItemButton,
   ListItemIcon,
   ListItemText,
   Typography,
@@ -10,8 +11,6 @@ import {
   Box,
   Button,
 } from '@mui/material';
-import { alpha } from '@mui/material/styles';
-import LogoutIcon from '@mui/icons-material/Logout';
 import ThemeToggle from '../components/Common/ThemeToggle';
 
 const drawerWidth = 220;
@@ -48,74 +47,35 @@ export default function MobileDrawer({
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          background: '#ffffff',
-          borderRight: '1px solid #e5e7eb',
-          overflowX: 'hidden',
-          overflowY: 'auto',
-          scrollbarWidth: 'none',
-          '-ms-overflow-style': 'none',
-          '&::-webkit-scrollbar': { display: 'none' },
+          background: (t) => t.palette.mode === 'dark' ? '#1a1a1a' : '#ffffff',
+          borderRight: (t) => `1px solid ${t.palette.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)'}`,
         },
       }}
     >
       <Box>
         {/* User Profile Header */}
-        <Box 
-          sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: 1.5, 
-            px: 2,
-            py: 2.5,
-            mb: 3,
-            borderRadius: 2,
-            background: (t) => alpha(t.palette.primary.main, 0.04),
-            border: (t) => `1px solid ${alpha(t.palette.primary.main, 0.12)}`,
-          }}
-        >
-          <Avatar 
-            sx={{ 
-              width: 44,
-              height: 44,
-              background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`,
-              fontWeight: 700,
-              fontSize: '1.2rem',
-            }}
-          >
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 1.5, py: 2, mb: 3 }}>
+          <Avatar sx={{ width: 40, height: 40, background: (t) => `linear-gradient(135deg, ${t.palette.primary.main}, ${t.palette.secondary.main})`, fontWeight: 700 }}>
             {user?.fullName?.[0]?.toUpperCase() || 'U'}
           </Avatar>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="body2" fontWeight={700} sx={{ color: 'text.primary', mb: 0.25 }}>
-              {user?.fullName || 'User'}
-            </Typography>
-            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
-              Dashboard
-            </Typography>
+            <Typography variant="body2" fontWeight={700}>{user?.fullName || 'User'}</Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>Dashboard</Typography>
           </Box>
         </Box>
         
         {/* Navigation Menu */}
         <List sx={{ px: 0 }}>
           {sections.map((sec, index) => (
-            <ListItem 
-              button 
-              key={sec.label} 
-              selected={selectedIndex === index} 
-              onClick={() => handleSectionClick(index)} 
-              sx={{ 
-                borderRadius: 2,
-                mb: 1,
-                px: 2,
-                py: 1.5,
-                '&.Mui-selected': {
-                  bgcolor: (t) => alpha(t.palette.primary.main, 0.08),
-                  '& .MuiListItemIcon-root': { color: 'primary.main' },
-                  '& .MuiListItemText-primary': { color: 'primary.main', fontWeight: 700 },
-                },
-              }}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>{sec.icon}</ListItemIcon>
-              <ListItemText primary={sec.label} primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9rem' }} />
+            <ListItem disablePadding key={sec.label}>
+              <ListItemButton
+                selected={selectedIndex === index}
+                onClick={() => handleSectionClick(index)}
+                sx={{ borderRadius: 1.5, mb: 0.5, px: 1.5, py: 1.25, '&.Mui-selected': { bgcolor: (t) => t.palette.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)', '& .MuiListItemIcon-root': { color: 'primary.main' } } }}
+              >
+                <ListItemIcon sx={{ minWidth: 36 }}>{sec.icon}</ListItemIcon>
+                <ListItemText primary={sec.label} primaryTypographyProps={{ fontWeight: 600, fontSize: '0.9rem' }} />
+              </ListItemButton>
             </ListItem>
           ))}
         </List>
@@ -124,16 +84,7 @@ export default function MobileDrawer({
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 2, mb: 1 }}>
           <ThemeToggle size="medium" />
         </Box>
-        <Button 
-          fullWidth 
-          variant="outlined" 
-          color="error" 
-          startIcon={<LogoutIcon />} 
-          onClick={onLogout} 
-          sx={{ borderRadius: 2, fontWeight: 700, py: 1.5 }}
-        >
-          Logout
-        </Button>
+        <Button fullWidth variant="text" color="error" onClick={onLogout} sx={{ borderRadius: 1.5, fontWeight: 600, py: 1.25 }}>Logout</Button>
       </Box>
     </Drawer>
   );

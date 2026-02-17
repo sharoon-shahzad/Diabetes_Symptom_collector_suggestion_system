@@ -155,29 +155,49 @@ export default function DiseaseDataSection({
 
         <Divider sx={{ mb: 3 }} />
 
-        {/* Disease/Symptoms Info */}
+        {/* Disease/Symptoms Info - Questions & Answers */}
         {diseaseData.symptoms?.length ? (
           <Box>
             <Typography variant="h6" fontWeight={900} sx={{ mb: 3 }}>
               Symptom Details
             </Typography>
             {diseaseData.symptoms.map((symptom, idx) => (
-              <Box 
-                key={idx}
-                sx={{ 
-                  mb: 2,
-                  p: 2,
-                  borderRadius: 2,
-                  background: (t) => alpha(t.palette.action.hover, 0.02),
-                  border: (t) => `1px solid ${t.palette.divider}`,
-                }}
-              >
-                <Typography variant="body1" fontWeight={600}>
-                  {symptom.symptom || 'N/A'}
+              <Box key={idx} sx={{ mb: 3 }}>
+                {/* Symptom Name Header */}
+                <Typography 
+                  variant="subtitle1" 
+                  fontWeight={700} 
+                  sx={{ 
+                    mb: 1.5,
+                    color: 'primary.main',
+                    textTransform: 'uppercase',
+                    fontSize: '0.9rem',
+                    letterSpacing: 0.5
+                  }}
+                >
+                  {symptom.name || 'Unknown Symptom'}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {symptom.description || 'No description provided'}
-                </Typography>
+                
+                {/* Questions under this symptom */}
+                {symptom.questions?.map((qa, qIdx) => (
+                  <Box 
+                    key={qIdx}
+                    sx={{ 
+                      mb: 1.5,
+                      p: 2,
+                      borderRadius: 2,
+                      background: (t) => alpha(t.palette.action.hover, 0.02),
+                      border: (t) => `1px solid ${t.palette.divider}`,
+                    }}
+                  >
+                    <Typography variant="body1" fontWeight={600} sx={{ mb: 0.5 }}>
+                      {qa.question || 'Question not available'}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Answer: {qa.answer || 'No answer provided'}
+                    </Typography>
+                  </Box>
+                ))}
               </Box>
             ))}
           </Box>

@@ -59,52 +59,13 @@ class LifestyleTipsService {
       const prompt = this.buildLifestylePrompt(personalInfo, medicalInfo, guidelinesContext, targetDate);
       console.log(`📝 Prompt built, length: ${prompt.length}`);
 
-      // Call LM Studio (with graceful fallback)
-      let parsedTips;
-      let source = 'lm-studio';
-      try {
-        console.log(`🤖 Calling LM Studio...`);
-        const aiResponse = await this.callLMStudio(prompt);
-        console.log(`✅ LM Studio response received, length: ${aiResponse.length}`);
-        parsedTips = this.parseLifestyleTips(aiResponse);
-        console.log(`✅ Tips parsed successfully:`, JSON.stringify(parsedTips, null, 2));
-      } catch (e) {
-        console.warn('⚠️ LM Studio unavailable, using fallback tips');
-        console.error('LM Studio error:', e.message);
-        // Build a minimal parsedTips using fallback
-        parsedTips = {
-          categories: [
-            { name: 'sleep_hygiene', icon: '💤', tips: [
-              { title: 'Maintain consistent bedtime', description: 'Aim for 7-8 hours of sleep at the same time daily to help regulate blood sugar.', priority: 'high' },
-              { title: 'Create a calming routine', description: 'Reduce screens 1 hour before bed and avoid caffeine after 2 PM.', priority: 'medium' },
-              { title: 'Optimize sleep environment', description: 'Keep your bedroom dark, quiet, and cool (60-67°F).', priority: 'medium' },
-            ]},
-            { name: 'stress_management', icon: '🧘', tips: [
-              { title: 'Practice deep breathing', description: 'Do 5-10 minutes of diaphragmatic breathing when stressed to lower cortisol.', priority: 'high' },
-              { title: 'Take mindful breaks', description: 'Step away from tasks every 90 minutes for a 2-minute mental reset.', priority: 'medium' },
-              { title: 'Light physical activity', description: 'A 10-minute walk helps reduce stress and improve insulin sensitivity.', priority: 'medium' },
-            ]},
-            { name: 'nutrition', icon: '🥗', tips: [
-              { title: 'Balanced meals', description: 'Include protein, fiber, and healthy fats in each meal to stabilize blood sugar.', priority: 'high' },
-              { title: 'Portion awareness', description: 'Use smaller plates and measure portions to avoid overeating.', priority: 'medium' },
-            ]},
-            { name: 'activity', icon: '🚶', tips: [
-              { title: 'Daily movement', description: 'Aim for 30 minutes of moderate activity most days of the week.', priority: 'high' },
-              { title: 'Break up sitting', description: 'Stand or walk for 2-3 minutes every 30 minutes during sedentary periods.', priority: 'medium' },
-            ]},
-            { name: 'monitoring', icon: '📊', tips: [
-              { title: 'Regular glucose checks', description: 'Monitor blood sugar as prescribed and log patterns.', priority: 'high' },
-              { title: 'Track symptoms', description: 'Note any unusual symptoms or patterns to discuss with your healthcare team.', priority: 'medium' },
-            ]},
-          ],
-          personalized_insights: [
-            'Consistent daily routines help maintain stable blood sugar levels.',
-            'Managing stress through mindfulness can reduce unexpected glucose spikes.',
-            'Small, frequent healthy habits are more effective than occasional major changes.',
-          ],
-        };
-        source = 'fallback';
-      }
+      // Call LM Studio - NO FALLBACK
+      console.log(`🤖 Calling LM Studio...`);
+      const aiResponse = await this.callLMStudio(prompt);
+      console.log(`✅ LM Studio response received, length: ${aiResponse.length}`);
+      const parsedTips = this.parseLifestyleTips(aiResponse);
+      console.log(`✅ Tips parsed successfully:`, JSON.stringify(parsedTips, null, 2));
+      const source = 'lm-studio';
 
       // Validate parsed tips
       if (!parsedTips || !parsedTips.categories || parsedTips.categories.length === 0) {
@@ -149,7 +110,7 @@ class LifestyleTipsService {
 
   async queryRegionalLifestyleGuidelines(region) {
     try {
-      const results = await processQuery(
+      const response = await processQuery(
         `lifestyle tips guidelines and daily habits for diabetes management in ${region}`,
         {
           topK: 10,
@@ -157,15 +118,15 @@ class LifestyleTipsService {
         }
       );
 
+      const results = response.results || [];
+
       return {
-        chunks: results.chunks || [],
-        sources: results.metadata
-          ? results.metadata.map((meta, idx) => ({
-              title: meta.title || 'Lifestyle Guideline',
-              country: region,
-              doc_type: 'lifestyle_guideline',
-            }))
-          : [],
+        chunks: results.map(r => r.text || ''),
+        sources: results.map(r => ({
+          title: r.chunk_metadata?.title || 'Lifestyle Guideline',
+          country: r.chunk_metadata?.country || region,
+          doc_type: r.chunk_metadata?.doc_type || 'lifestyle_guideline',
+        })),
       };
     } catch (error) {
       console.warn('Failed to query regional guidelines, using fallback:', error.message);

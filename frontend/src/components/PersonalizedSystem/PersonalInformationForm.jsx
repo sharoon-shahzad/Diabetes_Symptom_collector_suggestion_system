@@ -53,6 +53,8 @@ const PersonalInformationForm = () => {
         country_code: '',
         phone_number: '',
         height: '',
+        heightFeet: '',
+        heightInches: '',
         weight: '',
         activity_level: '',
         dietary_preference: '',
@@ -87,6 +89,14 @@ const PersonalInformationForm = () => {
             const response = await axiosInstance.get('/personalized-system/personal-info');
             if (response.data.success) {
                 const data = response.data.data;
+                // Convert height from cm to feet and inches if available
+                let heightFeet = '';
+                let heightInches = '';
+                if (data.height) {
+                    const totalInches = data.height / 2.54;
+                    heightFeet = Math.floor(totalInches / 12);
+                    heightInches = Math.round(totalInches % 12);
+                }
                 setFormData({
                     // Use gender and DOB from User model if not already set in UserPersonalInfo
                     date_of_birth: data.date_of_birth 
@@ -97,6 +107,8 @@ const PersonalInformationForm = () => {
                     country_code: data.country_code || '',
                     phone_number: data.phone_number || '',
                     height: data.height || '',
+                    heightFeet: heightFeet,
+                    heightInches: heightInches,
                     weight: data.weight || '',
                     activity_level: data.activity_level || '',
                     dietary_preference: data.dietary_preference || '',
@@ -429,14 +441,20 @@ const PersonalInformationForm = () => {
                                             helperText={formData.country_code ? `Phone format: ${formData.country_code} XXXXXXXXXX` : 'Select country first to see code'}
                                         />
                                     </Grid>
-                                    <Grid item xs={12} sm={6}>
+                                    <Grid item xs={12} sm={3}>
                                         <TextField
+                                            select
                                             fullWidth
                                             required
-                                            type="number"
-                                            label="Height"
-                                            value={formData.height}
-                                            onChange={(e) => handleChange('height', e.target.value)}
+                                            label="Height (ft)"
+                                            value={formData.heightFeet || ''}
+                                            onChange={(e) => {
+                                                handleChange('heightFeet', e.target.value);
+                                                const feet = parseFloat(e.target.value) || 0;
+                                                const inches = parseFloat(formData.heightInches) || 0;
+                                                const totalCm = Math.round((feet * 30.48) + (inches * 2.54));
+                                                handleChange('height', totalCm);
+                                            }}
                                             sx={{ width: '100%' }}
                                             InputProps={{
                                                 startAdornment: (
@@ -444,13 +462,33 @@ const PersonalInformationForm = () => {
                                                         <HeightIcon color="action" />
                                                     </InputAdornment>
                                                 ),
-                                                endAdornment: (
-                                                    <InputAdornment position="end">
-                                                        <Chip label="cm" size="small" />
-                                                    </InputAdornment>
-                                                ),
                                             }}
-                                        />
+                                        >
+                                            {[3, 4, 5, 6, 7, 8].map(ft => (
+                                                <MenuItem key={ft} value={ft}>{ft} ft</MenuItem>
+                                            ))}
+                                        </TextField>
+                                    </Grid>
+                                    <Grid item xs={12} sm={3}>
+                                        <TextField
+                                            select
+                                            fullWidth
+                                            required
+                                            label="Height (in)"
+                                            value={formData.heightInches || ''}
+                                            onChange={(e) => {
+                                                handleChange('heightInches', e.target.value);
+                                                const feet = parseFloat(formData.heightFeet) || 0;
+                                                const inches = parseFloat(e.target.value) || 0;
+                                                const totalCm = Math.round((feet * 30.48) + (inches * 2.54));
+                                                handleChange('height', totalCm);
+                                            }}
+                                            sx={{ width: '100%' }}
+                                        >
+                                            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(inch => (
+                                                <MenuItem key={inch} value={inch}>{inch} in</MenuItem>
+                                            ))}
+                                        </TextField>
                                     </Grid>
                                     <Grid item xs={12} sm={6}>
                                         <TextField

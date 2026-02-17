@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   Box, Card, CardContent, Typography, Chip, Grid, Stack, Divider, Paper, 
-  LinearProgress, Avatar, IconButton, Collapse, Badge, Tooltip
+  LinearProgress, Avatar, IconButton, Collapse, Badge, Tooltip, Button
 } from '@mui/material';
 import { useDateFormat } from '../hooks/useDateFormat';
 import {
@@ -53,15 +53,24 @@ const getExerciseEmoji = (category) => {
 
 const ExercisePlanView = ({ plan }) => {
   const { formatDate } = useDateFormat();
-  const [expandedSessions, setExpandedSessions] = useState({});
+  const [showDetails, setShowDetails] = useState(false);
 
   if (!plan) return null;
 
   const { region, totals, sessions, sources, tips, target_date } = plan;
 
-  const toggleSession = (idx) => {
-    setExpandedSessions(prev => ({ ...prev, [idx]: !prev[idx] }));
-  };
+  // Flatten all exercises from all sessions into one list
+  const allExercises = [];
+  sessions?.forEach((session, sessionIdx) => {
+    session.items?.forEach((item, itemIdx) => {
+      allExercises.push({
+        ...item,
+        sessionName: session.name,
+        sessionTime: session.time,
+        exerciseNumber: allExercises.length + 1
+      });
+    });
+  });
 
   return (
     <Box>
@@ -79,355 +88,261 @@ const ExercisePlanView = ({ plan }) => {
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between">
           <Box>
             <Typography variant="h5" fontWeight={700} sx={{ mb: 1, color: '#1e293b' }}>
-              Your Exercise Plan
+              Today's Exercise Plan
             </Typography>
             <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
+              <Chip 
+                label={region} 
+                label={formatDate(target_date)} 
+                size="small"
+                sx={{ bgcolor: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0', fontWeight: 500 }} 
+              />
               <Chip 
                 label={region} 
                 size="small"
                 sx={{ bgcolor: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0', fontWeight: 500 }} 
               />
               <Chip 
-                label={formatDate(target_date)} 
+                label={`${totals?.sessions_count || 0} Sessions`} 
                 size="small"
-                sx={{ bgcolor: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0', fontWeight: 500 }} 
+                sx={{ bgcolor: '#f0f4ff', color: '#667eea', border: '1px solid #e2e8f0', fontWeight: 600 }} 
+              />
+              <Chip 
+                label={`${totals?.duration_total_min || 0} min Total`} 
+                size="small"
+                sx={{ bgcolor: '#fef3f2', color: '#f5576c', border: '1px solid #fecaca', fontWeight: 600 }} 
+              />
+              <Chip 
+                label={`${Math.round(totals?.calories_total || 0)} kcal`} 
+                size="small"
+                sx={{ bgcolor: '#f0fdfa', color: '#14b8a6', border: '1px solid #ccfbf1', fontWeight: 600 }} 
               />
             </Stack>
           </Box>
+          <Button
+            variant={showDetails ? 'contained' : 'outlined'}
+            size="small"
+            onClick={() => setShowDetails(!showDetails)}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 600,
+              borderColor: '#e2e8f0',
+              color: showDetails ? '#ffffff' : '#64748b',
+              bgcolor: showDetails ? '#667eea' : 'transparent',
+              '&:hover': {
+                borderColor: '#667eea',
+                bgcolor: showDetails ? '#5568d3' : '#f0f4ff',
+                color: showDetails ? '#ffffff' : '#667eea'
+              }
+            }}
+          >
+            {showDetails ? 'Hide Details' : 'View Details'}
+          </Button>
         </Stack>
       </Paper>
 
-      <Grid container spacing={2}>
-        {/* Summary Section - Left Side */}
-        <Grid item xs={12} md={7}>
-          <Card 
-            elevation={0}
-            sx={{ 
-              borderRadius: 3, 
-              border: '1px solid #e2e8f0',
-              bgcolor: '#ffffff'
-            }}
-          >
-            <CardContent sx={{ p: 4 }}>
-              <Typography variant="h6" sx={{ color: '#1e293b', fontWeight: 600, mb: 4 }}>Summary</Typography>
-              
-              <Grid container spacing={3}>
-                <Grid item xs={12} sm={4}>
-                  <Box sx={{ textAlign: 'center', p: 3, borderRadius: 2, bgcolor: '#f0f4ff', minHeight: 180, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <Box sx={{ 
-                      width: 64, 
-                      height: 64, 
-                      borderRadius: 2, 
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      margin: '0 auto',
-                      mb: 2
-                    }}>
-                      <FitnessCenterIcon sx={{ fontSize: 32, color: '#ffffff' }} />
-                    </Box>
-                    <Typography variant="h4" fontWeight={700} sx={{ color: '#1e293b', mb: 0.5 }}>
-                      {totals?.sessions_count || 0}
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 500 }}>Sessions</Typography>
-                  </Box>
-                </Grid>
-
-                <Grid item xs={12} sm={4}>
-                  <Box sx={{ textAlign: 'center', p: 3, borderRadius: 2, bgcolor: '#fef3f2', minHeight: 180, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <Box sx={{ 
-                      width: 64, 
-                      height: 64, 
-                      borderRadius: 2, 
-                      background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      margin: '0 auto',
-                      mb: 2
-                    }}>
-                      <TimerIcon sx={{ fontSize: 32, color: '#ffffff' }} />
-                    </Box>
-                    <Typography variant="h4" fontWeight={700} sx={{ color: '#1e293b', mb: 0.5 }}>
-                      {totals?.duration_total_min || 0}
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 500 }}>Minutes</Typography>
-                  </Box>
-                </Grid>
-
-                <Grid item xs={12} sm={4}>
-                  <Box sx={{ textAlign: 'center', p: 3, borderRadius: 2, bgcolor: '#f0fdfa', minHeight: 180, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <Box sx={{ 
-                      width: 64, 
-                      height: 64, 
-                      borderRadius: 2, 
-                      background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center',
-                      margin: '0 auto',
-                      mb: 2
-                    }}>
-                      <CaloriesIcon sx={{ fontSize: 28, color: '#ffffff' }} />
-                    </Box>
-                    <Typography variant="h4" fontWeight={700} sx={{ color: '#1e293b', mb: 0.5 }}>
-                      {Math.round(totals?.calories_total || 0)}
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: '#64748b', fontWeight: 500 }}>Calories</Typography>
-                  </Box>
-                </Grid>
-              </Grid>
-
-              {/* Progress visualization */}
-              <Box sx={{ mt: 3 }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
-                  <Typography variant="caption" fontWeight={600} sx={{ color: '#64748b' }}>Progress</Typography>
-                  <Typography variant="caption" fontWeight={600} sx={{ color: '#667eea' }}>0%</Typography>
-                </Stack>
-                <LinearProgress 
-                  variant="determinate" 
-                  value={0} 
-                  sx={{ 
-                    height: 6, 
-                    borderRadius: 3,
-                    bgcolor: '#f1f5f9',
-                    '& .MuiLinearProgress-bar': {
-                      background: 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
-                      borderRadius: 3
-                    }
-                  }} 
-                />
-                <Typography variant="caption" sx={{ color: '#64748b', mt: 1, display: 'block' }}>
-                  Complete sessions to track progress
-                </Typography>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Sources Section - Right Side */}
-        <Grid item xs={12} md={5}>
-          {sources?.length > 0 && (
-            <Card 
-              elevation={0} 
-              sx={{ 
-                borderRadius: 3, 
-                border: '1px solid #e2e8f0', 
-                bgcolor: '#ffffff',
-                position: 'sticky',
-                top: 16,
-                height: '100%'
-              }}
-            >
-              <CardContent sx={{ p: 4, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                <Typography variant="h6" sx={{ color: '#1e293b', fontWeight: 600, mb: 4 }}>Sources</Typography>
-                <Divider sx={{ mb: 3 }} />
-                <Stack spacing={1.5}>
-                  {sources.map((source, i) => (
-                    <Box 
-                      key={i}
-                      sx={{
-                        p: 2,
-                        borderRadius: 2,
-                        bgcolor: '#f8fafc',
-                        border: '1px solid #e2e8f0'
-                      }}
-                    >
-                      <Typography variant="body2" fontWeight={600} sx={{ color: '#1e293b', mb: 0.5 }}>
-                        {source.title}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: '#64748b' }}>
-                        {source.country}
-                      </Typography>
-                    </Box>
-                  ))}
-                </Stack>
-              </CardContent>
-            </Card>
-          )}
-        </Grid>
-
-        {/* Exercise Sessions - Full Width */}
-        <Grid item xs={12}>
+      {/* Simple Exercise List */}
+      <Card 
+        elevation={0}
+        sx={{ 
+          borderRadius: 3, 
+          border: '1px solid #e2e8f0',
+          bgcolor: '#ffffff',
+          mb: 3
+        }}
+      >
+        <CardContent sx={{ p: 4 }}>
+          <Typography variant="h6" sx={{ color: '#1e293b', fontWeight: 600, mb: 3 }}>
+            Your Exercises ({allExercises.length} total)
+          </Typography>
+          
           <Stack spacing={2}>
-            {sessions?.map((session, idx) => {
-              const sessionColors = [
-                { bg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', border: '#667eea' },
-                { bg: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', border: '#f093fb' },
-                { bg: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', border: '#4facfe' }
-              ];
-              const colorScheme = sessionColors[idx % sessionColors.length];
-              
-              return (
-              <Card 
+            {allExercises.map((exercise, idx) => (
+              <Paper
                 key={idx}
                 elevation={0}
-                sx={{ 
-                  borderRadius: 3,
-                  border: `2px solid ${colorScheme.border}30`,
-                  overflow: 'hidden',
-                  bgcolor: '#ffffff'
+                sx={{
+                  p: 3,
+                  borderRadius: 2,
+                  border: '1px solid #e2e8f0',
+                  bgcolor: '#f8fafc',
+                  transition: 'all 0.2s',
+                  '&:hover': {
+                    borderColor: '#667eea',
+                    bgcolor: '#f0f4ff'
+                  }
                 }}
               >
-                <Box 
-                  sx={{ 
-                    p: 2.5, 
-                    background: colorScheme.bg,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between'
-                  }}
-                  onClick={() => toggleSession(idx)}
-                >
-                  <Stack direction="row" alignItems="center" spacing={2}>
-                    <Box>
-                      <Typography variant="h6" fontWeight={700} sx={{ color: '#ffffff', mb: 0.5 }}>
-                        {session.name}
-                      </Typography>
-                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" gap={0.5}>
-                        <Chip 
-                          label={session.type} 
-                          size="small" 
-                          sx={{ bgcolor: 'rgba(255,255,255,0.25)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 600, height: 24 }} 
-                        />
-                        {session.time && (
-                          <Chip 
-                            label={session.time} 
-                            size="small" 
-                            sx={{ bgcolor: 'rgba(255,255,255,0.25)', color: '#ffffff', border: '1px solid rgba(255,255,255,0.3)', fontWeight: 600, height: 24 }} 
-                          />
-                        )}
-                        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.95)', fontWeight: 500 }}>
-                          {session.items?.length || 0} exercises
-                        </Typography>
-                      </Stack>
+                <Grid container spacing={2} alignItems="center">
+                  {/* Exercise Number Badge */}
+                  <Grid item xs={12} sm="auto">
+                    <Box
+                      sx={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 700,
+                        fontSize: '1.2rem',
+                        color: '#ffffff'
+                      }}
+                    >
+                      {exercise.exerciseNumber}
                     </Box>
-                  </Stack>
-                  <IconButton 
-                    size="small"
-                    sx={{ 
-                      transform: expandedSessions[idx] ? 'rotate(180deg)' : 'rotate(0deg)',
-                      transition: 'transform 0.3s ease',
-                      color: '#ffffff',
-                      bgcolor: 'rgba(255,255,255,0.15)',
-                      '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' }
-                    }}
-                  >
-                    <ExpandMoreIcon />
-                  </IconButton>
-                </Box>
+                  </Grid>
 
-                <Collapse in={expandedSessions[idx]} timeout="auto">
-                  <CardContent sx={{ bgcolor: '#ffffff', p: 2 }}>
-                    <Stack spacing={2}>
-                      {session.items?.map((item, j) => (
-                        <Paper
-                          key={j}
-                          elevation={0}
-                          sx={{
-                            p: 2,
-                            borderRadius: 2,
-                            border: '1px solid #e2e8f0',
-                            bgcolor: '#f8fafc'
-                          }}
-                        >
-                          <Typography variant="subtitle2" fontWeight={600} sx={{ color: '#1e293b', mb: 1.5 }}>
-                            {item.exercise}
-                          </Typography>
-                          
-                          <Stack direction="row" spacing={1} flexWrap="wrap" gap={1} mb={2}>
-                            <Chip 
-                              label={item.category} 
-                              size="small" 
-                              sx={{ bgcolor: '#ffffff', color: '#64748b', border: '1px solid #e2e8f0', fontWeight: 500 }} 
-                            />
-                            <Chip 
-                              label={item.intensity} 
-                              size="small"
-                              sx={{ 
-                                bgcolor: '#ffffff',
-                                color: getIntensityColor(item.intensity),
-                                border: `1px solid ${getIntensityColor(item.intensity)}`,
-                                fontWeight: 500
-                              }}
-                            />
-                            <Chip 
-                              label={`${item.duration_min} min`} 
-                              size="small" 
-                              sx={{ bgcolor: '#ffffff', color: '#64748b', border: '1px solid #e2e8f0', fontWeight: 500 }} 
-                            />
-                            {item.mets && (
-                              <Chip 
-                                label={`${item.mets} METs`} 
-                                size="small" 
-                                sx={{ bgcolor: '#ffffff', color: '#64748b', border: '1px solid #e2e8f0', fontWeight: 500 }} 
-                              />
-                            )}
-                            {item.estimated_calories && (
-                              <Chip 
-                                label={`${item.estimated_calories} kcal`} 
-                                size="small" 
-                                sx={{ bgcolor: '#ffffff', color: '#64748b', border: '1px solid #e2e8f0', fontWeight: 500 }} 
-                              />
-                            )}
-                          </Stack>
-
-                          {item.precautions?.length > 0 && (
-                            <Box sx={{ p: 1.5, bgcolor: '#fffbeb', borderRadius: 2, border: '1px solid #fde68a' }}>
-                              <Stack direction="row" spacing={1} alignItems="flex-start">
-                                <WarningIcon sx={{ color: '#f59e0b', fontSize: 18, mt: 0.2 }} />
-                                <Box>
-                                  <Typography variant="caption" fontWeight={600} sx={{ color: '#92400e', display: 'block', mb: 0.5 }}>
-                                    Precautions
-                                  </Typography>
-                                  <Typography variant="body2" sx={{ color: '#78350f', fontSize: '0.8rem' }}>
-                                    {item.precautions.join(', ')}
-                                  </Typography>
-                                </Box>
-                              </Stack>
-                            </Box>
-                          )}
-                        </Paper>
-                      ))}
-                    </Stack>
-                  </CardContent>
-                </Collapse>
-              </Card>
-              );
-            })}
-
-            {/* Tips Card */}
-            {tips?.length > 0 && (
-              <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid #e2e8f0', bgcolor: '#ffffff' }}>
-                <CardContent>
-                  <Typography variant="subtitle2" sx={{ color: '#64748b', fontWeight: 600, mb: 2 }}>Tips</Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  <Stack spacing={1.5}>
-                    {tips.map((tip, i) => (
-                      <Paper
-                        key={i}
-                        elevation={0}
-                        sx={{
-                          p: 1.5,
-                          bgcolor: '#f8fafc',
-                          borderLeft: '3px solid #1e293b',
-                          borderRadius: 1
+                  {/* Exercise Info */}
+                  <Grid item xs={12} sm>
+                    <Typography variant="h6" fontWeight={700} sx={{ color: '#1e293b', mb: 1 }}>
+                      {exercise.exercise}
+                    </Typography>
+                    
+                    <Stack direction="row" spacing={1} flexWrap="wrap" gap={1} mb={showDetails ? 2 : 0}>
+                      <Chip 
+                        label={exercise.category} 
+                        size="small" 
+                        sx={{ bgcolor: '#ffffff', color: '#64748b', border: '1px solid #e2e8f0', fontWeight: 500, height: 24, fontSize: '0.75rem' }} 
+                      />
+                      <Chip 
+                        label={`${exercise.duration_min} min`} 
+                        size="small" 
+                        sx={{ bgcolor: '#fef3f2', color: '#f5576c', border: '1px solid #fecaca', fontWeight: 600, height: 24, fontSize: '0.75rem' }} 
+                      />
+                      <Chip 
+                        label={exercise.intensity} 
+                        size="small"
+                        sx={{ 
+                          bgcolor: '#ffffff',
+                          color: getIntensityColor(exercise.intensity),
+                          border: `1px solid ${getIntensityColor(exercise.intensity)}`,
+                          fontWeight: 600,
+                          height: 24,
+                          fontSize: '0.75rem'
                         }}
-                      >
-                        <Typography variant="body2" sx={{ color: '#475569', fontWeight: 500 }}>
-                          {tip}
-                        </Typography>
-                      </Paper>
-                    ))}
-                  </Stack>
-                </CardContent>
-              </Card>
-            )}
+                      />
+                      {exercise.estimated_calories && (
+                        <Chip 
+                          label={`${exercise.estimated_calories} kcal`} 
+                          size="small" 
+                          sx={{ bgcolor: '#f0fdfa', color: '#14b8a6', border: '1px solid #ccfbf1', fontWeight: 600, height: 24, fontSize: '0.75rem' }} 
+                        />
+                      )}
+                    </Stack>
+
+                    {/* Detailed Information (Collapsible) */}
+                    <Collapse in={showDetails} timeout="auto">
+                      <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid #e2e8f0' }}>
+                        {exercise.sessionTime && (
+                          <Typography variant="body2" sx={{ color: '#64748b', mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box component="span" sx={{ fontWeight: 600 }}>Best Time:</Box> {exercise.sessionTime}
+                          </Typography>
+                        )}
+                        
+                        {exercise.notes && (
+                          <Typography variant="body2" sx={{ color: '#64748b', mb: 1 }}>
+                            <Box component="span" sx={{ fontWeight: 600 }}>Tips:</Box> {exercise.notes}
+                          </Typography>
+                        )}
+
+                        {exercise.heart_rate_zone && exercise.heart_rate_zone !== 'N/A' && (
+                          <Typography variant="body2" sx={{ color: '#64748b', mb: 1 }}>
+                            <Box component="span" sx={{ fontWeight: 600 }}>Heart Rate:</Box> {exercise.heart_rate_zone}
+                          </Typography>
+                        )}
+
+                        {exercise.mets && (
+                          <Typography variant="body2" sx={{ color: '#64748b', mb: 1 }}>
+                            <Box component="span" sx={{ fontWeight: 600 }}>Intensity (METs):</Box> {exercise.mets}
+                          </Typography>
+                        )}
+
+                        {exercise.precautions?.length > 0 && (
+                          <Box sx={{ mt: 2, p: 2, bgcolor: '#fffbeb', borderRadius: 2, border: '1px solid #fde68a' }}>
+                            <Stack direction="row" spacing={1} alignItems="flex-start">
+                              <WarningIcon sx={{ color: '#f59e0b', fontSize: 18, mt: 0.2 }} />
+                              <Box>
+                                <Typography variant="caption" fontWeight={600} sx={{ color: '#92400e', display: 'block', mb: 0.5 }}>
+                                  Important Precautions
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: '#78350f', fontSize: '0.8rem' }}>
+                                  {exercise.precautions.join(', ')}
+                                </Typography>
+                              </Box>
+                            </Stack>
+                          </Box>
+                        )}
+                      </Box>
+                    </Collapse>
+                  </Grid>
+                </Grid>
+              </Paper>
+            ))}
           </Stack>
-        </Grid>
-      </Grid>
+        </CardContent>
+      </Card>
+
+      {/* Tips Section */}
+      {tips?.length > 0 && (
+        <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid #e2e8f0', bgcolor: '#ffffff', mb: 3 }}>
+          <CardContent sx={{ p: 3 }}>
+            <Typography variant="h6" sx={{ color: '#1e293b', fontWeight: 600, mb: 2 }}>
+              💡 Daily Tips
+            </Typography>
+            <Stack spacing={1.5}>
+              {tips.map((tip, i) => (
+                <Paper
+                  key={i}
+                  elevation={0}
+                  sx={{
+                    p: 2,
+                    bgcolor: '#f0f4ff',
+                    borderLeft: '3px solid #667eea',
+                    borderRadius: 1
+                  }}
+                >
+                  <Typography variant="body2" sx={{ color: '#1e293b', fontWeight: 500 }}>
+                    {tip}
+                  </Typography>
+                </Paper>
+              ))}
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Sources Section (Collapsible) */}
+      {showDetails && sources?.length > 0 && (
+        <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid #e2e8f0', bgcolor: '#ffffff' }}>
+          <CardContent sx={{ p: 3 }}>
+            <Typography variant="h6" sx={{ color: '#1e293b', fontWeight: 600, mb: 2 }}>
+              📚 Sources
+            </Typography>
+            <Stack spacing={1.5}>
+              {sources.map((source, i) => (
+                <Box 
+                  key={i}
+                  sx={{
+                    p: 2,
+                    borderRadius: 2,
+                    bgcolor: '#f8fafc',
+                    border: '1px solid #e2e8f0'
+                  }}
+                >
+                  <Typography variant="body2" fontWeight={600} sx={{ color: '#1e293b', mb: 0.5 }}>
+                    {source.title}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: '#64748b' }}>
+                    {source.country}
+                  </Typography>
+                </Box>
+              ))}
+            </Stack>
+          </CardContent>
+        </Card>
+      )}
     </Box>
   );
 };

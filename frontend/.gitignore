@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+node_modules/
+chroma_db/chroma.sqlite3
+.DS_Store
+

@@ -55,14 +55,20 @@ const useDashboardDataFetching = ({
 
         setUser(userData);
 
-        if (userData.diabetes_diagnosed === null || userData.diabetes_diagnosed === undefined) {
-          setShowDiagnosisPopup(true);
-        }
+        // Assessment insight popup: show at most once after login (not on Insights click/refresh)
+        const postLoginFlag = sessionStorage.getItem('assessmentPopupPostLogin');
+        if (postLoginFlag === 'true') {
+          sessionStorage.removeItem('assessmentPopupPostLogin');
 
-        const hasAssessment = !!userData.last_assessment_at;
-        const isDiagnosed = userData.diabetes_diagnosed === 'yes';
-        if (hasAssessment && !isDiagnosed) {
-          setShowAssessmentPopup(true);
+          const alreadyShown = sessionStorage.getItem('assessmentPopupShown') === 'true';
+          if (!alreadyShown) {
+            const hasAssessment = !!userData?.last_assessment_at;
+            const isDiagnosed = userData?.diabetes_diagnosed === 'yes';
+            if (hasAssessment && !isDiagnosed) {
+              setShowAssessmentPopup(true);
+              sessionStorage.setItem('assessmentPopupShown', 'true');
+            }
+          }
         }
       } catch (error) {
         console.error('Error fetching user:', error);
@@ -79,7 +85,7 @@ const useDashboardDataFetching = ({
 
     fetchUser();
     return () => { mounted = false; };
-  }, [navigate, setUser, setShowDiagnosisPopup, setShowAssessmentPopup]);
+  }, [navigate, setUser]);
 
   // Check if user came from feedback page
   useEffect(() => {
@@ -117,7 +123,16 @@ const useDashboardDataFetching = ({
     const fetchSummary = async () => {
       try {
         setAssessmentLoading(true);
-        const response = await assessDiabetesRisk();
+        
+        // Use cached assessment endpoint - never triggers new model execution
+        const response = await getLatestDiabetesAssessment();
+        
+        if (!response || !response.has_assessment) {
+          console.log('No assessment found for user');
+          setAssessmentSummary(null);
+          return;
+        }
+        
         const result = response?.result || {};
         const features = response?.features || {};
 
@@ -140,12 +155,19 @@ const useDashboardDataFetching = ({
           confidence: Number(result.confidence || 0),
           symptoms_present,
           feature_importance,
+          is_cached: response.is_cached || false,
+          assessment_date: response.assessment_date
         };
 
         setAssessmentSummary(normalized);
       } catch (err) {
         console.error('Failed to fetch assessment summary:', err);
-        setAssessmentSummary(null);
+        // If no assessment exists, that's okay - just set to null
+        if (err.response?.status === 404) {
+          setAssessmentSummary(null);
+        } else {
+          console.error('Unexpected error fetching assessment:', err);
+        }
       } finally {
         setAssessmentLoading(false);
       }
@@ -154,20 +176,10 @@ const useDashboardDataFetching = ({
     fetchSummary();
   }, [currentSection, user, setAssessmentSummary, setAssessmentLoading]);
 
-  // Show assessment popup when opening Insights
-  useEffect(() => {
-    if (!user || currentSection !== 'Insights') return;
-    const hasAssessment = !!user.last_assessment_at;
-    const isDiagnosed = user.diabetes_diagnosed === 'yes';
-    if (hasAssessment && !isDiagnosed) {
-      setShowAssessmentPopup(true);
-    }
-  }, [currentSection, user, setShowAssessmentPopup]);
-
   // Fetch profile and plan data for diagnosed users
   useEffect(() => {
     if (!user || user.diabetes_diagnosed !== 'yes') return;
-    if (currentSection !== 'Personalized Suggestions' && currentSection !== 'Insights') return;
+    if (currentSection !== 'Personalized Suggestions' && currentSection !== 'Dashboard' && currentSection !== 'Insights') return;
 
     const fetchCompletion = async () => {
       try {
@@ -188,15 +200,54 @@ const useDashboardDataFetching = ({
           lifestyleRes: lifestyleRes.data
         });
         
-        const personalFields = ['fullName', 'date_of_birth', 'gender', 'phone_number'];
+        const personalFields = ['fullName', 'date_of_birth', 'gender', 'phone_number', 'height', 'weight'];
         const medicalFields = ['diabetes_type', 'diagnosis_date'];
         const personalData = personalRes.data?.data || {};
         const medicalData = medicalRes.data?.data || {};
+        
+        console.log('Checking completion for fields:', {
+          personalFields,
+          medicalFields,
+          personalData,
+          medicalData
+        });
+        
         const total = personalFields.length + medicalFields.length;
-        const completed = [...personalFields, ...medicalFields].reduce((count, field) => {
-          const source = personalFields.includes(field) ? personalData : medicalData;
-          return source[field] ? count + 1 : count;
-        }, 0);
+        const completedPersonal = personalFields.filter(field => {
+          const value = personalData[field];
+          // Handle different value types
+          let isComplete = false;
+          if (Array.isArray(value)) {
+            isComplete = value.length > 0;
+          } else {
+            isComplete = value !== null && value !== undefined && value !== '';
+          }
+          console.log(`  Personal field "${field}":`, value, isComplete ? 'COMPLETE' : 'MISSING');
+          return isComplete;
+        }).length;
+        
+        const completedMedical = medicalFields.filter(field => {
+          const value = medicalData[field];
+          // Handle different value types
+          let isComplete = false;
+          if (Array.isArray(value)) {
+            isComplete = value.length > 0;
+          } else {
+            isComplete = value !== null && value !== undefined && value !== '';
+          }
+          console.log(`  Medical field "${field}":`, value, isComplete ? 'COMPLETE' : 'MISSING');
+          return isComplete;
+        }).length;
+        
+        const completed = completedPersonal + completedMedical;
+        
+        console.log('Completion calculation:', {
+          total,
+          completedPersonal,
+          completedMedical,
+          completed,
+          percentage: total ? Math.round((completed / total) * 100) : 0
+        });
         
         // Handle different possible response structures for diet/exercise history
         const dietPlans = dietRes.data?.plans || dietRes.data?.data?.plans || dietRes.data?.data || [];

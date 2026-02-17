@@ -322,12 +322,112 @@ const checkUserRegionCoverage = async (req, res) => {
   }
 };
 
+/**
+ * Get all diet plans for the logged-in user
+ * GET /api/v1/diet-plan
+ */
+const getAllDietPlans = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const plans = await dietPlanService.getDietPlanHistory(userId, 50); // Get up to 50 recent plans
+
+    return res.status(200).json({
+      success: true,
+      message: 'Diet plans retrieved successfully',
+      data: plans,
+    });
+  } catch (error) {
+    console.error('Error in getAllDietPlans controller:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve diet plans',
+    });
+  }
+};
+
+/**
+ * Get a single diet plan by its ID
+ * GET /api/v1/diet-plan/:id
+ */
+const getDietPlanById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    const plan = await dietPlanService.getDietPlanById(userId, id);
+
+    if (!plan) {
+      return res.status(404).json({
+        success: false,
+        error: 'Diet plan not found',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Diet plan retrieved successfully',
+      data: plan,
+    });
+  } catch (error) {
+    console.error('Error in getDietPlanById controller:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve diet plan details',
+    });
+  }
+};
+
+/**
+ * Download a diet plan as a PDF
+ * GET /api/v1/diet-plan/:id/download
+ */
+const downloadDietPlanPDF = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    const plan = await dietPlanService.getDietPlanById(userId, id);
+
+    if (!plan) {
+      return res.status(404).json({
+        success: false,
+        error: 'Diet plan not found',
+      });
+    }
+
+    const user = await User.findById(userId);
+    const userInfo = {
+      fullName: user.fullName,
+      email: user.email,
+    };
+
+    const pdfPath = await generateDietPlanPDF(plan, userInfo);
+
+    res.download(pdfPath, `Diet-Plan-${plan.target_date}.pdf`, (err) => {
+      if (err) {
+        console.error('Error sending PDF file:', err);
+        // The response may already be partially sent, so we can't send a new one.
+        // The error will be logged.
+      }
+    });
+  } catch (error) {
+    console.error('Error in downloadDietPlanPDF controller:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to generate or download PDF',
+    });
+  }
+};
+
 export {
   generateDietPlan,
+  getAllDietPlans,
+  getDietPlanById,
   getDietPlanByDate,
   getCurrentDietPlan,
   getDietPlanHistory,
   deleteDietPlan,
   getAvailableRegions,
-  checkUserRegionCoverage
+  checkUserRegionCoverage,
+  downloadDietPlanPDF,
 };

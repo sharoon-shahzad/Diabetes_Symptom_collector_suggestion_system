@@ -4,6 +4,67 @@ import { User } from '../models/User.js';
 import { generateLifestyleTipsPDF } from '../services/pdfGenerationService.js';
 import { sendLifestyleTipsEmail } from '../services/emailService.js';
 
+export const autoGenerateLifestyleTips = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target_date = today.toISOString().split('T')[0];
+
+    try {
+      const result = await lifestyleTipsService.generateLifestyleTips(userId, target_date);
+
+      // Generate PDF and send email in background
+      setImmediate(async () => {
+        try {
+          const user = await User.findById(userId);
+          if (user && user.email) {
+            const userInfo = {
+              fullName: user.fullName,
+              email: user.email
+            };
+            
+            const pdfPath = await generateLifestyleTipsPDF(result.tips, userInfo);
+            await sendLifestyleTipsEmail(user.email, user.fullName, pdfPath, result.tips);
+            console.log('✅ Lifestyle tips email sent successfully to:', user.email);
+          }
+        } catch (emailError) {
+          console.error('❌ Error sending lifestyle tips email:', emailError.message);
+        }
+      });
+
+      return res.status(201).json({
+        ...result,
+        emailSent: true
+      });
+    } catch (error) {
+      // If duplicate key error, fetch and return existing plan
+      if (error.code === 11000 || error.message.includes('already exist')) {
+        const existingTips = await LifestyleTip.findOne({
+          user_id: userId,
+          target_date: target_date
+        });
+        
+        if (existingTips) {
+          return res.status(200).json({
+            success: true,
+            message: 'Lifestyle tips already exist for today',
+            tips: existingTips,
+            isExisting: true
+          });
+        }
+      }
+      throw error;
+    }
+  } catch (error) {
+    console.error('Auto-generate tips error:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'AI generator is unavailable or timed out. Please ensure LM Studio is running.',
+    });
+  }
+};
+
 export const generateLifestyleTips = async (req, res) => {
   try {
     const { target_date } = req.body;
@@ -250,6 +311,33 @@ export const updateTipCompletion = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message || 'Failed to update tip',
+    });
+  }
+};
+
+export const getTipsById = async (req, res) => {
+  try {
+    const { tipsId } = req.params;
+    const userId = req.user._id;
+
+    const tips = await LifestyleTip.findOne({ _id: tipsId, user_id: userId });
+
+    if (!tips) {
+      return res.status(404).json({
+        success: false,
+        message: 'Tips not found',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      tips: tips.toObject(),
+    });
+  } catch (error) {
+    console.error('Get tips by ID error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch tips',
     });
   }
 };

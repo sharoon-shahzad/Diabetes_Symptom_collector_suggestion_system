@@ -68,6 +68,8 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
         phone_number: '',
         weight: '',
         height: '',
+        heightFeet: '',
+        heightInches: '',
         activity_level: '',
         sleep_hours: '',
         diabetes_type: '',
@@ -107,6 +109,15 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                 setPersonalInfo(personal);
                 calculateCompletion('personal', personal);
                 
+                // Convert height from cm to feet and inches if available
+                let heightFeet = '';
+                let heightInches = '';
+                if (personal.height) {
+                    const totalInches = personal.height / 2.54;
+                    heightFeet = Math.floor(totalInches / 12);
+                    heightInches = Math.round(totalInches % 12);
+                }
+                
                 // Populate form data
                 setFormData(prev => ({
                     ...prev,
@@ -118,6 +129,8 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                     phone_number: personal.phone_number || '',
                     weight: personal.weight || '',
                     height: personal.height || '',
+                    heightFeet: heightFeet,
+                    heightInches: heightInches,
                     activity_level: personal.activity_level || '',
                     sleep_hours: personal.sleep_hours || ''
                 }));
@@ -370,17 +383,47 @@ const PersonalMedicalInfoPage = ({ inModal = false, onDataSaved }) => {
                                 placeholder="e.g., 70"
                             />
                         </Grid>
-                        <Grid item xs={12} md={6}>
+                        <Grid item xs={12} md={3}>
                             <TextField
+                                select
                                 fullWidth
-                                label="Height (cm)"
-                                type="number"
+                                label="Height (ft)"
                                 required
-                                value={formData.height}
-                                onChange={(e) => handleInputChange('height', e.target.value)}
+                                value={formData.heightFeet}
+                                onChange={(e) => {
+                                    handleInputChange('heightFeet', e.target.value);
+                                    const feet = parseFloat(e.target.value) || 0;
+                                    const inches = parseFloat(formData.heightInches) || 0;
+                                    const totalCm = Math.round((feet * 30.48) + (inches * 2.54));
+                                    handleInputChange('height', totalCm);
+                                }}
                                 variant="outlined"
-                                placeholder="e.g., 170"
-                            />
+                            >
+                                {[3, 4, 5, 6, 7, 8].map(ft => (
+                                    <MenuItem key={ft} value={ft}>{ft} ft</MenuItem>
+                                ))}
+                            </TextField>
+                        </Grid>
+                        <Grid item xs={12} md={3}>
+                            <TextField
+                                select
+                                fullWidth
+                                label="Height (in)"
+                                required
+                                value={formData.heightInches}
+                                onChange={(e) => {
+                                    handleInputChange('heightInches', e.target.value);
+                                    const feet = parseFloat(formData.heightFeet) || 0;
+                                    const inches = parseFloat(e.target.value) || 0;
+                                    const totalCm = Math.round((feet * 30.48) + (inches * 2.54));
+                                    handleInputChange('height', totalCm);
+                                }}
+                                variant="outlined"
+                            >
+                                {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(inch => (
+                                    <MenuItem key={inch} value={inch}>{inch} in</MenuItem>
+                                ))}
+                            </TextField>
                         </Grid>
                         <Grid item xs={12} md={6}>
                             <Autocomplete

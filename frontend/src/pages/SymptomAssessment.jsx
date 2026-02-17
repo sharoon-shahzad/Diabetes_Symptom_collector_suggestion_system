@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useOnboarding } from '../contexts/OnboardingContext';
 import {
   Box,
   Container,
@@ -57,49 +58,129 @@ const SymptomAssessment = () => {
   const questionListRef = useRef();
 
   useEffect(() => {
+    console.log('🔍 ========== SYMPTOM ASSESSMENT MOUNTED ==========');
+    console.log('📦 Checking sessionStorage...');
+    console.log('  returnToSymptomAssessment:', sessionStorage.getItem('returnToSymptomAssessment'));
+    console.log('  answersSavedAfterLogin:', sessionStorage.getItem('answersSavedAfterLogin'));
+    console.log('  pendingOnboardingAnswers:', sessionStorage.getItem('pendingOnboardingAnswers'));
+    console.log('  onboardingState:', sessionStorage.getItem('onboardingState'));
+    console.log('  accessToken:', localStorage.getItem('accessToken') ? 'EXISTS' : 'NOT FOUND');
+    
     checkLoginAndFetchData();
+    
+    // Check if user just logged in and should see the dialog
+    const shouldShowDialog = sessionStorage.getItem('returnToSymptomAssessment');
+    const answersSaved = sessionStorage.getItem('answersSavedAfterLogin');
+    
+    console.log('\n🔍 Checking if should show login dialog...');
+    console.log('  shouldShowDialog:', shouldShowDialog);
+    console.log('  answersSaved:', answersSaved);
+    
+    if (shouldShowDialog === 'true') {
+      console.log('✅ Found returnToSymptomAssessment flag');
+      sessionStorage.removeItem('returnToSymptomAssessment');
+      // Check if user is logged in
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        console.log('✅ User has token, checking if answers were saved...');
+        // User just logged in
+        if (answersSaved === 'true') {
+          // Answers were just saved, wait a bit then refetch data
+          sessionStorage.removeItem('answersSavedAfterLogin');
+          console.log('🔄 Answers just saved, waiting before refetch...');
+          setTimeout(async () => {
+            console.log('🔄 Refetching symptom data after login...');
+            await fetchAllSymptoms();
+            await fetchUserAnsweredQuestions();
+            console.log('✅ Data refetched, showing login dialog');
+            setShowLoginDialog(true);
+          }, 1000); // Wait 1 second for database writes to complete
+        } else {
+          console.log('ℹ️  No answers saved flag, showing dialog immediately');
+          // No answers saved, just show dialog
+          setShowLoginDialog(true);
+        }
+      } else {
+        console.log('⚠️  No token found despite returnToSymptomAssessment flag');
+      }
+    } else {
+      console.log('ℹ️  No returnToSymptomAssessment flag found');
+    }
+    console.log('🔍 ========== END MOUNT CHECK ==========\n');
   }, []);
 
   const checkLoginAndFetchData = async () => {
     try {
       const token = localStorage.getItem('accessToken');
       if (!token) {
+        // Allow unauthenticated users to continue with assessment
         setIsLoggedIn(false);
-        setShowLoginDialog(true);
+        // Don't show login dialog yet - only after completing questions
+        await fetchAllSymptoms();
+        setLoading(false);
         return;
       }
-      const user = await getCurrentUser();
-      setIsLoggedIn(true);
       
-      console.log('User data fetched:', user);
-      console.log('Date of birth:', user?.date_of_birth);
-      console.log('Gender:', user?.gender);
-      
-      // Calculate age from user's date of birth if available
-      if (user?.date_of_birth) {
-        const dob = new Date(user.date_of_birth);
-        const today = new Date();
-        let age = today.getFullYear() - dob.getFullYear();
-        const monthDiff = today.getMonth() - dob.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
-          age--;
+      // Only call getCurrentUser if token exists
+      try {
+        const user = await getCurrentUser();
+        setIsLoggedIn(true);
+        
+        console.log('User data fetched:', user);
+        console.log('Date of birth:', user?.date_of_birth);
+        console.log('Gender:', user?.gender);
+        
+        // Calculate age from user's date of birth if available
+        if (user?.date_of_birth) {
+          const dob = new Date(user.date_of_birth);
+          const today = new Date();
+          let age = today.getFullYear() - dob.getFullYear();
+          const monthDiff = today.getMonth() - dob.getMonth();
+          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+            age--;
+          }
+          
+          // Calculate months
+          const dobMonth = dob.getMonth();
+          const dobDay = dob.getDate();
+          const todayMonth = today.getMonth();
+          const todayDay = today.getDate();
+          
+          let months = todayMonth - dobMonth;
+          if (todayDay < dobDay) {
+            months--;
+          }
+          if (months < 0) {
+            months += 12;
+          }
+          
+          // Format as "X years and Y months"
+          const ageStr = months > 0 ? `${age} years and ${months} months` : `${age} years`;
+          console.log('Calculated age:', ageStr);
+          setUserAge(ageStr);
         }
-        console.log('Calculated age:', age);
-        setUserAge(age);
+        
+        // Set user's gender if available
+        if (user?.gender) {
+          console.log('Setting gender:', user.gender);
+          setUserGender(user.gender);
+        }
+        
+        await fetchAllSymptoms();
+        await fetchUserAnsweredQuestions();
+      } catch (err) {
+        // If getCurrentUser fails, treat as unauthenticated
+        console.error('User authentication failed:', err);
+        setIsLoggedIn(false);
+        await fetchAllSymptoms();
+        setLoading(false);
       }
-      
-      // Set user's gender if available
-      if (user?.gender) {
-        console.log('Setting gender:', user.gender);
-        setUserGender(user.gender);
-      }
-      
-      await fetchAllSymptoms();
-      await fetchUserAnsweredQuestions();
     } catch (err) {
       console.error('Login check failed:', err);
       setIsLoggedIn(false);
-      setShowLoginDialog(true);
+      // Allow unauthenticated users to continue
+      await fetchAllSymptoms();
+      setLoading(false);
     }
   };
 
@@ -178,8 +259,8 @@ const SymptomAssessment = () => {
   const handleNext = async () => {
     if (!symptoms.length) return;
 
-    // Auto-save answers before proceeding
-    if (questionListRef.current && activeStep === 0) {
+    // Auto-save answers before proceeding (only for logged in users)
+    if (questionListRef.current && activeStep === 0 && isLoggedIn) {
       try {
         await questionListRef.current.saveAll();
       } catch (error) {
@@ -192,7 +273,15 @@ const SymptomAssessment = () => {
       setCurrentSymptomIndex((prev) => prev + 1);
       setCanProceed(false); // Reset for next symptom
     } else if (activeStep === 0 && currentSymptomIndex === symptoms.length - 1) {
-      setActiveStep(1);
+      // Completed all questions
+      if (!isLoggedIn) {
+        // Store redirect info in sessionStorage before showing login dialog
+        sessionStorage.setItem('returnToSymptomAssessment', 'true');
+        // Show login dialog for unauthenticated users
+        setShowLoginDialog(true);
+      } else {
+        setActiveStep(1);
+      }
     }
   };
 
@@ -204,7 +293,47 @@ const SymptomAssessment = () => {
       return answer !== undefined && answer !== null && answer.toString().trim() !== '';
     });
     console.log('All answered:', allAnswered, 'Total questions:', questions.length, 'Answers:', Object.keys(answers).length);
-    setCanProceed(allAnswered);
+    
+    // ✅ FIX: Defer state update to avoid "Cannot update component during render" error
+    setTimeout(() => {
+      setCanProceed(allAnswered);
+    }, 0);
+    
+    // 🔥 CRITICAL FIX: ACCUMULATE answers across all symptoms for unauthenticated users
+    if (!isLoggedIn && Object.keys(answers).length > 0) {
+      try {
+        // Get existing answers from sessionStorage
+        const existingAnswersJson = sessionStorage.getItem('pendingOnboardingAnswers');
+        const existingAnswers = existingAnswersJson ? JSON.parse(existingAnswersJson) : [];
+        
+        // Convert new answers to array format
+        const newAnswersArray = Object.entries(answers).map(([questionId, answerText]) => ({
+          questionId,
+          answerText: typeof answerText === 'object' ? JSON.stringify(answerText) : answerText.toString()
+        }));
+        
+        // Merge: Remove duplicates (same questionId), keep latest answer
+        const answerMap = new Map();
+        
+        // Add existing answers first
+        existingAnswers.forEach(ans => {
+          answerMap.set(ans.questionId, ans);
+        });
+        
+        // Add/update with new answers
+        newAnswersArray.forEach(ans => {
+          answerMap.set(ans.questionId, ans);
+        });
+        
+        // Convert back to array
+        const mergedAnswers = Array.from(answerMap.values());
+        
+        sessionStorage.setItem('pendingOnboardingAnswers', JSON.stringify(mergedAnswers));
+        console.log('💾 Accumulated answers in sessionStorage:', mergedAnswers.length, 'total answers');
+      } catch (error) {
+        console.error('❌ Failed to save answers to sessionStorage:', error);
+      }
+    }
   };
 
   const handleBack = () => {
@@ -214,9 +343,19 @@ const SymptomAssessment = () => {
   };
 
   const handleViewAssessment = () => {
+    // Clear all temporary onboarding storage when moving to assessment
+    sessionStorage.removeItem('pendingOnboardingAnswers');
+    sessionStorage.removeItem('onboardingState');
+    sessionStorage.removeItem('returnToSymptomAssessment');
+    sessionStorage.removeItem('answersSavedAfterLogin');
+    localStorage.removeItem('onboardingState');
+    localStorage.removeItem('redirectAfterLogin');
+    console.log('🧹 Cleared all temporary storage before navigating to assessment');
+
     navigate('/assessment');
   };
-
+sessionStorage.setItem('returnToSymptomAssessment', 'true');
+    
   const handleLoginRedirect = () => {
     navigate('/signin?returnTo=symptom-assessment');
   };
@@ -399,21 +538,13 @@ const SymptomAssessment = () => {
                       >
                         {currentSymptom.name}
                       </Typography>
-                      {currentSymptom.description && (
-                        <Typography
-                          variant="body1"
-                          color="text.secondary"
-                          sx={{ maxWidth: 640, mx: 'auto', lineHeight: 1.7, mb: 2 }}
-                        >
-                          {currentSymptom.description}
-                        </Typography>
-                      )}
                     </Box>
                     <Divider sx={{ mb: 4, mx: 'auto', maxWidth: 600 }} />
                     <QuestionList 
                       ref={questionListRef}
                       symptomId={currentSymptom._id} 
                       symptomName={currentSymptom.name}
+                      symptomDescription={currentSymptom.description}
                       isLoggedIn={isLoggedIn}
                       onDataUpdated={fetchUserAnsweredQuestions}
                       onAnswersChange={handleAnswersChange}
@@ -542,28 +673,75 @@ const SymptomAssessment = () => {
             <Login sx={{ fontSize: 56, color: 'primary.main' }} />
           </Box>
           <Typography variant="h5" fontWeight={700}>
-            Login Required
+            Great! One More Step
           </Typography>
         </DialogTitle>
         <DialogContent>
-          <Alert severity="info" sx={{ mb: 2 }}>
-            Please sign in to complete your diabetes symptom assessment and track your health progress.
+          <Alert severity="success" sx={{ mb: 2 }}>
+            {isLoggedIn 
+              ? "Welcome back! You've completed all questions. Click continue to view your personalized risk assessment."
+              : "You've completed all onboarding questions! Sign in or create an account to view your personalized risk assessment and save your progress."
+            }
           </Alert>
+          {!isLoggedIn && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 2, textAlign: 'center' }}>
+              Your answers will be saved automatically after you log in.
+            </Typography>
+          )}
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 3, justifyContent: 'center' }}>
-          <Button
-            variant="contained"
-            size="large"
-            onClick={handleLoginRedirect}
-            sx={{
-              px: 6,
-              py: 1.5,
-              fontWeight: 700,
-              borderRadius: 3,
-            }}
-          >
-            Sign In
-          </Button>
+        <DialogActions sx={{ px: 3, pb: 3, justifyContent: 'center', gap: 2 }}>
+          {isLoggedIn ? (
+            // If user is logged in (just came back from login), show "Continue" button
+            <Button
+              variant="contained"
+              size="large"
+              onClick={() => {
+                setShowLoginDialog(false);
+                setActiveStep(1);
+              }}
+              sx={{
+                px: 6,
+                py: 1.5,
+                fontWeight: 700,
+                borderRadius: 3,
+              }}
+            >
+              Continue to Results
+            </Button>
+          ) : (
+            // If user is not logged in, show signup/signin buttons
+            <>
+              <Button
+                variant="outlined"
+                size="large"
+                onClick={() => {
+                  sessionStorage.setItem('returnToSymptomAssessment', 'true');
+                  navigate('/signup', { state: { fromOnboarding: true } });
+                }}
+                sx={{
+                  px: 4,
+                  py: 1.5,
+                  fontWeight: 600,
+                  borderRadius: 3,
+                }}
+              >
+                Sign Up
+              </Button>
+              <Button
+                variant="contained"
+                size="large"
+                onClick={handleLoginRedirect}
+                sx={{
+                  px: 6,
+                  py: 1.5,
+                  fontWeight: 700,
+                  borderRadius: 3,
+                }}
+              >
+                Sign In
+              </Button>
+            </>
+          )}
         </DialogActions>
       </Dialog>
     </Box>

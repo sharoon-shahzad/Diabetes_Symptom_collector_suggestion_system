@@ -8,9 +8,94 @@ import { Answer } from '../models/Answer.js';
 import { QuestionsAnswers } from '../models/Questions_Answers.js';
 import { Role } from '../models/Role.js';
 import { createAuditLog } from '../middlewares/auditMiddleware.js';
+import { UserPersonalInfo } from '../models/UserPersonalInfo.js';
+import { UserMedicalInfo } from '../models/UserMedicalInfo.js';
+import { Habit } from '../models/Habit.js';
 
 
 // Get current user controller
+export const getProfile = async (req, res) => {
+    try {
+        const userId = req.user._id;
+
+        const [user, personalInfo, medicalInfo] = await Promise.all([
+            User.findById(userId).select('-password -refreshToken -activationToken -resetPasswordToken'),
+            UserPersonalInfo.findOne({ user_id: userId }),
+            UserMedicalInfo.findOne({ user_id: userId })
+        ]);
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                user: user.toObject(),
+                personalInfo: personalInfo ? personalInfo.toObject() : {},
+                medicalInfo: medicalInfo ? medicalInfo.toObject() : {},
+            }
+        });
+    } catch (error) {
+        console.error('Get profile error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error fetching user profile'
+        });
+    }
+};
+
+export const updateProfile = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { personalInfo, medicalInfo } = req.body;
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        // Update Personal Info
+        if (personalInfo) {
+            // If personal info contains fullName, update the main User model as well
+            if (personalInfo.fullName) {
+                user.fullName = personalInfo.fullName;
+                await user.save();
+            }
+            await UserPersonalInfo.findOneAndUpdate({ user_id: userId }, personalInfo, { upsert: true, new: true, runValidators: true });
+        }
+
+        // Update Medical Info
+        if (medicalInfo) {
+            await UserMedicalInfo.findOneAndUpdate({ user_id: userId }, medicalInfo, { upsert: true, new: true, runValidators: true });
+        }
+
+        // Refetch the updated profile to return the latest state
+        const [updatedUser, updatedPersonalInfo, updatedMedicalInfo] = await Promise.all([
+            User.findById(userId).select('-password -refreshToken -activationToken -resetPasswordToken'),
+            UserPersonalInfo.findOne({ user_id: userId }),
+            UserMedicalInfo.findOne({ user_id: userId })
+        ]);
+
+        return res.status(200).json({
+            success: true,
+            message: 'Profile updated successfully',
+            data: {
+                user: updatedUser.toObject(),
+                personalInfo: updatedPersonalInfo ? updatedPersonalInfo.toObject() : {},
+                medicalInfo: updatedMedicalInfo ? updatedMedicalInfo.toObject() : {},
+            }
+        });
+    } catch (error) {
+        console.error('Update profile error:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Error updating profile',
+            error: error.message,
+        });
+    }
+};
+
 export const getCurrentUser = async (req, res) => {
     try {
         const user = req.user;

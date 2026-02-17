@@ -1,16 +1,7 @@
 import axiosInstance from './axiosInstance';
 
-// Add this interceptor to include the access token in every request
-axiosInstance.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('accessToken');
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+// NOTE: Request interceptor for auth token is already in axiosInstance.js
+// Do NOT add duplicate interceptors here to avoid multiple token attachments
 
 const API_URL = 'http://localhost:5000/api/v1';
 
@@ -103,8 +94,16 @@ export async function submitDiseaseData() {
   return res.data;
 } 
 
-export async function assessDiabetesRisk() {
-  const res = await axiosInstance.post(`/assessment/diabetes`);
+// Run diabetes assessment (will use cached result if available unless force_new=true)
+export async function assessDiabetesRisk(forceNew = false) {
+  const url = forceNew ? `/assessment/diabetes?force_new=true` : `/assessment/diabetes`;
+  const res = await axiosInstance.post(url);
+  return res.data.data;
+}
+
+// Get latest cached diabetes assessment (never runs model, only fetches cached result)
+export async function getLatestDiabetesAssessment() {
+  const res = await axiosInstance.get(`/assessment/diabetes/latest`);
   return res.data.data;
 }
 

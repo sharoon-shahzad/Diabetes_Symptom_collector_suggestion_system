@@ -7,8 +7,9 @@ import {
   addQuestion,
   updateQuestion,
   deleteQuestion,
-  saveUserAnswer
-  , completeOnboarding
+  saveUserAnswer,
+  completeOnboarding,
+  batchSaveOnboardingAnswers
 } from '../controllers/questionController.js';
 
 const router = express.Router();
@@ -33,6 +34,9 @@ router.delete('/questions/:id', verifyAccessTokenMiddleware, requirePermission('
 
 // Save user's answer for onboarding - requires authentication and submit permission
 router.post('/answer', verifyAccessTokenMiddleware, requirePermission('answer:submit:own'), saveUserAnswer);
+
+// Batch save onboarding answers (for post-login submission)
+router.post('/batch-save-answers', verifyAccessTokenMiddleware, requirePermission('answer:submit:own'), batchSaveOnboardingAnswers);
 
 // Endpoint to mark onboarding as complete (used by frontend when user finishes review)
 // Matches frontend POST to /api/v1/questions/complete-onboarding
