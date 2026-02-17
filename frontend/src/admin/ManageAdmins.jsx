@@ -5,10 +5,8 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import RefreshIcon from '@mui/icons-material/Refresh';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import PersonIcon from '@mui/icons-material/Person';
@@ -785,26 +783,6 @@ export default function ManageAdmins() {
               </Typography>
             )}
           </Box>
-        </Box>
-        <Box display="flex" gap={1}>
-          <IconButton onClick={handleRefresh} size="medium">
-            <RefreshIcon />
-          </IconButton>
-          <Button 
-            variant="contained" 
-            startIcon={<AddIcon />} 
-            onClick={handleAdd} 
-            sx={{ 
-              textTransform: 'none',
-              fontWeight: 600,
-              boxShadow: 'none',
-              '&:hover': {
-                boxShadow: 2,
-              }
-            }}
-          >
-            Add Admin
-          </Button>
         </Box>
       </Box>
 
