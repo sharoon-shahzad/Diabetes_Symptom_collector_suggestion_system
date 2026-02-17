@@ -900,7 +900,6 @@ export default function ManageAdmins() {
               }}
             >
               <MenuItem value="all">All Roles</MenuItem>
-              <MenuItem value="user">User</MenuItem>
               <MenuItem value="admin">Admin</MenuItem>
               <MenuItem value="super_admin">Super Admin</MenuItem>
             </Select>

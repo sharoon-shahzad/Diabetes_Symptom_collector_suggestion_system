@@ -12,6 +12,11 @@ import { UserPersonalInfo } from '../models/UserPersonalInfo.js';
 import { UserMedicalInfo } from '../models/UserMedicalInfo.js';
 import { Habit } from '../models/Habit.js';
 
+const normalizeRoleName = (roleName) => {
+    if (!roleName || typeof roleName !== 'string') return '';
+    return roleName.trim().toLowerCase().replace(/\s+/g, '_');
+};
+
 
 // Get current user controller
 export const getProfile = async (req, res) => {
@@ -135,7 +140,9 @@ export const getAllUsers = async (req, res) => {
         // Fetch roles for each user
         const usersWithRoles = await Promise.all(users.map(async (user) => {
             const userRoles = await UsersRoles.find({ user_id: user._id }).populate('role_id');
-            const roles = userRoles.map(ur => ur.role_id.role_name);
+            const roles = userRoles
+                .map(ur => normalizeRoleName(ur.role_id?.role_name))
+                .filter(Boolean);
             // Exclude sensitive fields
             const { password, refreshToken, activationToken, resetPasswordToken, ...safeUser } = user.toObject();
             return { ...safeUser, roles };
@@ -667,39 +674,42 @@ export const submitDiseaseData = async (req, res) => {
 // Get all admins (users with admin or super_admin role)
 export const getAllAdmins = async (req, res) => {
     try {
-        // Get admin and super_admin role IDs
-        const adminRole = await Role.findOne({ role_name: 'admin' });
-        const superAdminRole = await Role.findOne({ role_name: 'super_admin' });
-        
-        if (!adminRole && !superAdminRole) {
+        // Get *all* matching role IDs (handles duplicate role docs)
+        const roles = await Role.find({
+            role_name: { $in: ['admin', 'super_admin'] },
+            deleted_at: null,
+        }).select('_id role_name');
+
+        if (!roles || roles.length === 0) {
             return res.status(500).json({
                 success: false,
                 message: 'Admin roles not found'
             });
         }
 
-        // Build role filter
-        const roleIds = [];
-        if (adminRole) roleIds.push(adminRole._id);
-        if (superAdminRole) roleIds.push(superAdminRole._id);
+        const roleIds = roles.map(r => r._id);
 
         // Find users with admin or super_admin roles
         const adminUsers = await UsersRoles.find({
-            role_id: { $in: roleIds }
+            role_id: { $in: roleIds },
+            deleted_at: null,
         }).populate('user_id').populate('role_id');
 
         // Format the response
         const admins = adminUsers
-            .filter(ur => ur.user_id) // Filter out any null user_ids
+            .filter(ur => ur?.user_id && ur?.role_id)
+            .filter(ur => ur.user_id.deleted_at == null)
+            .filter(ur => ['admin', 'super_admin'].includes(normalizeRoleName(ur.role_id.role_name)))
             .map(ur => {
                 const user = ur.user_id;
                 const role = ur.role_id;
                 const { password, refreshToken, activationToken, resetPasswordToken, ...safeUser } = user.toObject();
                 return {
                     ...safeUser,
-                    roles: [role.role_name]
+                    roles: [normalizeRoleName(role.role_name)].filter(Boolean)
                 };
-            });
+            })
+            .sort((a, b) => (a.email || '').localeCompare(b.email || ''));
 
         return res.status(200).json({
             success: true,
@@ -721,7 +731,9 @@ export const getUserRoles = async (req, res) => {
     try {
         const user = req.user;
         const userRoles = await UsersRoles.find({ user_id: user._id }).populate('role_id');
-        const roles = userRoles.map(ur => ur.role_id.role_name);
+        const roles = userRoles
+            .map(ur => normalizeRoleName(ur.role_id?.role_name))
+            .filter(Boolean);
         
         return res.status(200).json({
             success: true,
