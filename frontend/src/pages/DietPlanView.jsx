@@ -129,7 +129,6 @@ const DietPlanView = ({ plan, onBack, onDelete }) => {
               </Typography>
               <Typography variant="body1" sx={{ color: '#64748b', fontSize: '0.95rem' }}>
                 {formatDate(targetDate)}
-                })}
               </Typography>
             </Box>
             <IconButton 

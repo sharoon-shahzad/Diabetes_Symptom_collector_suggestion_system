@@ -1618,7 +1618,6 @@ const LandingPage = () => {
                       </Box>
                     </Stack>
                   </Collapse>
->>>>>>> bd06c5be (WIP: local changes snapshot before integrating remote)
                 </Box>
               ) : (
                 <>

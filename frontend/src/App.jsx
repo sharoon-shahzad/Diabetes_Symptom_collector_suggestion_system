@@ -103,7 +103,6 @@ const App = () => {
   return (
     <ThemeProvider>
       <SettingsProvider>
-      <SettingsProvider>
         <OnboardingProvider>
           <Router>
             <AppContent />

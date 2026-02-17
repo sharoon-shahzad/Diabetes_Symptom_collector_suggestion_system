@@ -92,7 +92,6 @@ const ExercisePlanView = ({ plan }) => {
             </Typography>
             <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
               <Chip 
-                label={region} 
                 label={formatDate(target_date)} 
                 size="small"
                 sx={{ bgcolor: '#f8fafc', color: '#64748b', border: '1px solid #e2e8f0', fontWeight: 500 }} 
