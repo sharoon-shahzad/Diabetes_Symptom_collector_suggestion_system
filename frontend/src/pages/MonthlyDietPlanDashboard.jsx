@@ -306,7 +306,8 @@ const MonthlyDietPlanDashboard = ({ inModal = false }) => {
         month,
         year
       }, {
-        timeout: 300000
+        // Monthly generation can take several minutes depending on RAG/LLM latency
+        timeout: 600000
       });
 
       if (response.data.success) {
@@ -319,7 +320,11 @@ const MonthlyDietPlanDashboard = ({ inModal = false }) => {
       }
     } catch (err) {
       console.error('Error generating monthly plan:', err);
-      setError(err.response?.data?.error || 'Failed to generate monthly diet plan. Please try again.');
+      if (err.code === 'ECONNABORTED') {
+        setError('Monthly diet plan generation is taking longer than expected. Please try again (or wait a bit and check History).');
+      } else {
+        setError(err.response?.data?.error || 'Failed to generate monthly diet plan. Please try again.');
+      }
     } finally {
       setGenerating(false);
     }
