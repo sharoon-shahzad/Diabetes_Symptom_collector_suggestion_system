@@ -184,26 +184,42 @@ const useDashboardDataFetching = ({
     const fetchCompletion = async () => {
       try {
         console.log('Fetching profile and plan data...');
-        const [personalRes, medicalRes, dietRes, exerciseRes, lifestyleRes] = await Promise.all([
+        const [personalRes, medicalRes, dietRes, exerciseRes, lifestyleRes] = await Promise.allSettled([
           axiosInstance.get('/personalized-system/personal-info'),
           axiosInstance.get('/personalized-system/medical-info'),
           axiosInstance.get('/diet-plan/history?limit=30'),
           axiosInstance.get('/exercise-plan/history?limit=30'),
           axiosInstance.get('/lifestyle-tips/history?limit=30'),
         ]);
+
+        if (personalRes.status === 'rejected') {
+          console.warn('Failed to fetch personal info:', personalRes.reason);
+        }
+        if (medicalRes.status === 'rejected') {
+          console.warn('Failed to fetch medical info:', medicalRes.reason);
+        }
+        if (dietRes.status === 'rejected') {
+          console.warn('Failed to fetch diet history:', dietRes.reason);
+        }
+        if (exerciseRes.status === 'rejected') {
+          console.warn('Failed to fetch exercise history:', exerciseRes.reason);
+        }
+        if (lifestyleRes.status === 'rejected') {
+          console.warn('Failed to fetch lifestyle history:', lifestyleRes.reason);
+        }
         
         console.log('API Responses:', {
-          personalRes: personalRes.data,
-          medicalRes: medicalRes.data,
-          dietRes: dietRes.data,
-          exerciseRes: exerciseRes.data,
-          lifestyleRes: lifestyleRes.data
+          personalRes: personalRes.status === 'fulfilled' ? personalRes.value?.data : undefined,
+          medicalRes: medicalRes.status === 'fulfilled' ? medicalRes.value?.data : undefined,
+          dietRes: dietRes.status === 'fulfilled' ? dietRes.value?.data : undefined,
+          exerciseRes: exerciseRes.status === 'fulfilled' ? exerciseRes.value?.data : undefined,
+          lifestyleRes: lifestyleRes.status === 'fulfilled' ? lifestyleRes.value?.data : undefined
         });
         
         const personalFields = ['fullName', 'date_of_birth', 'gender', 'phone_number', 'height', 'weight'];
         const medicalFields = ['diabetes_type', 'diagnosis_date'];
-        const personalData = personalRes.data?.data || {};
-        const medicalData = medicalRes.data?.data || {};
+        const personalData = personalRes.status === 'fulfilled' ? (personalRes.value?.data?.data || {}) : {};
+        const medicalData = medicalRes.status === 'fulfilled' ? (medicalRes.value?.data?.data || {}) : {};
         
         console.log('Checking completion for fields:', {
           personalFields,
@@ -250,9 +266,13 @@ const useDashboardDataFetching = ({
         });
         
         // Handle different possible response structures for diet/exercise history
-        const dietPlans = dietRes.data?.plans || dietRes.data?.data?.plans || dietRes.data?.data || [];
-        const exercisePlans = exerciseRes.data?.plans || exerciseRes.data?.data?.plans || exerciseRes.data?.data || [];
-        const lifestyleTips = lifestyleRes.data?.history || lifestyleRes.data?.data?.history || lifestyleRes.data?.data || [];
+        const dietData = dietRes.status === 'fulfilled' ? dietRes.value?.data : undefined;
+        const exerciseData = exerciseRes.status === 'fulfilled' ? exerciseRes.value?.data : undefined;
+        const lifestyleData = lifestyleRes.status === 'fulfilled' ? lifestyleRes.value?.data : undefined;
+
+        const dietPlans = dietData?.plans || dietData?.data?.plans || dietData?.data || [];
+        const exercisePlans = exerciseData?.plans || exerciseData?.data?.plans || exerciseData?.data || [];
+        const lifestyleTips = lifestyleData?.history || lifestyleData?.data?.history || lifestyleData?.data || [];
         
         console.log('Extracted Data:', {
           personalData,
@@ -265,17 +285,19 @@ const useDashboardDataFetching = ({
         setPersonalInfoCompletion(total ? Math.round((completed / total) * 100) : 0);
         setPersonalInfo(personalData);
         setMedicalInfo(medicalData);
-        setDietHistory(dietPlans);
-        setExerciseHistory(exercisePlans);
-        setLifestyleHistory(lifestyleTips);
+        setDietHistory(Array.isArray(dietPlans) ? dietPlans : []);
+        setExerciseHistory(Array.isArray(exercisePlans) ? exercisePlans : []);
+        setLifestyleHistory(Array.isArray(lifestyleTips) ? lifestyleTips : []);
       } catch (e) {
         console.error('Error fetching profile data:', e);
+        // Only treat as a hard failure when we can't compute profile completion.
+        // Plan history failures should not lock insights.
         setPersonalInfoCompletion(0);
         setPersonalInfo(null);
         setMedicalInfo(null);
-        setDietHistory(null);
-        setExerciseHistory(null);
-        setLifestyleHistory(null);
+        setDietHistory([]);
+        setExerciseHistory([]);
+        setLifestyleHistory([]);
       }
     };
 
