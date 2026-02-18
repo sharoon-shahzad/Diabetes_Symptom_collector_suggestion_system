@@ -22,16 +22,16 @@ router.get('/date/:date', lifestyleTipsController.getTipsByDate);
 // Get tips history with limit
 router.get('/history', lifestyleTipsController.getHistory);
 
-// Get tips by ID
-router.get('/:tipsId', lifestyleTipsController.getTipsById);
-
-// Delete lifestyle tips
-router.delete('/:tipsId', lifestyleTipsController.deleteLifestyleTips);
-
 // Get region coverage for lifestyle tips
 router.get('/region-coverage', lifestyleTipsController.getRegionCoverage);
 
 // Get user statistics
 router.get('/stats', lifestyleTipsController.getUserStats);
+
+// Get tips by ID
+router.get('/:tipsId', lifestyleTipsController.getTipsById);
+
+// Delete lifestyle tips
+router.delete('/:tipsId', lifestyleTipsController.deleteLifestyleTips);
 
 export default router;

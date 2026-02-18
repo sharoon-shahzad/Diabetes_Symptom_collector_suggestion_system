@@ -220,7 +220,7 @@ const getDietPlanHistory = async (req, res) => {
  */
 const deleteDietPlan = async (req, res) => {
   try {
-    const { planId } = req.params;
+    const planId = req.params.planId || req.params.id;
     const userId = req.user._id;
     
     if (!planId) {

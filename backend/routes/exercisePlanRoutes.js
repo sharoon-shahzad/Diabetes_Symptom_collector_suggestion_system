@@ -20,6 +20,11 @@ router.post('/generate', exercisePlanController.generateExercisePlan);
  */
 router.get('/', exercisePlanController.getExercisePlanHistory);
 
+// IMPORTANT: keep specific/static routes above '/:id'
+router.get('/current', exercisePlanController.getCurrentExercisePlan);
+router.get('/date/:date', exercisePlanController.getExercisePlanByDate);
+router.get('/history', exercisePlanController.getExercisePlanHistory);
+
 /**
  * @route   GET /api/v1/exercise-plan/:id
  * @desc    Get a single exercise plan by ID
@@ -33,10 +38,6 @@ router.get('/:id', exercisePlanController.getExercisePlanById);
  * @access  Private
  */
 router.get('/:id/download', exercisePlanController.downloadExercisePlanPDF);
-
-router.get('/current', exercisePlanController.getCurrentExercisePlan);
-router.get('/date/:date', exercisePlanController.getExercisePlanByDate);
-router.get('/history', exercisePlanController.getExercisePlanHistory);
 router.delete('/:id', exercisePlanController.deleteExercisePlan);
 
 export default router;
