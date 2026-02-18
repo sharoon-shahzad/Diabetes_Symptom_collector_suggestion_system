@@ -125,7 +125,8 @@ const downloadExercisePlanPDF = async (req, res) => {
     const user = await User.findById(userId);
     const userInfo = { fullName: user.fullName, email: user.email };
     const pdfPath = await generateExercisePlanPDF(plan, userInfo);
-    res.download(pdfPath, `Exercise-Plan-${plan.start_date}.pdf`);
+    const dateStr = plan.target_date ? new Date(plan.target_date).toISOString().split('T')[0] : 'plan';
+    res.download(pdfPath, `Exercise-Plan-${dateStr}.pdf`);
   } catch (error) {
     console.error('Error in downloadExercisePlanPDF controller:', error);
     return res.status(500).json({ success: false, error: 'Failed to download PDF' });
@@ -134,7 +135,8 @@ const downloadExercisePlanPDF = async (req, res) => {
 
 const deleteExercisePlan = async (req, res) => {
   try {
-    const userId = req.user._id; const { planId } = req.params;
+    const userId = req.user._id;
+    const planId = req.params.planId || req.params.id;
     await exercisePlanService.deleteExercisePlan?.(userId, planId);
     return res.status(200).json({ success:true, message:'Exercise plan deleted' });
   } catch (error) {

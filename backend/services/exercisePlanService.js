@@ -99,20 +99,15 @@ class ExercisePlanService {
     const totals = this.calculateTotals(structured.sessions, personal.weight);
     console.log('✅ Calculated totals:', totals);
 
-    const startDate = new Date(targetDateObj);
-    const endDate = new Date(targetDateObj);
-    endDate.setDate(startDate.getDate() + 6);
-
     const plan = new ExercisePlan({
       user_id: userId,
-      start_date: startDate,
-      end_date: endDate,
-      goal: personal.goal,
-      weekly_schedule: structured.sessions,
-      total_weekly_calories: totals.totalCalories,
-      total_weekly_duration: totals.totalDuration,
-      general_recommendations: structured.recommendations,
+      target_date: targetDateObj,
+      region: userRegion,
+      sessions: structured.sessions,
+      totals: totals,
       sources: context.sources,
+      tips: structured.tips || [],
+      status: 'final',
       generated_at: new Date(),
     });
 
@@ -126,8 +121,24 @@ class ExercisePlanService {
     };
   }
 
+  async getExercisePlanByDate(userId, targetDate) {
+    try {
+      const targetDateObj = new Date(targetDate);
+      targetDateObj.setUTCHours(0, 0, 0, 0);
+      const plan = await ExercisePlan.findOne({
+        user_id: userId,
+        target_date: targetDateObj,
+      });
+      return plan;
+    } catch (error) {
+      console.error('Error fetching exercise plan by date:', error);
+      throw error;
+    }
+  }
+
   async getExercisePlanById(userId, planId) {
     try {
+      if (!mongoose.Types.ObjectId.isValid(String(planId))) return null;
       const plan = await ExercisePlan.findOne({ _id: planId, user_id: userId });
       return plan;
     } catch (error) {
@@ -139,7 +150,7 @@ class ExercisePlanService {
   async getExercisePlanHistory(userId, limit = 10) {
     try {
       const plans = await ExercisePlan.find({ user_id: userId })
-        .sort({ start_date: -1 })
+        .sort({ target_date: -1 })
         .limit(limit);
       return plans;
     } catch (error) {
