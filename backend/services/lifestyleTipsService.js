@@ -8,6 +8,7 @@ import axios from 'axios';
 // Configurable LM Studio host with sensible default
 const LM_STUDIO_HOST = process.env.LM_STUDIO_HOST || 'http://127.0.0.1:1234';
 const LM_STUDIO_API = `${LM_STUDIO_HOST}/v1/chat/completions`;
+const LM_STUDIO_TIMEOUT_MS = Number(process.env.LM_STUDIO_TIMEOUT_MS) || 300000;
 
 async function isLmStudioHealthy() {
   try {
@@ -204,11 +205,19 @@ IMPORTANT: Respond ONLY with valid JSON, no markdown, no code blocks. Use this e
           temperature: 0.7,
           max_tokens: 2000,
         },
-        { timeout: 60000 }
+        { timeout: LM_STUDIO_TIMEOUT_MS }
       );
 
       return response.data.choices?.[0]?.message?.content || '';
     } catch (error) {
+      const isTimeout = error.code === 'ECONNABORTED' || String(error.message || '').toLowerCase().includes('timeout');
+      if (isTimeout) {
+        throw new Error(
+          `LM Studio API call failed: timeout after ${Math.round(LM_STUDIO_TIMEOUT_MS / 1000)}s. ` +
+            `Please ensure the model is loaded and responding at ${LM_STUDIO_HOST}.`
+        );
+      }
+
       throw new Error(`LM Studio API call failed: ${error.message}`);
     }
   }

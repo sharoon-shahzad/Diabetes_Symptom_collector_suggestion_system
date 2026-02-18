@@ -43,13 +43,16 @@ const PriorityChip = ({ priority }) => {
     low: { bg: '#dbeafe', text: '#2563eb' },
   };
 
+  const priorityKey = String(priority || 'medium').toLowerCase();
+  const label = String(priority || 'medium').toUpperCase();
+
   return (
     <Chip
-      label={priority.toUpperCase()}
+      label={label}
       size="small"
       sx={{
-        bgcolor: colors[priority]?.bg || colors.medium.bg,
-        color: colors[priority]?.text || colors.medium.text,
+        bgcolor: colors[priorityKey]?.bg || colors.medium.bg,
+        color: colors[priorityKey]?.text || colors.medium.text,
         fontWeight: 600,
       }}
     />
@@ -74,7 +77,8 @@ const LifestyleTipsView = ({ tips: propsTips, onBack: propsOnBack, onDelete: pro
       setLoading(false);
       // Initialize expanded categories
       const expanded = {};
-      propsTips.categories?.forEach((cat, idx) => {
+      const propsCategories = Array.isArray(propsTips.categories) ? propsTips.categories : [];
+      propsCategories.forEach((cat, idx) => {
         expanded[idx] = true;
       });
       setExpandedCategories(expanded);
@@ -89,12 +93,14 @@ const LifestyleTipsView = ({ tips: propsTips, onBack: propsOnBack, onDelete: pro
       setLoading(true);
       // For now, we'll fetch from history - ideally we'd have a GET /:tipsId endpoint
       const response = await axiosInstance.get(`/lifestyle-tips/history?limit=100`);
-      const found = response.data.history?.find((h) => h._id === tipsId);
+      const historyList = Array.isArray(response.data.history) ? response.data.history : [];
+      const found = historyList.find((h) => h?._id === tipsId);
       if (found) {
         setTips(found);
         // Initialize expanded categories
         const expanded = {};
-        found.categories?.forEach((cat, idx) => {
+        const foundCategories = Array.isArray(found.categories) ? found.categories : [];
+        foundCategories.forEach((cat, idx) => {
           expanded[idx] = true;
         });
         setExpandedCategories(expanded);
@@ -126,9 +132,11 @@ const LifestyleTipsView = ({ tips: propsTips, onBack: propsOnBack, onDelete: pro
 
       // Update local state
       setTips((prev) => {
-        const updated = { ...prev };
-        updated.daily_checklist[index].completed = !completed;
-        return updated;
+        if (!prev) return prev;
+        const dailyChecklist = Array.isArray(prev.daily_checklist) ? [...prev.daily_checklist] : [];
+        if (!dailyChecklist[index]) return prev;
+        dailyChecklist[index] = { ...dailyChecklist[index], completed: !completed };
+        return { ...prev, daily_checklist: dailyChecklist };
       });
       setSuccess('Checklist item updated!');
       setTimeout(() => setSuccess(null), 2000);
@@ -149,9 +157,15 @@ const LifestyleTipsView = ({ tips: propsTips, onBack: propsOnBack, onDelete: pro
 
       // Update local state
       setTips((prev) => {
-        const updated = { ...prev };
-        updated.categories[catIndex].tips[tipIndex].completed = !completed;
-        return updated;
+        if (!prev) return prev;
+        const categories = Array.isArray(prev.categories) ? [...prev.categories] : [];
+        const category = categories[catIndex];
+        if (!category) return prev;
+        const tipsList = Array.isArray(category.tips) ? [...category.tips] : [];
+        if (!tipsList[tipIndex]) return prev;
+        tipsList[tipIndex] = { ...tipsList[tipIndex], completed: !completed };
+        categories[catIndex] = { ...category, tips: tipsList };
+        return { ...prev, categories };
       });
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to update tip');
@@ -199,12 +213,18 @@ const LifestyleTipsView = ({ tips: propsTips, onBack: propsOnBack, onDelete: pro
     );
   }
 
-  const totalTips = tips.categories?.reduce((sum, cat) => sum + (cat.tips?.length || 0), 0) || 0;
-  const completedTips = tips.categories?.reduce(
-    (sum, cat) => sum + (cat.tips?.filter((t) => t.completed).length || 0),
+  // Normalize potentially inconsistent backend shapes to avoid runtime crashes
+  const categories = Array.isArray(tips.categories) ? tips.categories : [];
+  const personalizedInsights = Array.isArray(tips.personalized_insights) ? tips.personalized_insights : [];
+  const dailyChecklist = Array.isArray(tips.daily_checklist) ? tips.daily_checklist : [];
+  const sources = Array.isArray(tips.sources) ? tips.sources : [];
+
+  const totalTips = categories.reduce((sum, cat) => sum + (Array.isArray(cat?.tips) ? cat.tips.length : 0), 0);
+  const completedTips = categories.reduce(
+    (sum, cat) => sum + (Array.isArray(cat?.tips) ? cat.tips.filter((t) => t?.completed).length : 0),
     0
-  ) || 0;
-  const checklistCompleted = tips.daily_checklist?.filter((task) => task.completed).length || 0;
+  );
+  const checklistCompleted = dailyChecklist.filter((task) => task?.completed).length;
 
   return (
     <Box
@@ -275,14 +295,14 @@ const LifestyleTipsView = ({ tips: propsTips, onBack: propsOnBack, onDelete: pro
         )}
 
         {/* Personalized Insights */}
-        {tips.personalized_insights?.length > 0 && (
+        {personalizedInsights.length > 0 && (
           <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid #e2e8f0', mb: 3, bgcolor: '#f8f5ff' }}>
             <CardContent sx={{ p: 3 }}>
               <Typography variant="h6" fontWeight={700} mb={2} sx={{ color: '#667eea' }}>
                 💡 Personalized Insights
               </Typography>
               <Stack spacing={1.5}>
-                {tips.personalized_insights.map((insight, idx) => (
+                {personalizedInsights.map((insight, idx) => (
                   <Box 
                     key={idx}
                     sx={{
@@ -303,14 +323,14 @@ const LifestyleTipsView = ({ tips: propsTips, onBack: propsOnBack, onDelete: pro
         )}
 
         {/* Daily Checklist */}
-        {tips.daily_checklist?.length > 0 && (
+        {dailyChecklist.length > 0 && (
           <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid #e2e8f0', mb: 3, bgcolor: '#ffffff' }}>
             <CardContent sx={{ p: 3 }}>
               <Typography variant="h6" fontWeight={700} mb={3} sx={{ color: '#1e293b' }}>
                 Daily Checklist
               </Typography>
               <Stack spacing={2}>
-                {tips.daily_checklist.map((task, idx) => (
+                {dailyChecklist.map((task, idx) => (
                   <Box
                     key={idx}
                     sx={{
@@ -326,9 +346,9 @@ const LifestyleTipsView = ({ tips: propsTips, onBack: propsOnBack, onDelete: pro
                     }}
                   >
                     <Typography variant="body1" fontWeight={600} sx={{ color: '#1e293b', mb: 0.5 }}>
-                      {task.task}
+                      {task?.task || ''}
                     </Typography>
-                    {task.time_of_day && (
+                    {task?.time_of_day && (
                       <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 500 }}>
                         🕒 {task.time_of_day}
                       </Typography>
@@ -341,102 +361,119 @@ const LifestyleTipsView = ({ tips: propsTips, onBack: propsOnBack, onDelete: pro
         )}
 
         {/* Categories */}
-        {tips.categories?.map((category, catIdx) => (
+        {categories.map((category, catIdx) => (
           <Card key={catIdx} elevation={0} sx={{ borderRadius: 3, border: '1px solid #e2e8f0', mb: 2, bgcolor: '#ffffff' }}>
             <CardContent sx={{ p: 3 }}>
-              <Box
-                onClick={() => toggleCategory(catIdx)}
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  cursor: 'pointer',
-                  pb: expandedCategories[catIdx] ? 2 : 0,
-                  borderBottom: expandedCategories[catIdx] ? '1px solid #e2e8f0' : 'none',
-                }}
-              >
-                <Box display="flex" alignItems="center" gap={2}>
-                  <Typography variant="h6" fontWeight={700} sx={{ color: '#1e293b' }}>
-                    {categoryConfig[category.name]?.icon || '📝'} {categoryConfig[category.name]?.name || category.name.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
-                  </Typography>
-                  <Chip
-                    label={`${category.tips?.length || 0} tips`}
-                    size="small"
-                    sx={{
-                      bgcolor: `${categoryConfig[category.name]?.color || '#667eea'}20`,
-                      color: categoryConfig[category.name]?.color || '#667eea',
-                      fontWeight: 600,
-                    }}
-                  />
-                </Box>
-                <ExpandMoreIcon
-                  sx={{
-                    transform: expandedCategories[catIdx] ? 'rotate(180deg)' : 'rotate(0deg)',
-                    transition: 'transform 0.3s ease',
-                    color: '#64748b'
-                  }}
-                />
-              </Box>
+              {(() => {
+                const categoryName = typeof category?.name === 'string' && category.name.trim() ? category.name : 'general';
+                const tipsList = Array.isArray(category?.tips) ? category.tips : [];
+                const color = categoryConfig[categoryName]?.color || '#667eea';
+                const icon = categoryConfig[categoryName]?.icon || '📝';
+                const displayName =
+                  categoryConfig[categoryName]?.name ||
+                  String(categoryName)
+                    .split('_')
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ');
 
-              <Collapse in={expandedCategories[catIdx]}>
-                <Stack spacing={2} sx={{ mt: 2 }}>
-                  {category.tips?.map((tip, tipIdx) => (
+                return (
+                  <>
                     <Box
-                      key={tipIdx}
+                      onClick={() => toggleCategory(catIdx)}
                       sx={{
-                        p: 2.5,
-                        borderRadius: 2,
-                        bgcolor: '#f8fafb',
-                        border: '1px solid #e2e8f0',
-                        transition: 'all 0.2s ease',
-                        '&:hover': {
-                          borderColor: categoryConfig[category.name]?.color || '#667eea',
-                          boxShadow: `0 4px 12px ${categoryConfig[category.name]?.color || '#667eea'}25`,
-                        }
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: 'pointer',
+                        pb: expandedCategories[catIdx] ? 2 : 0,
+                        borderBottom: expandedCategories[catIdx] ? '1px solid #e2e8f0' : 'none',
                       }}
                     >
-                      <Typography
-                        variant="body1"
-                        fontWeight={600}
-                        sx={{ color: '#1e293b', mb: 1 }}
-                      >
-                        {tip.title}
-                      </Typography>
-                      <Typography variant="body2" sx={{ color: '#64748b', mb: 2 }}>
-                        {tip.description}
-                      </Typography>
-                      <Box display="flex" gap={1} alignItems="center" flexWrap="wrap">
-                        <PriorityChip priority={tip.priority} />
-                        {tip.actionable && (
-                          <Chip 
-                            label="Actionable" 
-                            size="small" 
-                            sx={{
-                              bgcolor: `${categoryConfig[category.name]?.color || '#667eea'}15`,
-                              color: categoryConfig[category.name]?.color || '#667eea',
-                              fontWeight: 600,
-                              fontSize: '0.75rem'
-                            }} 
-                          />
-                        )}
+                      <Box display="flex" alignItems="center" gap={2}>
+                        <Typography variant="h6" fontWeight={700} sx={{ color: '#1e293b' }}>
+                          {icon} {displayName}
+                        </Typography>
+                        <Chip
+                          label={`${tipsList.length} tips`}
+                          size="small"
+                          sx={{
+                            bgcolor: `${color}20`,
+                            color: color,
+                            fontWeight: 600,
+                          }}
+                        />
                       </Box>
+                      <ExpandMoreIcon
+                        sx={{
+                          transform: expandedCategories[catIdx] ? 'rotate(180deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.3s ease',
+                          color: '#64748b'
+                        }}
+                      />
                     </Box>
-                  ))}
-                </Stack>
-              </Collapse>
+
+                    <Collapse in={expandedCategories[catIdx]}>
+                      <Stack spacing={2} sx={{ mt: 2 }}>
+                        {tipsList.map((tip, tipIdx) => (
+                          <Box
+                            key={tipIdx}
+                            sx={{
+                              p: 2.5,
+                              borderRadius: 2,
+                              bgcolor: '#f8fafb',
+                              border: '1px solid #e2e8f0',
+                              transition: 'all 0.2s ease',
+                              '&:hover': {
+                                borderColor: color,
+                                boxShadow: `0 4px 12px ${color}25`,
+                              }
+                            }}
+                          >
+                            <Typography
+                              variant="body1"
+                              fontWeight={600}
+                              sx={{ color: '#1e293b', mb: 1 }}
+                            >
+                              {tip?.title || ''}
+                            </Typography>
+                            <Typography variant="body2" sx={{ color: '#64748b', mb: 2 }}>
+                              {tip?.description || ''}
+                            </Typography>
+                            <Box display="flex" gap={1} alignItems="center" flexWrap="wrap">
+                              <PriorityChip priority={tip?.priority || 'medium'} />
+                              {tip?.actionable && (
+                                <Chip
+                                  label="Actionable"
+                                  size="small"
+                                  sx={{
+                                    bgcolor: `${color}15`,
+                                    color: color,
+                                    fontWeight: 600,
+                                    fontSize: '0.75rem'
+                                  }}
+                                />
+                              )}
+                            </Box>
+                          </Box>
+                        ))}
+                      </Stack>
+                    </Collapse>
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
         ))}
 
         {/* Sources */}
-        {tips.sources?.length > 0 && (
+        {sources.length > 0 && (
           <Card elevation={0} sx={{ borderRadius: 3, border: '1px solid #e2e8f0', mb: 3, bgcolor: '#ffffff' }}>
             <CardContent sx={{ p: 3 }}>
               <Typography variant="h6" fontWeight={700} mb={3} sx={{ color: '#1e293b' }}>
                 📚 Sources Used
               </Typography>
               <Stack spacing={1.5}>
-                {tips.sources.map((source, idx) => (
+                {sources.map((source, idx) => (
                   <Box
                     key={idx}
                     sx={{
@@ -447,9 +484,9 @@ const LifestyleTipsView = ({ tips: propsTips, onBack: propsOnBack, onDelete: pro
                     }}
                   >
                     <Typography variant="body2" fontWeight={600} sx={{ color: '#1e293b' }}>
-                      {source.title}
+                      {source?.title || ''}
                     </Typography>
-                    {source.country && (
+                    {source?.country && (
                       <Typography variant="caption" sx={{ color: '#64748b' }}>
                         {source.country}
                       </Typography>

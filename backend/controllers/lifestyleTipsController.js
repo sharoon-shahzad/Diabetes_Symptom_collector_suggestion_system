@@ -168,8 +168,11 @@ export const getCurrentTips = async (req, res) => {
     });
 
     if (!tips) {
-      return res.status(404).json({
-        success: false,
+      // Return 200 to avoid noisy 404s in the frontend console/network tab.
+      return res.status(200).json({
+        success: true,
+        tips: null,
+        exists: false,
         message: 'No tips found for today',
       });
     }
@@ -177,6 +180,7 @@ export const getCurrentTips = async (req, res) => {
     return res.status(200).json({
       success: true,
       tips: tips.toObject(),
+      exists: true,
     });
   } catch (error) {
     console.error('Get current tips error:', error);

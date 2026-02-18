@@ -121,7 +121,7 @@ const ExercisePlanDashboard = ({ inModal = false }) => {
       
       // Get history (last 30 days for filtering later)
       const historyRes = await axiosInstance.get('/exercise-plan/history?limit=30');
-      const plans = historyRes.data.plans || [];
+      const plans = historyRes.data.plans || historyRes.data.data || [];
       setHistory(plans);
       
       // If today's plan doesn't exist, auto-generate it
@@ -148,7 +148,7 @@ const ExercisePlanDashboard = ({ inModal = false }) => {
         
         // Refresh history
         const historyRes = await axiosInstance.get('/exercise-plan/history?limit=30');
-        setHistory(historyRes.data.plans || []);
+        setHistory(historyRes.data.plans || historyRes.data.data || []);
         
         // Clear success message after 3 seconds
         setTimeout(() => setSuccess(null), 3000);

@@ -5,11 +5,14 @@ import {
   Box,
   Container,
   Paper,
+  Card,
+  CardContent,
   Button,
   Stack,
   Typography,
   Chip,
   Alert,
+  Dialog,
 } from '@mui/material';
 import { Refresh as RefreshIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import axiosInstance from '../utils/axiosInstance.js';
@@ -23,6 +26,10 @@ const LifestyleTipsDashboard = ({ inModal = false }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [todayTips, setTodayTips] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [viewingHistoryTips, setViewingHistoryTips] = useState(null);
+  const [showGenerator, setShowGenerator] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(null);
   const [generating, setGenerating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -30,6 +37,62 @@ const LifestyleTipsDashboard = ({ inModal = false }) => {
   useEffect(() => {
     initializeLifestyleTips();
   }, []);
+
+  const fetchHistory = async (limit = 30) => {
+    try {
+      const res = await axiosInstance.get(`/lifestyle-tips/history?limit=${limit}`);
+      const list = Array.isArray(res.data.history) ? res.data.history : [];
+      setHistory(list);
+    } catch (err) {
+      console.warn('Could not load lifestyle tips history:', err);
+      setHistory([]);
+    }
+  };
+
+  // Used by the history dialog delete callback
+  const fetchInitial = async () => {
+    await fetchHistory(30);
+  };
+
+  const generateDateOptions = () => {
+    const dates = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let i = 0; i <= 5; i++) {
+      const d = new Date(today.getTime() + (i * 24 * 60 * 60 * 1000));
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      dates.push(`${year}-${month}-${day}`);
+    }
+    return dates;
+  };
+
+  const handleGenerateTips = async () => {
+    if (!selectedDate) {
+      setError('Please select a date');
+      return;
+    }
+
+    try {
+      setGenerating(true);
+      setError(null);
+      const res = await axiosInstance.post('/lifestyle-tips/generate', { target_date: selectedDate });
+      if (res.data?.success) {
+        setTodayTips(res.data.tips);
+        setShowGenerator(false);
+        setSelectedDate(null);
+        await fetchHistory(30);
+        setSuccess('Lifestyle tips generated successfully!');
+        setTimeout(() => setSuccess(null), 3000);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to generate lifestyle tips');
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const initializeLifestyleTips = async () => {
     try {
@@ -40,6 +103,10 @@ const LifestyleTipsDashboard = ({ inModal = false }) => {
       try {
         const response = await axiosInstance.get('/lifestyle-tips/current');
         setTodayTips(response.data.tips);
+        if (!response.data.tips) {
+          // Backend returns 200 with tips:null when none exist
+          await autoGenerateTips();
+        }
       } catch (err) {
         // If no tips exist, auto-generate
         if (err.response?.status === 404 || err.response?.data?.message?.includes('not found')) {
@@ -48,6 +115,9 @@ const LifestyleTipsDashboard = ({ inModal = false }) => {
           throw err;
         }
       }
+
+      // History is non-blocking; keep page usable even if it fails
+      await fetchHistory(30);
     } catch (err) {
       console.error('Initialize error:', err);
       setError(err.response?.data?.message || 'Failed to load lifestyle tips. Please ensure LM Studio is running.');
@@ -103,12 +173,11 @@ const LifestyleTipsDashboard = ({ inModal = false }) => {
 
       const response = await axiosInstance.get('/lifestyle-tips/current');
       setTodayTips(response.data.tips);
-    } catch (err) {
-      if (err.response?.status === 404) {
+      if (!response.data.tips) {
         await autoGenerateTips();
-      } else {
-        setError(err.response?.data?.message || 'Failed to refresh tips');
       }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to refresh tips');
     } finally {
       setRefreshing(false);
     }
@@ -286,7 +355,8 @@ const LifestyleTipsDashboard = ({ inModal = false }) => {
               </Typography>
               <Stack spacing={2}>
                 {history.slice(0, 5).map((tips, idx) => {
-                  const total = tips.categories?.reduce((sum, cat) => sum + (cat.tips?.length || 0), 0) || 0;
+                  const categories = Array.isArray(tips?.categories) ? tips.categories : [];
+                  const total = categories.reduce((sum, cat) => sum + (cat?.tips?.length || 0), 0);
 
                   return (
                     <Box
