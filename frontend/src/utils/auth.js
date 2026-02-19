@@ -1,8 +1,7 @@
 import axiosInstance from './axiosInstance';
 import axios from 'axios';
-import { clearPermissionsCache } from './permissions';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = 'http://localhost:5000';
 
 export async function refreshToken() {
   try {
@@ -20,8 +19,7 @@ export async function refreshToken() {
 export async function logout() {
   await axiosInstance.get(`/auth/logout`, { withCredentials: true });
   localStorage.removeItem('accessToken');
-  // Clear permission cache on logout
-  clearPermissionsCache();
+  localStorage.removeItem('roles');
 }
 export async function getCurrentUser() {
   try {
@@ -33,6 +31,23 @@ export async function getCurrentUser() {
     throw err;
   }
 }
-
-// NOTE: Token refresh interceptor is handled in axiosInstance.js
-// Do NOT add duplicate interceptors here to avoid infinite loops 
+// Axios interceptor for automatic token refresh
+axios.interceptors.response.use(
+  response => response,
+  async error => {
+    const originalRequest = error.config;
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      const newToken = await refreshToken();
+      if (newToken) {
+        originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
+        return axios(originalRequest);
+      }
+      // If refresh fails, clear any stale token and send user to 404/unauthorized page
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('roles');
+      window.location.href = '/not-found';
+    }
+    return Promise.reject(error);
+  }
+); 
