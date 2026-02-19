@@ -14,16 +14,22 @@ import {
   AppBar,
   Toolbar,
   Container,
-  useTheme
+  useTheme,
+  LinearProgress,
+  Chip
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LoginIcon from '@mui/icons-material/Login';
 import { differenceInYears, parseISO } from 'date-fns';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, logout } from '../../utils/auth';
+import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
+import ForumIcon from '@mui/icons-material/Forum';
 import ThemeToggle from './ThemeToggle';
 
 export default function UniversalHeader() {
@@ -47,6 +53,19 @@ export default function UniversalHeader() {
   const [showNewPw, setShowNewPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const navigate = useNavigate();
+
+  const passwordRequirements = [
+    { label: 'At least 8 characters', test: (pwd) => pwd.length >= 8 },
+    { label: 'One uppercase letter', test: (pwd) => /[A-Z]/.test(pwd) },
+    { label: 'One lowercase letter', test: (pwd) => /[a-z]/.test(pwd) },
+    { label: 'One number', test: (pwd) => /\d/.test(pwd) },
+    { label: 'One special character', test: (pwd) => /[^A-Za-z0-9]/.test(pwd) },
+  ];
+
+  const getPasswordStrength = () => {
+    const passed = passwordRequirements.filter((req) => req.test(newPassword)).length;
+    return (passed / passwordRequirements.length) * 100;
+  };
 
   useEffect(() => {
     checkAuthStatus();
@@ -157,6 +176,12 @@ export default function UniversalHeader() {
 
   const handleChangePwClose = () => {
     setChangePwOpen(false);
+    // reset modal state when closing
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPwSuccess('');
+    setPwError('');
   };
 
   const handleChangePwSubmit = async (e) => {
@@ -189,9 +214,10 @@ export default function UniversalHeader() {
       const data = res.data;
       if (res.status === 200) {
         setPwSuccess(data.message || 'Password changed successfully.');
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
+        // Close automatically after success so the modal disappears
+        setTimeout(() => {
+          handleChangePwClose();
+        }, 800);
       } else {
         setPwError(data.message || 'Failed to change password.');
       }
@@ -220,11 +246,39 @@ export default function UniversalHeader() {
           <Toolbar sx={{ justifyContent: 'space-between', py: 1 }}>
             {/* Logo/Brand */}
             <Box display="flex" alignItems="center">
-              {/* Empty space for alignment */}
+              <IconButton
+                onClick={() => navigate('/')}
+                sx={{
+                  color: 'primary.main',
+                  '&:hover': {
+                    backgroundColor: 'action.hover'
+                  }
+                }}
+              >
+                <MedicalServicesIcon sx={{ fontSize: 32 }} />
+              </IconButton>
             </Box>
 
-            {/* User Menu */}
-            <Box display="flex" alignItems="center" gap={1}>
+            {/* Navigation & User Menu */}
+            <Box display="flex" alignItems="center" gap={2}>
+              {/* Forum/Feedback Button */}
+              <Button
+                variant="text"
+                color="primary"
+                startIcon={<ForumIcon />}
+                onClick={() => navigate('/feedback')}
+                sx={{
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  '&:hover': {
+                    backgroundColor: 'action.hover'
+                  }
+                }}
+              >
+                Forum
+              </Button>
+
+              {/* User Menu */}
               {user ? (
                 <>
                   <IconButton onClick={handleAvatarClick} size="large">
@@ -388,6 +442,34 @@ export default function UniversalHeader() {
                 )
               }}
             />
+            {newPassword && (
+              <Box sx={{ mt: 0.5, mb: 1 }}>
+                <LinearProgress
+                  variant="determinate"
+                  value={getPasswordStrength()}
+                  sx={{
+                    height: 6,
+                    backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                    '& .MuiLinearProgress-bar': {
+                      backgroundColor: getPasswordStrength() >= 80 ? 'success.main' : getPasswordStrength() >= 50 ? 'warning.main' : 'error.main',
+                    },
+                  }}
+                />
+                <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {passwordRequirements.map((req, idx) => (
+                    <Chip
+                      key={idx}
+                      icon={req.test(newPassword) ? <CheckCircleIcon /> : undefined}
+                      label={req.label}
+                      size="small"
+                      color={req.test(newPassword) ? 'success' : 'default'}
+                      variant={req.test(newPassword) ? 'filled' : 'outlined'}
+                      sx={{ fontSize: '0.7rem', height: 24 }}
+                    />
+                  ))}
+                </Box>
+              </Box>
+            )}
             <TextField
               label="Confirm New Password"
               type={showConfirmPw ? 'text' : 'password'}
