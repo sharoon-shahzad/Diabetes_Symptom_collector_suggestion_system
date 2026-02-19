@@ -118,7 +118,7 @@ export const getLatestDiabetesAssessment = async (req, res) => {
       user_id: userId,
       assessment_type: 'diabetes',
       deleted_at: null
-    }).sort({ assessment_date: -1 });
+    }).sort({ assessment_date: -1 }).lean();
 
     if (!latestReport) {
       return res.status(404).json({
@@ -177,7 +177,8 @@ export const getDiabetesAssessmentHistory = async (req, res) => {
     .sort({ assessment_date: -1 })
     .limit(limit)
     .skip(skip)
-    .select('risk_level probability confidence assessment_date email_sent_at pdf_path');
+    .select('risk_level probability confidence features ml_results assessment_date email_sent_at pdf_path')
+    .lean();
 
     const totalCount = await Report.countDocuments({
       user_id: userId,
@@ -185,10 +186,24 @@ export const getDiabetesAssessmentHistory = async (req, res) => {
       deleted_at: null
     });
 
+    // Shape each report to match the same format as getLatestAssessment
+    // so the mobile/web client can use identical rendering logic for both
+    const shaped = reports.map(r => ({
+      features: r.features || {},
+      result: r.ml_results || {
+        risk_level: r.risk_level,
+        diabetes_probability: r.probability,
+        confidence: r.confidence,
+      },
+      assessment_date: r.assessment_date,
+      is_cached: true,
+      has_assessment: true,
+    }));
+
     return res.status(200).json({
       success: true,
       data: {
-        assessments: reports,
+        assessments: shaped,
         total: totalCount,
         limit,
         skip
@@ -393,8 +408,14 @@ export const assessDiabetes = async (req, res) => {
     }
 
     // Create hash of current answers (to detect changes)
-    const answerIds = currentAnswers.map(ua => String(ua.answer_id?._id)).sort();
+    // Use the UserAnswer document's own _id for hashing so free-text/numeric answers
+    // (which have no linked Answer document) are still included in change detection.
+    const answerIds = currentAnswers.map(ua => String(ua._id)).sort();
     const answerHash = crypto.createHash('sha256').update(answerIds.join(',')).digest('hex');
+    // Collect valid Answer-document ObjectIds for the report (filter nulls / free-text answers)
+    const linkedAnswerIds = currentAnswers
+      .map(ua => ua.answer_id?._id || ua.answer_id)
+      .filter(id => id != null);
 
     // Check for existing assessment with same answers (unless force_new)
     if (!forceNew) {
@@ -403,7 +424,7 @@ export const assessDiabetes = async (req, res) => {
         assessment_type: 'diabetes',
         deleted_at: null,
         answer_hash: answerHash
-      }).sort({ assessment_date: -1 });
+      }).sort({ assessment_date: -1 }).lean();
 
       if (existingReport) {
         console.log('✅ Returning cached assessment - answers unchanged (no model execution, no email)');
@@ -442,15 +463,38 @@ export const assessDiabetes = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
-    
+
+    // Prefer data from the User model; fall back to decrypted UserPersonalInfo
+    let dob = user.date_of_birth;
+    let gender = user.gender;
+
+    if (!dob || !gender) {
+      try {
+        const personalInfo = await UserPersonalInfo.findOne({ user_id: userId });
+        if (personalInfo) {
+          if (!dob && personalInfo.date_of_birth) {
+            const decrypted = encryptionService.decrypt(personalInfo.date_of_birth);
+            if (decrypted) dob = decrypted;
+          }
+          if (!gender && personalInfo.gender) {
+            const decrypted = encryptionService.decrypt(personalInfo.gender);
+            if (decrypted) gender = decrypted;
+          }
+          console.log(`👤 Fallback profile data — dob: ${dob ? 'found' : 'missing'}, gender: ${gender ? 'found' : 'missing'}`);
+        }
+      } catch (profileErr) {
+        console.warn('⚠️  Could not fetch UserPersonalInfo as fallback:', profileErr.message);
+      }
+    }
+
     // Validate that user has required profile data
-    if (!user.date_of_birth || !user.gender) {
+    if (!dob || !gender) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Please complete your profile with date of birth and gender before assessment',
+        message: 'Please complete your profile with date of birth and gender before running the assessment.',
         missing_profile_fields: {
-          date_of_birth: !user.date_of_birth,
-          gender: !user.gender
+          date_of_birth: !dob,
+          gender: !gender
         }
       });
     }
@@ -466,8 +510,8 @@ export const assessDiabetes = async (req, res) => {
 
     // Pass user data to feature mapping for Age and Gender auto-population
     const features = mapAnswersToFeatures(answersByQuestionId, questions, {
-      date_of_birth: user.date_of_birth,
-      gender: user.gender
+      date_of_birth: dob,
+      gender: gender
     });
     console.log('Mapped features for ML model:', features);
 
@@ -570,15 +614,22 @@ export const assessDiabetes = async (req, res) => {
 
     // Step 3: Save Report to database (create new report each time for history tracking)
     try {
-      let riskLevelRaw = finalResult?.risk_level || 'low';
-      const probabilityRaw = finalResult?.diabetes_probability ?? 0;
-      const confidenceRaw = finalResult?.confidence ?? 0;
-
-      // Map 'critical' to 'high' since Report model only accepts ['low', 'medium', 'high']
+      // Normalise risk_level: DB enum only accepts ['low', 'medium', 'high']
+      // Python model can return: 'low', 'moderate', 'high', 'critical'
+      let riskLevelRaw = (finalResult?.risk_level || 'low').toLowerCase();
       if (riskLevelRaw === 'critical') {
         riskLevelRaw = 'high';
         console.log('⚠️ Mapped risk_level from "critical" to "high" for database storage');
+      } else if (riskLevelRaw === 'moderate') {
+        riskLevelRaw = 'medium';
+        console.log('⚠️ Mapped risk_level from "moderate" to "medium" for database storage');
+      } else if (!['low', 'medium', 'high'].includes(riskLevelRaw)) {
+        console.log(`⚠️ Unknown risk_level "${riskLevelRaw}", defaulting to "low"`);
+        riskLevelRaw = 'low';
       }
+
+      const probabilityRaw = finalResult?.diabetes_probability ?? 0;
+      const confidenceRaw = finalResult?.confidence ?? 0;
 
       // Always create new report to preserve assessment history over time
       const reportDoc = await Report.create({
@@ -590,7 +641,7 @@ export const assessDiabetes = async (req, res) => {
         features: features,
         ml_results: finalResult,
         answer_hash: answerHash,
-        answer_ids: answerIds.map(id => id),
+        answer_ids: linkedAnswerIds,
         assessment_date: new Date(),
         generated_on: new Date(),
         email_sent_at: null  // Will be set after email is sent

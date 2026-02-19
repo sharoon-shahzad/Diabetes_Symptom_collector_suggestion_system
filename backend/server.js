@@ -22,7 +22,7 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { connectDB } from './config/db.js';
-import { ensureRolesExist } from './utils/roleUtils.js';
+import { ensureRolesExist, ensureRolePermissions } from './utils/roleUtils.js';
 import { initializeEmbeddingModel } from './services/embeddingService.js';
 import { initializeChromaDB } from './services/chromaService.js';
 import authRoutes from './routes/authRoute.js';
@@ -112,8 +112,9 @@ const startServer = async () => {
         await connectDB();
         console.log('✅ Database connected successfully');
         
-        // Ensure all required roles exist
+        // Ensure all required roles exist and have the right permissions
         await ensureRolesExist();
+        await ensureRolePermissions();
         
         // **Initialize RAG services**
         if (process.env.RAG_ENABLED === 'true') {
@@ -186,9 +187,9 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: 'Internal server error', error: err.message });
 });
 
-// Catch-all for unsupported GET requests
-app.get('*', (req, res) => {
-  res.status(404).json({ message: 'Not found' });
+// Catch-all for all unsupported routes
+app.use('*', (req, res) => {
+  res.status(404).json({ success: false, message: `Cannot ${req.method} ${req.originalUrl}` });
 });
 
 // Start the server

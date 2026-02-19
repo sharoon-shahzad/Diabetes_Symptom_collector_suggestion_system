@@ -2,6 +2,10 @@
  * Constants and Configuration
  */
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+import * as Device from 'expo-device';
+
 // API Configuration
 export const API_CONFIG = {
   BASE_URL: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000',
@@ -9,8 +13,87 @@ export const API_CONFIG = {
   TIMEOUT: 30000, // 30 seconds
 };
 
+/**
+ * Auto-detects the best API base URL for the current platform.
+ * Used as a fallback when no AsyncStorage override is saved.
+ *
+ * Uses Device.isDevice to distinguish physical devices from emulators/simulators.
+ * IMPORTANT: Platform.OS === 'android' is true on BOTH real devices AND emulators,
+ * so we cannot use Platform alone — Device.isDevice is required.
+ *
+ * Priority:
+ *   Emulator/Simulator → 10.0.2.2 (Android) or localhost (iOS) maps to host machine
+ *   Physical device    → EXPO_PUBLIC_API_URL from .env (set once via Dev Settings)
+ */
+const getAutoDetectedUrl = (): string => {
+  // Device.isDevice === false means we're in an emulator or simulator
+  if (__DEV__ && !Device.isDevice) {
+    if (Platform.OS === 'android') {
+      // Android emulator loopback alias — maps to the host machine localhost
+      return `http://10.0.2.2:5000${API_CONFIG.API_VERSION}`;
+    }
+    if (Platform.OS === 'ios') {
+      return `http://localhost:5000${API_CONFIG.API_VERSION}`;
+    }
+  }
+  // Physical device or production build — use baked .env value
+  return `${API_CONFIG.BASE_URL}${API_CONFIG.API_VERSION}`;
+};
+
+/** Sync getter — returns the baked-in env value. Used for initial axios instance creation. */
 export const getApiUrl = () => {
   return `${API_CONFIG.BASE_URL}${API_CONFIG.API_VERSION}`;
+};
+
+const RUNTIME_URL_KEY = '@diavise_api_base_url';
+
+/**
+ * ASYNC — always use this for actual API calls.
+ *
+ * Priority chain:
+ *   1. AsyncStorage override  (set via Dev Settings screen — no rebuild needed)
+ *   2. Platform auto-detect   (Android Emulator → 10.0.2.2, iOS Sim → localhost)
+ *   3. EXPO_PUBLIC_API_URL    (baked .env value — physical device last resort)
+ */
+export const getRuntimeApiUrl = async (): Promise<string> => {
+  try {
+    const stored = await AsyncStorage.getItem(RUNTIME_URL_KEY);
+    if (stored && stored.startsWith('http')) {
+      // Stored value is the full URL including /api/v1
+      return stored;
+    }
+  } catch {
+    // AsyncStorage unavailable — fall through to auto-detect
+  }
+  return getAutoDetectedUrl();
+};
+
+/**
+ * Check whether the URL is currently from a manual AsyncStorage override.
+ * Used by Dev Settings screen to show the override status badge.
+ */
+export const isRuntimeUrlOverridden = async (): Promise<boolean> => {
+  try {
+    const stored = await AsyncStorage.getItem(RUNTIME_URL_KEY);
+    return !!stored && stored.startsWith('http');
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Persist a full API URL including /api/v1
+ * (e.g. "http://192.168.1.50:5000/api/v1").
+ * The Dev Settings screen passes the full URL after appending the version suffix.
+ */
+export const setRuntimeApiUrl = async (fullUrl: string): Promise<void> => {
+  const trimmed = fullUrl.trim().replace(/\/$/, '');
+  await AsyncStorage.setItem(RUNTIME_URL_KEY, trimmed);
+};
+
+/** Remove override — getRuntimeApiUrl will fall back to auto-detect then .env. */
+export const resetRuntimeApiUrl = async (): Promise<void> => {
+  await AsyncStorage.removeItem(RUNTIME_URL_KEY);
 };
 
 // Storage Keys
@@ -23,6 +106,8 @@ export const STORAGE_KEYS = {
   PENDING_ONBOARDING_ANSWERS: 'pendingOnboardingAnswers',
   LAST_SYNC: 'lastSync',
   OFFLINE_QUEUE: 'offlineQueue',
+  /** Set to 'true' after every login so the diagnosis check popup fires once on the next dashboard mount */
+  SHOW_DIAGNOSIS_POPUP: '@diavise_show_diagnosis_popup',
 };
 
 // Authentication

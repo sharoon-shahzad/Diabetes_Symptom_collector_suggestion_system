@@ -105,6 +105,20 @@ export default function ProfileScreen() {
         { icon: 'help-circle-outline', title: 'Help Center', route: '/profile/support', accent: ACCENT.support },
       ],
     },
+    // Dev-only section — only visible in __DEV__ builds
+    ...(__DEV__ ? [{
+      title: 'Developer',
+      accent: '#7C3AED',
+      items: [
+        {
+          icon: 'wrench-outline' as const,
+          title: 'Dev Settings',
+          subtitle: 'Override API URL at runtime',
+          route: '/profile/dev-settings',
+          accent: '#7C3AED',
+        },
+      ],
+    }] : []),
   ];
 
   return (

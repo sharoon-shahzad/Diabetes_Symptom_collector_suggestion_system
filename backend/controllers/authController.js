@@ -38,7 +38,9 @@ const generateAccessAndRefreshTokens = async (userId, email) => {
 // Registration controller
 export const register = async (req, res) => {
     try {
-        const { fullName, email, password, date_of_birth, gender } = req.body;
+        // Accept both snake_case (date_of_birth) and camelCase (dateOfBirth) from clients
+        const { fullName, email, password, gender } = req.body;
+        const date_of_birth = req.body.date_of_birth || req.body.dateOfBirth;
         
         // Validation
         if (!fullName || !email || !password || !date_of_birth || !gender) {
@@ -88,20 +90,14 @@ export const register = async (req, res) => {
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
         
-        // Generate activation token
-        const activationToken = crypto.randomBytes(32).toString('hex');
-        const activationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-        
-        // Create user (store normalized email and optional fields)
+        // Create user — activated immediately (email verification is optional / future feature)
         const user = new User({
             fullName,
             email: normalizedEmail,
             password: hashedPassword,
             date_of_birth: date_of_birth || null,
             gender: gender || null,
-            isActivated: false,
-            activationToken,
-            activationTokenExpires
+            isActivated: true,
         });
         
         await user.save();
@@ -134,12 +130,47 @@ export const register = async (req, res) => {
             // Don't fail registration if role assignment fails
         }
         
-        // Send activation email (use normalized email)
-        await sendActivationEmail(normalizedEmail, activationToken);
-        
-        return res.status(201).json({ 
+        // Send welcome email — non-blocking, never blocks registration
+        try {
+            const welcomeToken = crypto.randomBytes(32).toString('hex');
+            await sendActivationEmail(normalizedEmail, welcomeToken);
+        } catch (emailErr) {
+            console.warn('⚠️  Welcome email could not be sent (non-fatal):', emailErr?.message || emailErr);
+        }
+
+        // Fetch the role(s) just assigned for the token payload
+        let roles = [];
+        try {
+            const { UsersRoles } = await import('../models/User_Role.js');
+            const userRoles = await UsersRoles.find({ user_id: user._id }).populate('role_id');
+            roles = userRoles.map(ur => ur.role_id?.role_name).filter(Boolean);
+        } catch (_) { /* best-effort */ }
+
+        // Generate tokens so the client is logged in immediately after signup
+        const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id, user.email);
+
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
+
+        return res.status(201).json({
             success: true,
-            message: 'Check your email to activate your account.' 
+            message: 'Account created successfully.',
+            data: {
+                user: {
+                    id: user._id,
+                    fullName: user.fullName,
+                    email: user.email,
+                    roles,
+                    diabetes_diagnosed: user.diabetes_diagnosed,
+                    onboardingCompleted: user.onboardingCompleted,
+                },
+                accessToken,
+                refreshToken,
+            },
         });
     } catch (err) {
         console.error(err);

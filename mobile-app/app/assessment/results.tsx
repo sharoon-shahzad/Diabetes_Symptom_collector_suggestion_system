@@ -2,8 +2,8 @@
  * Assessment Results Screen
  * Gradient hero + muted card design — no emojis, no old Card/Button/textStyles/colors.light.*
  */
-import React, { useMemo } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useMemo, useEffect } from 'react';
+import { View, StyleSheet, ScrollView, TouchableOpacity, BackHandler } from 'react-native';
 import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -12,6 +12,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useGetLatestAssessmentQuery } from '@features/assessment/assessmentApi';
 import type { DiabetesAssessmentResult } from '@features/assessment/assessmentApi';
+import { useAppSelector } from '@store/hooks';
+import { selectUser } from '@features/auth/authSlice';
 import { FullScreenLoader } from '@components/common/FullScreenLoader';
 import { spacing, borderRadius, shadows } from '@theme/spacing';
 import colors from '@theme/colors';
@@ -40,19 +42,68 @@ const RISK_META: Record<string, { color: string; icon: string; label: string; ad
   },
 };
 
+/** Normalize any casing/spelling from the Python model or DB into a RISK_META key */
+function normalizeRisk(raw: string | undefined): 'High' | 'Medium' | 'Low' {
+  const v = (raw || 'low').toLowerCase();
+  if (v === 'high' || v === 'critical') return 'High';
+  if (v === 'medium' || v === 'moderate') return 'Medium';
+  return 'Low';
+}
+
+/**
+ * Normalize assessment data to the shaped format.
+ * Handles two cases:
+ *   1. New shaped format: { result: { risk_level, diabetes_probability, confidence }, features }
+ *   2. Legacy flat format (DB doc / old cached API): { risk_level, probability, confidence, ml_results }
+ */
+function normalizeAssessment(raw: any): DiabetesAssessmentResult {
+  if (!raw) return raw;
+  // Already shaped — has a result subobject with diabetes_probability
+  if (raw.result?.diabetes_probability !== undefined || raw.result?.risk_level !== undefined) {
+    return raw as DiabetesAssessmentResult;
+  }
+  // Legacy flat format coming from old cached API or direct DB doc
+  const mlResults = raw.ml_results || {};
+  return {
+    features: raw.features || {},
+    result: {
+      risk_level: mlResults.risk_level || raw.risk_level || 'low',
+      diabetes_probability: mlResults.diabetes_probability ?? raw.probability ?? raw.diabetes_probability ?? 0,
+      confidence: mlResults.confidence ?? raw.confidence ?? 0,
+      total_symptoms: mlResults.total_symptoms,
+    },
+    assessment_date: raw.assessment_date,
+    is_cached: true,
+    has_assessment: true,
+    enhancement_status: raw.enhancement_status,
+    model_info: raw.model_info,
+  };
+}
+
 export default function AssessmentResultsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ data?: string }>();
 
+  // Always go to dashboard on back — never back into auth/questionnaire stack
+  const goToDashboard = () => router.replace('/(tabs)/dashboard');
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      goToDashboard();
+      return true; // prevent default back behaviour
+    });
+    return () => sub.remove();
+  }, []);
+
   const passedData = useMemo(() => {
     try {
-      if (params.data) return JSON.parse(params.data) as DiabetesAssessmentResult;
+      if (params.data) return normalizeAssessment(JSON.parse(params.data));
     } catch {}
     return null;
   }, [params.data]);
 
   const { data: latestData, isLoading } = useGetLatestAssessmentQuery(undefined, { skip: !!passedData });
-  const assessment = passedData || latestData?.data;
+  const assessment = passedData || (latestData?.data ? normalizeAssessment(latestData.data) : null);
 
   if (isLoading && !passedData) return <FullScreenLoader />;
 
@@ -62,7 +113,7 @@ export default function AssessmentResultsScreen() {
       <SafeAreaView style={s.safe} edges={['top']}>
         <ScrollView contentContainerStyle={s.scroll}>
           <LinearGradient colors={[HERO_FROM, HERO_TO]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.hero}>
-            <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/dashboard')} style={s.heroBack}>
+            <TouchableOpacity onPress={goToDashboard} style={s.heroBack}>
               <MaterialCommunityIcons name="arrow-left" size={20} color="#FFF" />
             </TouchableOpacity>
             <View style={s.heroRow}>
@@ -92,20 +143,22 @@ export default function AssessmentResultsScreen() {
     );
   }
 
-  const riskLevel = assessment.result?.risk_level || 'Low';
+  const riskLevel = normalizeRisk(assessment.result?.risk_level);
   const probability = assessment.result?.diabetes_probability ?? 0;
   const confidence = assessment.result?.confidence ?? 0;
-  const meta = RISK_META[riskLevel] || RISK_META.Low;
+  const meta = RISK_META[riskLevel];
   const features = assessment.features || {};
   const totalSymptoms = assessment.result?.total_symptoms || Object.keys(features).length;
   const presentCount = Object.values(features).filter(v => Number(v) > 0).length;
+  const user = useAppSelector(selectUser);
+  const isDiagnosed = user?.diabetes_diagnosed === 'yes';
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
         {/* Hero */}
         <LinearGradient colors={[HERO_FROM, HERO_TO]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.hero}>
-          <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)/dashboard')} style={s.heroBack}>
+          <TouchableOpacity onPress={goToDashboard} style={s.heroBack}>
             <MaterialCommunityIcons name="arrow-left" size={20} color="#FFF" />
           </TouchableOpacity>
           <View style={s.heroRow}>
@@ -202,14 +255,98 @@ export default function AssessmentResultsScreen() {
           </View>
         )}
 
+        {/* What To Do Next — only for undiagnosed users */}
+        {!isDiagnosed && (
+          <View style={s.section}>
+            <View style={s.sectionHeader}>
+              <View style={[s.sectionIconWrap, { backgroundColor: colors.warning.bg }]}>
+                <MaterialCommunityIcons name="arrow-decision-outline" size={16} color={colors.warning.dark} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.sectionTitle}>What To Do Next</Text>
+                <Text style={s.sectionSub}>Based on your {riskLevel.toLowerCase()} risk result</Text>
+              </View>
+            </View>
+
+            {(riskLevel === 'High' || riskLevel === 'Medium') && (
+              <View style={s.nextStepRow}>
+                <View style={[s.nextStepBadge, { backgroundColor: meta.color + '15' }]}>
+                  <MaterialCommunityIcons name="alert-outline" size={15} color={meta.color} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.nextStepTitle}>
+                    {riskLevel === 'High' ? 'See a doctor soon' : 'Schedule a check-up'}
+                  </Text>
+                  <Text style={s.nextStepDesc}>
+                    {riskLevel === 'High'
+                      ? 'Your symptoms indicate a high risk. Please consult a healthcare provider as soon as possible.'
+                      : 'Your symptoms suggest a moderate risk. Schedule a visit with your doctor for further evaluation.'}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            <View style={s.nextStepRow}>
+              <View style={[s.nextStepBadge, { backgroundColor: colors.info.bg }]}>
+                <MaterialCommunityIcons name="test-tube" size={15} color={colors.info.dark} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.nextStepTitle}>Get Clinical Tests Done</Text>
+                <Text style={s.nextStepDesc}>
+                  Request a Fasting Blood Glucose test and an HbA1c test from your doctor. These are the gold-standard tests for diagnosing diabetes.
+                </Text>
+              </View>
+            </View>
+
+            {riskLevel === 'Low' && (
+              <View style={s.nextStepRow}>
+                <View style={[s.nextStepBadge, { backgroundColor: colors.success.bg }]}>
+                  <MaterialCommunityIcons name="calendar-check-outline" size={15} color={colors.success.dark} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.nextStepTitle}>Retest in 6 Months</Text>
+                  <Text style={s.nextStepDesc}>
+                    Your risk is currently low. Maintain a healthy lifestyle and retake this assessment every 6 months to stay informed.
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            <View style={s.nextStepRow}>
+              <View style={[s.nextStepBadge, { backgroundColor: '#EDE9FE' }]}>
+                <MaterialCommunityIcons name="heart-pulse" size={15} color="#7C3AED" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.nextStepTitle}>Adopt Preventive Habits</Text>
+                <Text style={s.nextStepDesc}>
+                  A balanced diet, regular exercise, and maintaining a healthy weight are key to preventing or delaying diabetes.
+                </Text>
+              </View>
+            </View>
+
+            <View style={[s.nextStepRow, { borderBottomWidth: 0 }]}>
+              <View style={[s.nextStepBadge, { backgroundColor: colors.warning.bg }]}>
+                <MaterialCommunityIcons name="account-check-outline" size={15} color={colors.warning.dark} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.nextStepTitle}>Update Your Diagnosis Status</Text>
+                <Text style={s.nextStepDesc}>
+                  Once a doctor confirms your diagnosis, update your status in your Profile. This unlocks personalised diet plans, exercise plans, and AI-driven suggestions.
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Actions */}
         <View style={s.actions}>
-          <TouchableOpacity activeOpacity={0.85} onPress={() => router.push('/assessment')}>
+          <TouchableOpacity activeOpacity={0.85} onPress={() => router.push('/assessment' as any)}>
             <LinearGradient colors={[HERO_FROM, HERO_TO]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.gradBtn}>
               <MaterialCommunityIcons name="restart" size={18} color="#FFF" />
               <Text style={s.gradBtnText}>Retake Assessment</Text>
             </LinearGradient>
           </TouchableOpacity>
+
         </View>
 
         {/* Disclaimer */}
@@ -284,6 +421,12 @@ const s = StyleSheet.create({
   detailRow: { flexDirection: 'column', paddingVertical: spacing[2], borderBottomWidth: 1, borderBottomColor: colors.neutral[50], gap: 2 },
   detailLabel: { fontSize: 12, fontWeight: '500', color: colors.neutral[400] },
   detailValue: { fontSize: 14, fontWeight: '600', color: colors.neutral[800] },
+
+  // Next Steps rows (inside section card)
+  nextStepRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[3], paddingVertical: spacing[3], borderBottomWidth: 1, borderBottomColor: colors.neutral[50] },
+  nextStepBadge: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', flexShrink: 0, marginTop: 1 },
+  nextStepTitle: { fontSize: 14, fontWeight: '700', color: colors.neutral[800], marginBottom: 3 },
+  nextStepDesc: { fontSize: 12, fontWeight: '400', color: colors.neutral[500], lineHeight: 17 },
 
   // Actions
   actions: { gap: spacing[3], marginBottom: spacing[4] },

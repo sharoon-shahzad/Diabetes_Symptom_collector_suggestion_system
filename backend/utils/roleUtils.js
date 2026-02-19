@@ -1,4 +1,71 @@
 import { Role } from '../models/Role.js';
+import { Permission } from '../models/Permissions.js';
+import { RolePermissions } from '../models/RolePermissions.js';
+
+// Permissions every regular user must have for core assessment features
+const USER_CORE_PERMISSIONS = [
+  'disease:view:own',
+  'disease:edit:own',
+  'disease:submit:own',
+  'answer:submit:own',
+  'onboarding:access:own',
+  'onboarding:complete:own',
+  'symptom:view:all',
+  'question:view:all',
+  'category:view:all',
+  'content:view:all',
+];
+
+/**
+ * Ensures the user role has all core permissions needed for assessment/onboarding.
+ * Called automatically on server startup — only adds missing permissions, never removes existing ones.
+ */
+export const ensureRolePermissions = async () => {
+  try {
+    const userRole = await Role.findOne({ role_name: 'user' });
+    if (!userRole) {
+      console.log('⚠️  User role not found — run ensureRolesExist first');
+      return false;
+    }
+
+    // Collect the permission IDs already assigned to the user role
+    const existingRolePerms = await RolePermissions.find({
+      role_id: userRole._id,
+      is_active: true,
+      deleted_at: null,
+    }).select('permission_id');
+
+    const existingPermIds = new Set(existingRolePerms.map(rp => String(rp.permission_id)));
+
+    let addedCount = 0;
+    for (const permName of USER_CORE_PERMISSIONS) {
+      const permission = await Permission.findOne({ name: permName, deleted_at: null });
+      if (!permission) {
+        // Permission doesn't exist in DB yet — skip silently (seed-all-permissions must be run first)
+        continue;
+      }
+      if (!existingPermIds.has(String(permission._id))) {
+        await RolePermissions.create({
+          role_id: userRole._id,
+          permission_id: permission._id,
+          is_active: true,
+        });
+        addedCount++;
+        console.log(`  ✅ Added permission to user role: ${permName}`);
+      }
+    }
+
+    if (addedCount > 0) {
+      console.log(`✅ ensureRolePermissions: Added ${addedCount} missing permission(s) to the user role`);
+    } else {
+      console.log('✅ ensureRolePermissions: User role already has all core permissions');
+    }
+    return true;
+  } catch (error) {
+    console.error('❌ Error ensuring role permissions:', error);
+    return false;
+  }
+};
 
 /**
  * Ensures that all necessary roles exist in the database

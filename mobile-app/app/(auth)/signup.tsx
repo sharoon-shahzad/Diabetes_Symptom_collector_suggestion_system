@@ -25,10 +25,14 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { TextInput } from '@components/common/TextInput';
 import { useRegisterMutation } from '@features/auth/authApi';
+import { useAppDispatch } from '@store/hooks';
+import { setUser } from '@features/auth/authSlice';
 import { registrationSchema, type RegistrationFormData } from '@utils/validation';
 import { spacing, borderRadius, shadows } from '@theme/spacing';
 import colors from '@theme/colors';
 import { GENDER_OPTIONS } from '@utils/constants';
+import { storage, STORAGE_KEYS, secureStorage } from '@utils/storage';
+import { getRuntimeApiUrl } from '@utils/constants';
 
 const HERO_FROM = '#3D5A80';
 const HERO_TO = '#293D56';
@@ -41,9 +45,11 @@ const STEPS = [
 
 export default function SignUpScreen() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const [register, { isLoading }] = useRegisterMutation();
   const [currentStep, setCurrentStep] = useState(0);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [processingAssessment, setProcessingAssessment] = useState(false);
 
   const {
     control,
@@ -75,7 +81,7 @@ export default function SignUpScreen() {
 
   const onSubmit = async (data: RegistrationFormData) => {
     try {
-      await register({
+      const result = await register({
         fullName: data.fullName,
         email: data.email,
         password: data.password,
@@ -84,11 +90,92 @@ export default function SignUpScreen() {
         phoneNumber: data.phoneNumber,
       }).unwrap();
 
-      Alert.alert('Registration Successful', 'Please check your email to activate your account.', [
-        { text: 'OK', onPress: () => router.replace('/(auth)/signin') },
-      ]);
+      // Persist token so all subsequent fetch calls are authenticated
+      const token = result.data?.accessToken;
+      if (token) {
+        await secureStorage.setAccessToken(token);
+      }
+      dispatch(setUser(result.data.user));
+      // Flag for the diagnosis-check popup on the next dashboard mount
+      await storage.setItem(STORAGE_KEYS.SHOW_DIAGNOSIS_POPUP, 'true');
+
+      // Check for assessment answers saved before the user registered
+      const pendingPayload = await storage.getItem(STORAGE_KEYS.PENDING_ONBOARDING_ANSWERS) as {
+        answers: Array<{ questionId: string; answerText: string }>;
+      } | null;
+
+      await storage.removeItem(STORAGE_KEYS.PENDING_ONBOARDING_ANSWERS);
+
+      if (pendingPayload?.answers?.length) {
+        setProcessingAssessment(true);
+        try {
+          await processPendingAssessment(pendingPayload.answers, token);
+        } catch (_) {
+          // processPendingAssessment is fully guarded internally;
+          // this catch is a last-resort so no error popup ever fires.
+          router.replace('/(tabs)/dashboard');
+        } finally {
+          setProcessingAssessment(false);
+        }
+      } else {
+        router.replace('/(tabs)/dashboard');
+      }
     } catch (error: any) {
       Alert.alert('Registration Error', error?.data?.message || 'Registration failed. Please try again.');
+    }
+  };
+
+  /**
+   * Uses raw fetch (with explicit token) to save answers and run the assessment.
+   * This avoids RTK Query Redux-store timing issues right after a fresh login.
+   * Always navigates to the results screen — with inline data if the assessment
+   * ran successfully, or without (so the screen auto-fetches the latest one).
+   */
+  const processPendingAssessment = async (
+    answers: Array<{ questionId: string; answerText: string }>,
+    token: string | undefined,
+  ) => {
+    const apiBase = await getRuntimeApiUrl();
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+
+    // 1. Save answers — best effort
+    try {
+      await fetch(`${apiBase}/questions/batch-save-answers`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ answers }),
+      });
+    } catch (saveErr) {
+      console.warn('batch-save-answers failed (non-fatal):', saveErr);
+    }
+
+    // 2. Run assessment — navigate to results with inline data if it works,
+    //    or without data so the results screen auto-fetches the latest one.
+    let inlineData: string | undefined;
+    try {
+      const res = await fetch(`${apiBase}/assessment/diabetes?force_new=true`, {
+        method: 'POST',
+        headers,
+      });
+      const json = await res.json();
+      if (json?.success && json?.data) {
+        inlineData = JSON.stringify(json.data);
+      }
+    } catch (runErr) {
+      console.warn('run-assessment failed (non-fatal):', runErr);
+    }
+
+    // Navigate — always succeed, fall back to dashboard if router throws
+    try {
+      router.replace({
+        pathname: '/assessment/results' as any,
+        params: inlineData ? { data: inlineData } : {},
+      });
+    } catch (_) {
+      router.replace('/(tabs)/dashboard');
     }
   };
 
@@ -226,6 +313,15 @@ export default function SignUpScreen() {
                 <ReviewRow icon="gender-male-female" label="Gender" value={watch('gender')} />
                 <ReviewRow icon="email-outline" label="Email" value={watch('email')} />
                 {!!watch('phoneNumber') && <ReviewRow icon="phone-outline" label="Phone" value={watch('phoneNumber') ?? ''} />}
+                {/* Show any validation errors that slipped through */}
+                {Object.keys(errors).length > 0 && (
+                  <View style={s.errorSummary}>
+                    <MaterialCommunityIcons name="alert-circle-outline" size={16} color={colors.error.main} />
+                    <Text style={s.errorSummaryText}>
+                      {Object.values(errors)[0]?.message ?? 'Please go back and fix the highlighted fields.'}
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
 
@@ -244,9 +340,11 @@ export default function SignUpScreen() {
                   </LinearGradient>
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity style={s.filledBtn} activeOpacity={0.85} onPress={handleSubmit(onSubmit)} disabled={isLoading}>
+                <TouchableOpacity style={s.filledBtn} activeOpacity={0.85} onPress={handleSubmit(onSubmit)} disabled={isLoading || processingAssessment}>
                   <LinearGradient colors={[HERO_FROM, HERO_TO]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.filledGrad}>
-                    <Text style={s.filledBtnText}>{isLoading ? 'Creating...' : 'Create Account'}</Text>
+                    <Text style={s.filledBtnText}>
+                      {processingAssessment ? 'Processing assessment...' : isLoading ? 'Creating...' : 'Create Account'}
+                    </Text>
                   </LinearGradient>
                 </TouchableOpacity>
               )}
@@ -333,4 +431,8 @@ const s = StyleSheet.create({
   footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   footerText: { fontSize: 13, fontWeight: '500', color: colors.neutral[500] },
   footerLink: { fontSize: 13, fontWeight: '700', color: colors.primary[600] },
+
+  // Error summary on review step
+  errorSummary: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing[2], backgroundColor: colors.error.main + '12', borderRadius: borderRadius.sm, padding: spacing[3] },
+  errorSummaryText: { flex: 1, fontSize: 13, fontWeight: '500', color: colors.error.main },
 });

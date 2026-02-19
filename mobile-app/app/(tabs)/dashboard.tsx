@@ -25,7 +25,9 @@ import { useGetCurrentUserQuery } from '@features/auth/authApi';
 import { useGetDietPlansQuery } from '@features/diet/dietPlanApi';
 import { useGetExercisePlansQuery } from '@features/exercise/exercisePlanApi';
 import { useGetHealthSummaryQuery } from '@features/health/healthApi';
+import { useGetLatestAssessmentQuery } from '@features/assessment/assessmentApi';
 import { useGoogleFitData } from '@hooks/useGoogleFitData';
+import { DiagnosisCheckModal } from '@components/common/DiagnosisCheckModal';
 import { spacing, borderRadius, shadows } from '@theme/spacing';
 import colors from '@theme/colors';
 
@@ -79,8 +81,26 @@ export default function HomeScreen() {
   const { data: exerciseData } = useGetExercisePlansQuery();
   const { latestValues: fitValues, isAuthorized: fitConnected } = useGoogleFitData();
   const { data: healthSummary } = useGetHealthSummaryQuery();
+  const { data: latestAssessment } = useGetLatestAssessmentQuery();
 
-  const isDiagnosed = user?.diabetes_diagnosed;
+  const rawRiskLevel = latestAssessment?.data?.result?.risk_level;
+  const RISK_CHIP_COLOR: Record<string, string> = {
+    High: '#FCA5A5',
+    Medium: '#FCD34D',
+    Low: '#6EE7B7',
+  };
+  // Normalise: Python model / DB returns 'high','moderate','critical','low' — map to display keys
+  const latestRiskLevel = rawRiskLevel
+    ? (() => {
+        const v = rawRiskLevel.toLowerCase();
+        if (v === 'high' || v === 'critical') return 'High';
+        if (v === 'medium' || v === 'moderate') return 'Medium';
+        return 'Low';
+      })()
+    : undefined;
+  const riskChipColor = latestRiskLevel ? (RISK_CHIP_COLOR[latestRiskLevel] ?? 'rgba(255,255,255,0.6)') : null;
+
+  const isDiagnosed = user?.diabetes_diagnosed === 'yes';
   const dietPlansCount = dietData?.data?.length || 0;
   const exercisePlansCount = exerciseData?.data?.length || 0;
 
@@ -103,12 +123,12 @@ export default function HomeScreen() {
         { icon: 'food-apple-outline', label: 'Diet Plans', route: '/personalized/diet-plan', color: colors.success.dark, bg: colors.success.bg },
         { icon: 'run', label: 'Exercise', route: '/personalized/exercise-plan', color: colors.info.dark, bg: colors.info.bg },
         { icon: 'robot-outline', label: 'AI Chat', route: '/(tabs)/chat', color: colors.primary[700], bg: colors.primary[50] },
-        { icon: 'chart-box-outline', label: 'Assessment', route: '/assessment', color: colors.warning.dark, bg: colors.warning.bg },
+        { icon: 'chart-box-outline', label: 'Assessment', route: '/assessment/results', color: colors.warning.dark, bg: colors.warning.bg },
         { icon: 'calendar-month-outline', label: 'Monthly Diet', route: '/personalized/monthly-diet-plan', color: colors.chart.purple, bg: '#F3E8FF' },
         { icon: 'lightbulb-outline', label: 'Tips', route: '/personalized/lifestyle-tips', color: colors.chart.cyan, bg: '#ECFEFF' },
       ]
     : [
-        { icon: 'clipboard-text-outline', label: 'Assessment', route: '/assessment', color: colors.primary[700], bg: colors.primary[50] },
+        { icon: 'clipboard-text-outline', label: 'Assessment', route: '/assessment/results', color: colors.primary[700], bg: colors.primary[50] },
         { icon: 'newspaper-variant-outline', label: 'Articles', route: '/(tabs)/content', color: colors.info.dark, bg: colors.info.bg },
         { icon: 'robot-outline', label: 'AI Chat', route: '/(tabs)/chat', color: colors.success.dark, bg: colors.success.bg },
         { icon: 'account-group-outline', label: 'Community', route: '/feedback/community', color: colors.warning.dark, bg: colors.warning.bg },
@@ -116,6 +136,8 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={s.safeArea} edges={['top']}>
+      {/* Diagnosis-check popup — fires once per login session for undiagnosed users who have an assessment */}
+      <DiagnosisCheckModal />
       <ScrollView
         contentContainerStyle={s.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -151,6 +173,19 @@ export default function HomeScreen() {
                   <MaterialCommunityIcons name="run" size={12} color="rgba(255,255,255,0.85)" />
                   <Text style={s.heroChipText}>{exercisePlansCount} exercise</Text>
                 </View>
+                {/* Latest assessment risk chip — tapping shows stored result, no model re-run */}
+                {riskChipColor && latestRiskLevel && (
+                  <TouchableOpacity
+                    style={s.heroChip}
+                    onPress={() => router.push('/assessment/results' as any)}
+                    activeOpacity={0.75}
+                  >
+                    <MaterialCommunityIcons name="clipboard-pulse-outline" size={12} color={riskChipColor} />
+                    <Text style={[s.heroChipText, { color: riskChipColor }]}>
+                      {latestRiskLevel} Risk
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </>
             ) : (
               <TouchableOpacity style={s.heroChipCta} onPress={() => router.push('/assessment')} activeOpacity={0.8}>
@@ -236,12 +271,30 @@ export default function HomeScreen() {
           </>
         )}
 
-        {/* ─── Education (undiagnosed) ─── */}
-        {!isDiagnosed && (
+        {/* ─── For undiagnosed: show their latest assessment result if available ─── */}
+        {!isDiagnosed && latestRiskLevel && (
           <>
-            <SectionHeader label="Learn About Diabetes" accent={ACCENT_HEALTH} />
-            <EduCard icon="information-outline" iconBg={colors.info.bg} iconColor={colors.info.dark} title="What is Diabetes?" text="A chronic condition affecting blood sugar processing. Early detection and lifestyle management are crucial." />
-            <EduCard icon="alert-outline" iconBg={colors.warning.bg} iconColor={colors.warning.dark} title="Risk Factors" text="Family history, overweight, physical inactivity, age over 45, and high blood pressure." />
+            <SectionHeader label="Your Latest Assessment" accent={ACCENT_HEALTH} />
+            <TouchableOpacity
+              style={s.riskCard}
+              activeOpacity={0.75}
+              onPress={() => router.push('/assessment/results' as any)}
+            >
+              <View style={[s.riskIconWrap, {
+                backgroundColor: latestRiskLevel === 'High' ? '#FEE2E2' : latestRiskLevel === 'Medium' ? '#FEF3C7' : '#D1FAE5',
+              }]}>
+                <MaterialCommunityIcons
+                  name="clipboard-pulse-outline"
+                  size={22}
+                  color={latestRiskLevel === 'High' ? '#DC2626' : latestRiskLevel === 'Medium' ? '#D97706' : '#059669'}
+                />
+              </View>
+              <View style={s.riskTextWrap}>
+                <Text style={s.riskTitle}>{latestRiskLevel} Risk of Diabetes</Text>
+                <Text style={s.riskSub}>Based on your symptom assessment · Tap to view full report</Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={18} color={colors.neutral[400]} />
+            </TouchableOpacity>
           </>
         )}
 
@@ -267,20 +320,6 @@ function SectionHeader({ label, accent }: { label: string; accent: string }) {
       <View style={[s.sectionDot, { backgroundColor: accent }]} />
       <Text style={s.sectionLabel}>{label}</Text>
       <View style={s.sectionLine} />
-    </View>
-  );
-}
-
-function EduCard({ icon, iconBg, iconColor, title, text }: { icon: string; iconBg: string; iconColor: string; title: string; text: string }) {
-  return (
-    <View style={s.eduCard}>
-      <View style={[s.eduIconWrap, { backgroundColor: iconBg }]}>
-        <MaterialCommunityIcons name={icon as any} size={20} color={iconColor} />
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={s.eduTitle}>{title}</Text>
-        <Text style={s.eduText}>{text}</Text>
-      </View>
     </View>
   );
 }
@@ -362,11 +401,12 @@ const s = StyleSheet.create({
   recentTitle: { fontSize: 14, fontWeight: '600', color: colors.neutral[800] },
   recentSub: { fontSize: 12, color: colors.neutral[500], marginTop: 1 },
 
-  // Education
-  eduCard: { flexDirection: 'row', backgroundColor: colors.neutral[0], borderRadius: borderRadius.md, padding: spacing[4], marginBottom: spacing[2], gap: spacing[3], ...shadows.xs, borderWidth: 1, borderColor: colors.neutral[100] },
-  eduIconWrap: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  eduTitle: { fontSize: 15, fontWeight: '600', color: colors.neutral[800], marginBottom: 4 },
-  eduText: { fontSize: 13, color: colors.neutral[500], lineHeight: 18 },
+  // Risk card (assessment result for undiagnosed)
+  riskCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.neutral[0], borderRadius: borderRadius.md, padding: spacing[3], marginBottom: spacing[3], gap: spacing[3], ...shadows.xs, borderWidth: 1, borderColor: colors.neutral[100] },
+  riskIconWrap: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+  riskTextWrap: { flex: 1 },
+  riskTitle: { fontSize: 15, fontWeight: '700', color: colors.neutral[800] },
+  riskSub: { fontSize: 12, color: colors.neutral[500], marginTop: 2 },
 
   // Explore
   exploreRow: { flexDirection: 'row', gap: spacing[2], marginBottom: spacing[4] },

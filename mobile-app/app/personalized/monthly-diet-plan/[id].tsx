@@ -276,35 +276,47 @@ export default function MonthlyDietPlanDetailScreen() {
                 <Text style={styles.modalDesc}>{selectedOption.description}</Text>
               ) : null}
 
-              {/* Food Items Table */}
-              <View style={styles.tableHeader}>
-                <Text style={[styles.tableCol, styles.tableFoodCol, styles.tableHeaderText]}>Food</Text>
-                <Text style={[styles.tableCol, styles.tableHeaderText]}>Portion</Text>
-                <Text style={[styles.tableCol, styles.tableNumCol, styles.tableHeaderText]}>Cal</Text>
-                <Text style={[styles.tableCol, styles.tableNumCol, styles.tableHeaderText]}>C</Text>
-                <Text style={[styles.tableCol, styles.tableNumCol, styles.tableHeaderText]}>P</Text>
-                <Text style={[styles.tableCol, styles.tableNumCol, styles.tableHeaderText]}>F</Text>
-              </View>
+              {/* Food Items */}
+              {(selectedOption.items || []).length > 0 && (
+                <Text style={styles.foodItemsLabel}>Food Items</Text>
+              )}
               {(selectedOption.items || []).map((item, idx) => (
-                <View key={idx} style={[styles.tableRow, idx % 2 === 0 ? styles.tableRowEven : null]}>
-                  <Text style={[styles.tableCol, styles.tableFoodCol, styles.tableFoodText]} numberOfLines={2}>
-                    {item.food}
-                  </Text>
-                  <Text style={[styles.tableCol, styles.tableCellText]} numberOfLines={1}>
-                    {item.portion}
-                  </Text>
-                  <Text style={[styles.tableCol, styles.tableNumCol, styles.tableCellText]}>
-                    {item.calories}
-                  </Text>
-                  <Text style={[styles.tableCol, styles.tableNumCol, styles.tableCellText]}>
-                    {item.carbs}g
-                  </Text>
-                  <Text style={[styles.tableCol, styles.tableNumCol, styles.tableCellText]}>
-                    {item.protein}g
-                  </Text>
-                  <Text style={[styles.tableCol, styles.tableNumCol, styles.tableCellText]}>
-                    {item.fat}g
-                  </Text>
+                <View key={idx} style={[
+                  styles.foodItem,
+                  idx < (selectedOption.items || []).length - 1 && styles.foodItemBorder,
+                ]}>
+                  <View style={styles.foodItemTop}>
+                    <Text style={styles.foodName} numberOfLines={3}>{item.food}</Text>
+                    {item.portion ? (
+                      <Text style={styles.foodPortion}>{item.portion}</Text>
+                    ) : null}
+                  </View>
+                  <View style={styles.foodNutrients}>
+                    {item.calories != null ? (
+                      <View style={styles.nutrientChip}>
+                        <MaterialCommunityIcons name="fire" size={11} color="#D4882A" />
+                        <Text style={styles.nutrientText}>{item.calories} cal</Text>
+                      </View>
+                    ) : null}
+                    {item.carbs != null ? (
+                      <View style={styles.nutrientChip}>
+                        <Text style={styles.nutrientLabel}>Carbs </Text>
+                        <Text style={styles.nutrientText}>{item.carbs}g</Text>
+                      </View>
+                    ) : null}
+                    {item.protein != null ? (
+                      <View style={styles.nutrientChip}>
+                        <Text style={styles.nutrientLabel}>Protein </Text>
+                        <Text style={styles.nutrientText}>{item.protein}g</Text>
+                      </View>
+                    ) : null}
+                    {item.fat != null ? (
+                      <View style={styles.nutrientChip}>
+                        <Text style={styles.nutrientLabel}>Fat </Text>
+                        <Text style={styles.nutrientText}>{item.fat}g</Text>
+                      </View>
+                    ) : null}
+                  </View>
                 </View>
               ))}
 
@@ -630,50 +642,72 @@ const styles = StyleSheet.create({
     marginBottom: spacing[4],
     textAlign: 'center',
   },
-  /* ---- Table ---- */
-  tableHeader: {
-    flexDirection: 'row',
-    backgroundColor: colors.neutral[50],
-    paddingVertical: spacing[2],
-    paddingHorizontal: spacing[2],
-    borderRadius: borderRadius.sm,
-    marginBottom: 2,
-  },
-  tableRow: {
-    flexDirection: 'row',
-    paddingVertical: spacing[2],
-    paddingHorizontal: spacing[2],
-    borderBottomWidth: 1,
-    borderBottomColor: colors.neutral[50],
-  },
-  tableRowEven: {
-    backgroundColor: colors.neutral[50] + '80',
-  },
-  tableCol: {
-    flex: 1,
-    paddingHorizontal: 2,
-  },
-  tableFoodCol: {
-    flex: 2.5,
-  },
-  tableNumCol: {
-    flex: 0.8,
-    textAlign: 'right',
-  },
-  tableHeaderText: {
-    fontSize: 11,
+  /* ---- Food Items (card per item) ---- */
+  foodItemsLabel: {
+    fontSize: 12,
     fontWeight: '700',
-    color: colors.neutral[500],
+    color: colors.neutral[400],
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: spacing[2],
+    marginTop: spacing[1],
   },
-  tableFoodText: {
-    fontSize: 13,
+  foodItem: {
+    paddingVertical: spacing[3],
+  },
+  foodItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.neutral[100],
+  },
+  foodItemTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing[2],
+    gap: spacing[2],
+  },
+  foodName: {
+    flex: 1,
+    fontSize: 14,
     fontWeight: '600',
     color: colors.neutral[800],
+    lineHeight: 20,
   },
-  tableCellText: {
+  foodPortion: {
     fontSize: 12,
-    color: colors.neutral[600],
+    fontWeight: '500',
+    color: colors.neutral[500],
+    backgroundColor: colors.neutral[100],
+    paddingHorizontal: spacing[2],
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+    flexShrink: 0,
+    alignSelf: 'flex-start',
+  },
+  foodNutrients: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[1],
+  },
+  nutrientChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.neutral[50],
+    paddingHorizontal: spacing[2],
+    paddingVertical: 3,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.neutral[100],
+  },
+  nutrientLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.neutral[400],
+  },
+  nutrientText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.neutral[700],
   },
   /* ---- Close btn ---- */
   modalCloseBtn: {

@@ -11,7 +11,7 @@
  *
  * Redesigned: gradient hero, muted cards, no Card/Button/textStyles/colors.light.*
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   StyleSheet,
@@ -37,7 +37,7 @@ import {
   useRunDiabetesAssessmentMutation,
 } from '@features/assessment/assessmentApi';
 import { storage, STORAGE_KEYS } from '@utils/storage';
-import { getApiUrl } from '@utils/constants';
+import { getRuntimeApiUrl } from '@utils/constants';
 import { spacing, borderRadius, shadows } from '@theme/spacing';
 import colors from '@theme/colors';
 import type { Disease, Symptom, Question } from '@app-types/api';
@@ -70,9 +70,15 @@ export default function AssessmentScreen() {
   const [loadingSymptoms, setLoadingSymptoms] = useState(false);
   const [currentQuestions, setCurrentQuestions] = useState<Question[]>([]);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
-  const [heightValues, setHeightValues] = useState<Record<string, { feet: string; inches: string }>>({});
+  const [heightValues, setHeightValues] = useState<Record<string, { feet: string; inches: string }>>({}); 
+  const [apiUrl, setApiUrl] = useState<string>('');
 
-  const { data: diseasesData, isLoading: diseasesLoading, error: diseasesError, refetch: refetchDiseases } = useGetDiseasesQuery();
+  // Resolve the API URL once on mount so we can show it in error messages
+  useEffect(() => {
+    getRuntimeApiUrl().then(setApiUrl).catch(() => {});
+  }, []);
+
+  const { data: diseasesData, isLoading: diseasesLoading, error: diseasesError, refetch: refetchDiseases } = useGetDiseasesQuery(undefined, { refetchOnMountOrArgChange: true });
   const [batchSaveAnswers] = useBatchSaveAnswersMutation();
   const [runAssessment, { isLoading: assessmentLoading }] = useRunDiabetesAssessmentMutation();
 
@@ -93,7 +99,8 @@ export default function AssessmentScreen() {
     setCurrentQuestionIndex(0);
     setCurrentAnswer('');
     try {
-      const response = await fetch(`${getApiUrl()}/questions/public/symptom/${symptomId}`);
+      const apiUrl = await getRuntimeApiUrl();
+      const response = await fetch(`${apiUrl}/questions/public/symptom/${symptomId}`);
       const data = await response.json();
       if (data.success && data.data?.length > 0) {
         setCurrentQuestions(data.data);
@@ -121,7 +128,8 @@ export default function AssessmentScreen() {
     setSelectedDisease(disease);
     setLoadingSymptoms(true);
     try {
-      const response = await fetch(`${getApiUrl()}/symptoms/public/${disease._id}`);
+      const apiUrl = await getRuntimeApiUrl();
+      const response = await fetch(`${apiUrl}/symptoms/public/${disease._id}`);
       const data = await response.json();
       if (data.success && data.data?.length > 0) {
         setSymptoms(data.data);
@@ -132,7 +140,7 @@ export default function AssessmentScreen() {
         setCurrentQuestionIndex(0);
         setCurrentAnswer('');
         try {
-          const qRes = await fetch(`${getApiUrl()}/questions/public/symptom/${firstSymptomId}`);
+          const qRes = await fetch(`${apiUrl}/questions/public/symptom/${firstSymptomId}`);
           const qData = await qRes.json();
           if (qData.success && qData.data?.length > 0) {
             setCurrentQuestions(qData.data);
@@ -225,7 +233,15 @@ export default function AssessmentScreen() {
 
   const renderDiseaseSelection = () => {
     if (diseasesLoading) return <FullScreenLoader />;
-    if (diseasesError) return <ErrorState onRetry={refetchDiseases} error="Failed to load conditions." />;
+    if (diseasesError) {
+      const urlHint = apiUrl ? `\n\nServer: ${apiUrl}` : '';
+      return (
+        <ErrorState
+          onRetry={refetchDiseases}
+          error={`Failed to load conditions. Make sure the backend server is running and reachable from this device.${urlHint}`}
+        />
+      );
+    }
 
     return (
       <View style={st.stepWrap}>

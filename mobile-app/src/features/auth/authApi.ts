@@ -3,7 +3,7 @@
  * RTK Query endpoints for authentication
  */
 
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi } from '@reduxjs/toolkit/query/react';
 import type {
   LoginRequest,
   LoginResponse,
@@ -11,21 +11,12 @@ import type {
   ApiResponse,
   User,
 } from '@app-types/api';
-import { getApiUrl } from '@utils/constants';
+import { baseQuery } from '@services/api';
 import { secureStorage } from '@utils/storage';
 
 export const authApi = createApi({
   reducerPath: 'authApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: getApiUrl(),
-    prepareHeaders: async (headers) => {
-      const token = await secureStorage.getAccessToken();
-      if (token) {
-        headers.set('Authorization', `Bearer ${token}`);
-      }
-      return headers;
-    },
-  }),
+  baseQuery,
   tagTypes: ['User'],
   endpoints: (builder) => ({
     // Login
@@ -152,7 +143,7 @@ export const authApi = createApi({
       { diabetes_diagnosed: 'yes' | 'no' }
     >({
       query: (body) => ({
-        url: '/users/update-diagnosis-status',
+        url: '/personalized-system/diabetes-diagnosis',
         method: 'POST',
         body,
       }),

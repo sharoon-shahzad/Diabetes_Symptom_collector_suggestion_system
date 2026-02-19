@@ -4,13 +4,13 @@
  */
 
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
-import { getApiUrl, AUTH_CONFIG } from '@utils/constants';
+import { getApiUrl, getRuntimeApiUrl, AUTH_CONFIG } from '@utils/constants';
 import { secureStorage } from '@utils/storage';
-import { fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { fetchBaseQuery, BaseQueryFn, FetchArgs, FetchBaseQueryError } from '@reduxjs/toolkit/query/react';
 
-// Create axios instance
+// Create axios instance — baseURL is overridden per-request in the interceptor below
 const apiClient: AxiosInstance = axios.create({
-  baseURL: getApiUrl(),
+  baseURL: getApiUrl(), // initial value; overridden dynamically in request interceptor
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -35,9 +35,15 @@ const processQueue = (error: Error | null, token: string | null = null) => {
   failedQueue = [];
 };
 
-// Request interceptor - Add auth token
+// Request interceptor - Add auth token + dynamic base URL
 apiClient.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
+    // Resolve the runtime API URL (AsyncStorage override > env var)
+    config.baseURL = await getRuntimeApiUrl().then((url) =>
+      // Strip the /api/v1 suffix since axios baseURL is the root + path is appended
+      url
+    );
+
     // Get token from secure storage
     const token = await secureStorage.getAccessToken();
     
@@ -83,8 +89,9 @@ apiClient.interceptors.response.use(
 
       try {
         // Attempt to refresh token
+        const runtimeUrl = await getRuntimeApiUrl();
         const response = await axios.post(
-          `${getApiUrl()}/auth/refresh-token`,
+          `${runtimeUrl}/auth/refresh-token`,
           {},
           {
             withCredentials: true,
@@ -163,58 +170,96 @@ export const isNetworkError = (error: any): boolean => {
 };
 
 /**
- * RTK Query base query helper
- * For use with RTK Query APIs (feature-level createApi files).
- * Wraps fetchBaseQuery with automatic token refresh on 401.
+ * Build a fresh fetchBaseQuery using the current runtime URL.
+ * Called on every RTK Query request so IP overrides take effect immediately.
  */
-const rawBaseQuery = fetchBaseQuery({
-  baseUrl: getApiUrl(),
-  prepareHeaders: async (headers) => {
-    const token = await secureStorage.getAccessToken();
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
-    }
-    return headers;
-  },
-  credentials: 'include', // For refresh token cookies
-});
+const buildRawBaseQuery = (baseUrl: string) =>
+  fetchBaseQuery({
+    baseUrl,
+    prepareHeaders: async (headers) => {
+      const token = await secureStorage.getAccessToken();
+      if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
+      return headers;
+    },
+    credentials: 'include', // For refresh token cookies
+  });
 
 /**
- * Enhanced base query with automatic re-authentication.
- * Catches 401, refreshes the access token via /auth/refresh-token,
- * stores the new token, and retries the original request.
+ * Dynamic base query — resolves the API base URL from AsyncStorage on each call.
+ * Falls back to the baked EXPO_PUBLIC_API_URL env var if no override is stored.
+ * Also handles automatic token refresh on 401.
+ * A 12-second AbortController timeout prevents hanging indefinitely when the
+ * server is unreachable on a physical device.
  */
-export const baseQuery: typeof rawBaseQuery = async (args, api, extraOptions) => {
-  let result = await rawBaseQuery(args, api, extraOptions);
+export const baseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (
+  args,
+  api,
+  extraOptions
+) => {
+  const TIMEOUT_MS = 12_000;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-  if (result.error && result.error.status === 401) {
-    // Attempt to refresh the token
-    try {
-      const refreshResponse = await axios.post(
-        `${getApiUrl()}/auth/refresh-token`,
-        {},
-        { withCredentials: true, timeout: 10000 }
-      );
+  // Merge our abort signal into the request args
+  const argsWithSignal: FetchArgs =
+    typeof args === 'string'
+      ? { url: args, signal: controller.signal }
+      : { ...args, signal: controller.signal };
 
-      const newToken = refreshResponse.data?.data?.accessToken;
+  try {
+    // Resolve latest URL every request (picks up runtime overrides immediately)
+    const runtimeUrl = await getRuntimeApiUrl();
+    const rawBaseQuery = buildRawBaseQuery(runtimeUrl);
 
-      if (newToken) {
-        // Persist new token
-        await secureStorage.setAccessToken(newToken);
+    let result = await rawBaseQuery(argsWithSignal, api, extraOptions);
 
-        // Retry original request with new token
-        result = await rawBaseQuery(args, api, extraOptions);
-      } else {
-        // Refresh succeeded but no token — clear auth state
+    // Transform AbortError (timeout) into a clear FETCH_ERROR
+    if (
+      result.error &&
+      result.error.status === 'FETCH_ERROR' &&
+      (result.error.error ?? '').toLowerCase().includes('abort')
+    ) {
+      return {
+        error: {
+          status: 'FETCH_ERROR' as const,
+          error: `Server unreachable at ${runtimeUrl} — check that the backend is running and the IP is correct.`,
+        },
+      };
+    }
+
+    if (result.error && result.error.status === 401) {
+      // Attempt to refresh the token
+      try {
+        const refreshResponse = await axios.post(
+          `${runtimeUrl}/auth/refresh-token`,
+          {},
+          { withCredentials: true, timeout: 10000 }
+        );
+
+        const newToken = refreshResponse.data?.data?.accessToken;
+
+        if (newToken) {
+          // Persist new token
+          await secureStorage.setAccessToken(newToken);
+
+          // Retry original request with new token (same runtime URL)
+          result = await rawBaseQuery(argsWithSignal, api, extraOptions);
+        } else {
+          // Refresh succeeded but no token — clear auth state
+          await secureStorage.clearAll();
+        }
+      } catch {
+        // Refresh failed entirely — clear tokens so user gets redirected to login
         await secureStorage.clearAll();
       }
-    } catch {
-      // Refresh failed entirely — clear tokens so user gets redirected to login
-      await secureStorage.clearAll();
     }
-  }
 
-  return result;
+    return result;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 };
 
 export default apiClient;

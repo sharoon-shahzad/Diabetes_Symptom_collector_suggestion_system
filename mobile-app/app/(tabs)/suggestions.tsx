@@ -48,11 +48,13 @@ interface FeatureItem {
 export default function SuggestionsScreen() {
   const router = useRouter();
   const user = useAppSelector(selectUser);
-  const isDiagnosed = user?.diabetes_diagnosed;
-  const firstName = user?.fullName?.split(' ')[0] || 'there';
+  const isDiagnosed = user?.diabetes_diagnosed === 'yes';
+  const hasCompletedProfile = !!user?.onboardingCompleted;
+  const canAccess = isDiagnosed && hasCompletedProfile;
 
-  const { data: dietData, isLoading: dietLoading, isError: dietError, refetch: dietRefetch } = useGetDietPlansQuery();
-  const { data: exerciseData, isLoading: exerciseLoading, isError: exerciseError, refetch: exerciseRefetch } = useGetExercisePlansQuery();
+  const firstName = user?.fullName?.split(' ')[0] || 'there';
+  const { data: dietData, isLoading: dietLoading, isError: dietError, refetch: dietRefetch } = useGetDietPlansQuery({}, { skip: !canAccess });
+  const { data: exerciseData, isLoading: exerciseLoading, isError: exerciseError, refetch: exerciseRefetch } = useGetExercisePlansQuery({}, { skip: !canAccess });
   const { data: tipsData, refetch: tipsRefetch } = useGetCurrentTipsQuery();
   const { data: habitsData, refetch: habitsRefetch } = useGetCurrentWeeklyHabitsQuery();
 
@@ -170,42 +172,63 @@ export default function SuggestionsScreen() {
             </View>
             <View style={styles.heroStatDivider} />
             <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{isDiagnosed ? 'Active' : 'Pending'}</Text>
+              <Text style={styles.heroStatValue}>{canAccess ? 'Active' : isDiagnosed ? 'Setup Required' : 'Not Eligible'}</Text>
               <Text style={styles.heroStatLabel}>Status</Text>
             </View>
           </View>
         </LinearGradient>
 
-        {/* ─── Diagnosis Gate ─── */}
+        {/* ─── Access Gates ─── */}
+
+        {/* Gate 1: User is not diagnosed with diabetes */}
         {!isDiagnosed && (
           <View style={styles.gateCard}>
             <View style={styles.gateRow}>
-              <View style={styles.gateIconWrap}>
-                <MaterialCommunityIcons
-                  name="clipboard-pulse-outline"
-                  size={22}
-                  color={colors.primary[600]}
-                />
+              <View style={[styles.gateIconWrap, { backgroundColor: colors.neutral[100] }]}>
+                <MaterialCommunityIcons name="lock-outline" size={22} color={colors.neutral[500]} />
               </View>
               <View style={styles.gateTextWrap}>
-                <Text style={styles.gateTitle}>Complete Health Assessment</Text>
+                <Text style={styles.gateTitle}>For Diagnosed Patients Only</Text>
                 <Text style={styles.gateSubtitle}>
-                  Unlock personalized suggestions tailored to your needs.
+                  Personalized suggestions are available exclusively to users who have been diagnosed with diabetes.
+                </Text>
+              </View>
+            </View>
+            <View style={styles.gateInfoRow}>
+              <MaterialCommunityIcons name="information-outline" size={14} color={colors.neutral[400]} />
+              <Text style={styles.gateInfoText}>
+                If you have been diagnosed, update your diagnosis status from your Profile settings.
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Gate 2: Diagnosed but personal/medical info not yet completed */}
+        {isDiagnosed && !hasCompletedProfile && (
+          <View style={styles.gateCard}>
+            <View style={styles.gateRow}>
+              <View style={[styles.gateIconWrap, { backgroundColor: colors.warning.bg }]}>
+                <MaterialCommunityIcons name="account-edit-outline" size={22} color={colors.warning.dark} />
+              </View>
+              <View style={styles.gateTextWrap}>
+                <Text style={styles.gateTitle}>Complete Your Health Profile</Text>
+                <Text style={styles.gateSubtitle}>
+                  Fill in your personal and medical information to unlock personalized diet plans, exercise plans, and lifestyle suggestions.
                 </Text>
               </View>
             </View>
             <Button
               variant="primary"
-              onPress={() => router.push('/assessment')}
+              onPress={() => router.push('/personalized/personal-medical-info' as any)}
               style={styles.gateButton}
             >
-              Start Assessment
+              Complete Profile
             </Button>
           </View>
         )}
 
-        {/* ─── Quick Actions ─── */}
-        {isDiagnosed && (
+        {/* ─── Quick Actions (diagnosed + profile complete only) ─── */}
+        {canAccess && (
           <View style={styles.quickActionsContainer}>
             <TouchableOpacity
               style={styles.quickActionPill}
@@ -240,11 +263,11 @@ export default function SuggestionsScreen() {
           </View>
         )}
 
-        {/* ─── Features Grid ─── */}
+        {/* ─── Features Grid (diagnosed + profile complete only) ─── */}
+        {canAccess && (
+          <>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>
-            {isDiagnosed ? 'Your Health Tools' : 'Available Features'}
-          </Text>
+          <Text style={styles.sectionTitle}>Your Health Tools</Text>
           <View style={styles.sectionLine} />
         </View>
 
@@ -280,8 +303,7 @@ export default function SuggestionsScreen() {
         </View>
 
         {/* ─── Medical Info Link ─── */}
-        {isDiagnosed && (
-          <TouchableOpacity
+        <TouchableOpacity
             style={styles.medicalInfoCard}
             activeOpacity={0.7}
             onPress={() => router.push('/personalized/personal-medical-info' as any)}
@@ -295,6 +317,7 @@ export default function SuggestionsScreen() {
             </View>
             <MaterialCommunityIcons name="chevron-right" size={18} color={colors.neutral[400]} />
           </TouchableOpacity>
+          </>
         )}
 
         {/* ─── Error Banner (if plans failed to load) ─── */}
@@ -386,7 +409,22 @@ const styles = StyleSheet.create({
     marginVertical: 2,
   },
 
-  /* ─── Diagnosis Gate ─── */
+  gateInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing[2],
+    marginTop: spacing[2],
+    paddingTop: spacing[2],
+    borderTopWidth: 1,
+    borderTopColor: colors.neutral[100],
+  },
+  gateInfoText: {
+    flex: 1,
+    fontSize: 11,
+    color: colors.neutral[400],
+    lineHeight: 15,
+  },
+  /* ─── Gate ─── */
   gateCard: {
     backgroundColor: colors.neutral[0],
     borderRadius: borderRadius.md,
