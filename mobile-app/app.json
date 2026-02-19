@@ -49,9 +49,9 @@
         "expo-build-properties",
         {
           "android": {
-            "compileSdkVersion": 34,
-            "targetSdkVersion": 34,
-            "buildToolsVersion": "34.0.0"
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "35.0.0"
           },
           "ios": {
             "deploymentTarget": "15.1"
@@ -59,7 +59,6 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "@sentry/react-native",
       [
         "react-native-health-connect",
         {
@@ -75,8 +74,9 @@
         "origin": false
       },
       "eas": {
-        "projectId": ""
+        "projectId": "e200e144-177f-4e67-807b-a6c9b236bce9"
       }
-    }
+    },
+    "owner": "hassan7986"
   }
 }
