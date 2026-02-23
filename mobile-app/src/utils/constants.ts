@@ -8,7 +8,7 @@ import * as Device from 'expo-device';
 
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000',
+  BASE_URL: process.env.EXPO_PUBLIC_API_URL || 'https://zeeshanasghar02-diavise-backend.hf.space',
   API_VERSION: '/api/v1',
   TIMEOUT: 30000, // 30 seconds
 };
@@ -27,16 +27,7 @@ export const API_CONFIG = {
  */
 const getAutoDetectedUrl = (): string => {
   // Device.isDevice === false means we're in an emulator or simulator
-  if (__DEV__ && !Device.isDevice) {
-    if (Platform.OS === 'android') {
-      // Android emulator loopback alias — maps to the host machine localhost
-      return `http://10.0.2.2:5000${API_CONFIG.API_VERSION}`;
-    }
-    if (Platform.OS === 'ios') {
-      return `http://localhost:5000${API_CONFIG.API_VERSION}`;
-    }
-  }
-  // Physical device or production build — use baked .env value
+  // For cloud backend: emulators can also reach the HF Space, so we use env URL for all cases
   return `${API_CONFIG.BASE_URL}${API_CONFIG.API_VERSION}`;
 };
 

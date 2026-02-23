@@ -7,11 +7,17 @@
     "preview": {
       "credentialsSource": "local",
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://zeeshanasghar02-diavise-backend.hf.space"
+      },
       "android": {
         "buildType": "apk"
       }
     },
     "production": {
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://zeeshanasghar02-diavise-backend.hf.space"
+      },
       "android": {
         "buildType": "app-bundle"
       }
