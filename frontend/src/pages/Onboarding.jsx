@@ -57,7 +57,7 @@ const Onboarding = () => {
 
   // Check if user is authenticated by checking localStorage
   const isAuthenticated = () => {
-    return !!localStorage.getItem('token');
+    return !!localStorage.getItem('accessToken');
   };
 
   // Determine the safe back navigation path
@@ -67,12 +67,13 @@ const Onboarding = () => {
       return '/dashboard';
     }
     
-    // Check the referrer from location state
+    // Check the referrer from location state (can be location object or path string)
     const referrer = location.state?.from;
+    const referrerPath = typeof referrer === 'string' ? referrer : referrer?.pathname;
     
     // Never go back to login or signup pages
-    if (referrer && !referrer.includes('signin') && !referrer.includes('signup') && !referrer.includes('login')) {
-      return referrer;
+    if (referrerPath && !referrerPath.includes('signin') && !referrerPath.includes('signup') && !referrerPath.includes('login')) {
+      return referrerPath;
     }
     
     // Default to landing page for unauthenticated users
