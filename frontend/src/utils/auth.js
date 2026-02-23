@@ -1,7 +1,7 @@
 import axiosInstance from './axiosInstance';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000';
+const API_URL = 'https://zeeshanasghar02-diavise-backend.hf.space';
 
 export async function refreshToken() {
   try {

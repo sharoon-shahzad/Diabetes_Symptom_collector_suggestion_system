@@ -53,7 +53,7 @@ export default function AdminDashboard() {
           
           // Fetch user roles to determine available sections
           const token = localStorage.getItem('accessToken');
-          const rolesResponse = await fetch('http://localhost:5000/api/v1/users/roles', {
+          const rolesResponse = await fetch('https://zeeshanasghar02-diavise-backend.hf.space/api/v1/users/roles', {
             headers: { Authorization: `Bearer ${token}` }
           });
           if (rolesResponse.ok) {

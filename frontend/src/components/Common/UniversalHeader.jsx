@@ -147,7 +147,7 @@ export default function UniversalHeader() {
         return;
       }
       const token = localStorage.getItem('accessToken');
-      const res = await axios.post('http://localhost:5000/api/v1/auth/resend-activation', { email }, {
+      const res = await axios.post('https://zeeshanasghar02-diavise-backend.hf.space/api/v1/auth/resend-activation', { email }, {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {}
       });
       const data = res.data;
@@ -208,7 +208,7 @@ export default function UniversalHeader() {
     }
     try {
       const token = localStorage.getItem('accessToken');
-      const res = await axios.post('http://localhost:5000/api/v1/auth/change-password', { currentPassword, newPassword }, {
+      const res = await axios.post('https://zeeshanasghar02-diavise-backend.hf.space/api/v1/auth/change-password', { currentPassword, newPassword }, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = res.data;

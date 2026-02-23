@@ -61,7 +61,7 @@ const DocumentUpload = () => {
         try {
             setLoadingDocs(true);
             const token = localStorage.getItem('accessToken');
-            const response = await axios.get('http://localhost:5000/api/v1/admin/docs', {
+            const response = await axios.get('https://zeeshanasghar02-diavise-backend.hf.space/api/v1/admin/docs', {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (response.data.success) {
@@ -176,7 +176,7 @@ const DocumentUpload = () => {
             uploadFormData.append('force', formData.force.toString());
             
             const response = await axios.post(
-                'http://localhost:5000/api/v1/admin/docs/upload',
+                'https://zeeshanasghar02-diavise-backend.hf.space/api/v1/admin/docs/upload',
                 uploadFormData,
                 {
                     headers: {
@@ -250,7 +250,7 @@ const DocumentUpload = () => {
         
         try {
             const token = localStorage.getItem('accessToken');
-            await axios.delete(`http://localhost:5000/api/v1/admin/docs/${docId}`, {
+            await axios.delete(`https://zeeshanasghar02-diavise-backend.hf.space/api/v1/admin/docs/${docId}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             toast.success('Document deleted successfully');

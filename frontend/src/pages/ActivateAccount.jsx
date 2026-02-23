@@ -11,7 +11,7 @@ export default function ActivateAccount() {
   useEffect(() => {
     async function activate() {
       try {
-        const res = await fetch(`http://localhost:5000/api/v1/auth/activate/${token}`);
+        const res = await fetch(`https://zeeshanasghar02-diavise-backend.hf.space/api/v1/auth/activate/${token}`);
         const data = await res.json();
         if (res.ok) {
           setStatus('success');

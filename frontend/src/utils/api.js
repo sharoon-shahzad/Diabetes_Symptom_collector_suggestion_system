@@ -3,7 +3,7 @@ import axiosInstance from './axiosInstance';
 // NOTE: Request interceptor for auth token is already in axiosInstance.js
 // Do NOT add duplicate interceptors here to avoid multiple token attachments
 
-const API_URL = 'http://localhost:5000/api/v1';
+const API_URL = 'https://zeeshanasghar02-diavise-backend.hf.space';
 
 export async function fetchDiseases() {
   const res = await axiosInstance.get(`/diseases`);

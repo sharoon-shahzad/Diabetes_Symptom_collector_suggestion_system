@@ -1,4 +1,4 @@
-﻿import { useMemo } from 'react';
+import { useMemo } from 'react';
 import { formatDate } from '../utils/dateFormatter';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
@@ -392,10 +392,10 @@ const useHealthMetrics = ({
 
   // Consistency Badge
   const consistencyBadge = useMemo(() => {
-    if (consistencyScore >= 90) return { label: 'Diamond', color: '#b9f2ff', icon: '💎' };
-    if (consistencyScore >= 75) return { label: 'Gold', color: '#ffd700', icon: '🏆' };
-    if (consistencyScore >= 50) return { label: 'Silver', color: '#c0c0c0', icon: '🥈' };
-    return { label: 'Bronze', color: '#cd7f32', icon: '🥉' };
+    if (consistencyScore >= 90) return { label: 'Diamond', color: '#b9f2ff', icon: '??' };
+    if (consistencyScore >= 75) return { label: 'Gold', color: '#ffd700', icon: '??' };
+    if (consistencyScore >= 50) return { label: 'Silver', color: '#c0c0c0', icon: '??' };
+    return { label: 'Bronze', color: '#cd7f32', icon: '??' };
   }, [consistencyScore]);
 
   return {

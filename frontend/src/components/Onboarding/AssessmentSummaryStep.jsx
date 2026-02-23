@@ -16,7 +16,7 @@ import {
 import { motion } from 'framer-motion';
 import axiosInstance from '../../utils/axiosInstance'; // Use central axios instance
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://zeeshanasghar02-diavise-backend.hf.space';
 
 // NOTE: Using central axiosInstance from utils to avoid duplicate interceptors
 

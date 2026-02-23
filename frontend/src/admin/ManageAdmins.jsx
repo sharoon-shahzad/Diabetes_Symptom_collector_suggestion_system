@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDateFormat } from '../hooks/useDateFormat';
 import {
   Box, Typography, Button, Paper, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Switch, FormControlLabel, MenuItem, CircularProgress, Tooltip, Chip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, FormControl, InputLabel, Select, alpha, InputAdornment, Pagination, Grid, Card, CardContent, Divider, LinearProgress
@@ -167,7 +167,7 @@ function UserFormDialog({ open, onClose, onSubmit, initialData, isSuperAdmin, ro
         WebkitBackgroundClip: 'text',
         WebkitTextFillColor: 'transparent',
       }}>
-        {initialData ? '✏️ Edit User' : '➕ Add New User'}
+        {initialData ? '?? Edit User' : '? Add New User'}
       </DialogTitle>
       <Divider />
       <DialogContent sx={{ pt: 3 }}>
@@ -367,7 +367,7 @@ function UserFormDialog({ open, onClose, onSubmit, initialData, isSuperAdmin, ro
             {isEditingSelf && isEditingSuperAdmin ? (
               <Box sx={{ mt: 2, mb: 1, p: 2, bgcolor: 'error.main', color: 'white', borderRadius: 2 }}>
                 <Typography variant="body2" fontWeight={700}>
-                  ⚠️ WARNING: You are editing your own Super Admin account
+                  ?? WARNING: You are editing your own Super Admin account
                 </Typography>
                 <Typography variant="caption">
                   Changing your role will immediately revoke your Super Admin privileges!
@@ -376,7 +376,7 @@ function UserFormDialog({ open, onClose, onSubmit, initialData, isSuperAdmin, ro
             ) : isEditingSuperAdmin ? (
               <Box sx={{ mt: 2, mb: 1, p: 2, bgcolor: 'warning.main', color: 'white', borderRadius: 2 }}>
                 <Typography variant="body2" fontWeight={700}>
-                  🛡️ PROTECTED: You are editing another Super Admin
+                  ??? PROTECTED: You are editing another Super Admin
                 </Typography>
                 <Typography variant="caption">
                   You cannot change another Super Admin's role
@@ -384,7 +384,7 @@ function UserFormDialog({ open, onClose, onSubmit, initialData, isSuperAdmin, ro
               </Box>
             ) : (
               <Typography variant="body2" color="primary.main" sx={{ mt: 2, mb: 1, fontWeight: 600 }}>
-                ✨ Super Admin: You can change this user's role
+                ? Super Admin: You can change this user's role
               </Typography>
             )}
             <FormControl fullWidth margin="normal">
@@ -415,7 +415,7 @@ function UserFormDialog({ open, onClose, onSubmit, initialData, isSuperAdmin, ro
           </>
         ) : (
           <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 1, fontStyle: 'italic' }}>
-            ℹ️ Note: Only Super Admins can change user roles
+            ?? Note: Only Super Admins can change user roles
           </Typography>
         )}
       </DialogContent>
@@ -448,7 +448,7 @@ function UserFormDialog({ open, onClose, onSubmit, initialData, isSuperAdmin, ro
             }
           }}
         >
-          {loading ? <CircularProgress size={20} color="inherit" /> : (initialData ? '💾 Update User' : '➕ Create User')}
+          {loading ? <CircularProgress size={20} color="inherit" /> : (initialData ? '?? Update User' : '? Create User')}
         </Button>
       </DialogActions>
     </Dialog>
@@ -688,7 +688,7 @@ export default function ManageAdmins() {
           });
         }
 
-        toast.success('✅ User updated successfully');
+        toast.success('? User updated successfully');
       } else {
         // Create new user
         await axiosInstance.post('/api/v1/auth/register', {
@@ -699,7 +699,7 @@ export default function ManageAdmins() {
           date_of_birth: data.date_of_birth,
         });
 
-        toast.success('✅ User created successfully! Activation email sent.');
+        toast.success('? User created successfully! Activation email sent.');
       }
       setFormOpen(false);
       loadUsers();
@@ -711,7 +711,7 @@ export default function ManageAdmins() {
   const handleConfirmDelete = async () => {
     try {
       await axiosInstance.delete(`/users/deleteUser/${deleteId}`);
-      toast.success('✅ User deleted successfully');
+      toast.success('? User deleted successfully');
       setDeleteId(null);
       setConfirmOpen(false);
       loadUsers();
@@ -735,7 +735,7 @@ export default function ManageAdmins() {
   };
 
   const handleRefresh = () => {
-    toast.info('🔄 Refreshing user list...');
+    toast.info('?? Refreshing user list...');
     loadUsers();
   };
 
@@ -989,7 +989,7 @@ export default function ManageAdmins() {
                           />
                         </TableCell>
                         <TableCell sx={{ color: 'text.secondary' }}>
-                          {user.date_of_birth ? formatDate(user.date_of_birth) : '—'}
+                          {user.date_of_birth ? formatDate(user.date_of_birth) : '�'}
                         </TableCell>
                         <TableCell>
                           <Tooltip title="Click to toggle status">
@@ -1107,7 +1107,7 @@ export default function ManageAdmins() {
         open={confirmOpen}
         onClose={() => setConfirmOpen(false)}
         onConfirm={handleConfirmDelete}
-        title="🗑️ Delete Admin"
+        title="??? Delete Admin"
         message="Are you sure you want to delete this admin? This action cannot be undone."
       />
     </Box>
