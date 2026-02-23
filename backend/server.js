@@ -136,11 +136,8 @@ const startServer = async () => {
         
         // Start the server
         const PORT = process.env.PORT || 5000;
-        const localIP = getLocalIPAddress();
         app.listen(PORT, '0.0.0.0', () => {
             console.log(`✅ Server running on port ${PORT}`);
-            console.log(`🌐 Local IP: ${localIP}`);
-            console.log(`📱 Mobile API URL: http://${localIP}:${PORT}/api/v1`);
         });
     } catch (error) {
         console.error('❌ Failed to start server:', error);
