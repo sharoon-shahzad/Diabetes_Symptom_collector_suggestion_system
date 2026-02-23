@@ -10,7 +10,7 @@ import { retrieveSymptomMedicalContext } from './ragService.js';
  */
 class HybridRiskService {
   constructor() {
-    this.hfSpaceUrl = process.env.DIABETICA_HF_URL || null;
+    this.hfSpaceUrl = process.env.DIABETICA_HF_URL || process.env.HF_SPACE_URL || null;
     this.maxTokens = parseInt(process.env.LM_STUDIO_MAX_TOKENS || '1024');
     this.ragEnabled = process.env.RAG_ENABLED === 'true';
   }
