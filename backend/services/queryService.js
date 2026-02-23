@@ -1,5 +1,5 @@
 import { generateEmbedding, initializeEmbeddingModel } from './embeddingService.js';
-import { queryChunks, initializeChromaDB } from './chromaService.js';
+import { queryChunks, initializeQdrantDB } from './qdrantService.js';
 import { Document } from '../models/Document.js';
 import path from 'path';
 
@@ -33,8 +33,7 @@ export const processQuery = async (query, options = {}) => {
 
         // Initialize services if needed
         await initializeEmbeddingModel();
-        const chromaDbPath = process.env.CHROMA_DB_PATH || path.join(process.cwd(), 'chroma_db');
-        await initializeChromaDB(chromaDbPath);
+        await initializeQdrantDB();
 
         // Preprocess query (basic cleaning)
         const cleanedQuery = preprocessQuery(query);
@@ -45,8 +44,8 @@ export const processQuery = async (query, options = {}) => {
         const queryEmbedding = await generateEmbedding(cleanedQuery);
         console.log(`Query embedding generated (${queryEmbedding.length}D)`);
 
-        // Query ChromaDB
-        console.log('Searching ChromaDB...');
+        // Query Qdrant Cloud
+        console.log('Searching Qdrant Cloud...');
         const chromaResults = await queryChunks(queryEmbedding, topK, filter);
 
         // Parse and enrich results

@@ -16,8 +16,8 @@ import {
 } from '../services/embeddingService.js';
 import {
     upsertChunks,
-    initializeChromaDB,
-} from '../services/chromaService.js';
+    initializeQdrantDB as initializeChromaDB,
+} from '../services/qdrantService.js';
 
 /**
  * Upload and ingest document

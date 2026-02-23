@@ -24,7 +24,7 @@ import cookieParser from 'cookie-parser';
 import { connectDB } from './config/db.js';
 import { ensureRolesExist, ensureRolePermissions } from './utils/roleUtils.js';
 import { initializeEmbeddingModel } from './services/embeddingService.js';
-import { initializeChromaDB } from './services/chromaService.js';
+import { initializeQdrantDB } from './services/qdrantService.js';
 import authRoutes from './routes/authRoute.js';
 import userRoutes from './routes/userRoutes.js';
 import questionRoutes from './routes/questionRoutes.js';
@@ -121,10 +121,10 @@ const startServer = async () => {
             try {
                 console.log('🔧 Initializing RAG services...');
                 await initializeEmbeddingModel();
-                console.log('✅ Embedding model initialized');
+                console.log('✅ Embedding model (Jina AI) initialized');
                 
-                await initializeChromaDB();
-                console.log('✅ ChromaDB initialized');
+                await initializeQdrantDB();
+                console.log('✅ Qdrant Cloud initialized');
                 console.log('🎯 RAG system ready');
             } catch (ragError) {
                 console.error('❌ RAG initialization failed:', ragError.message);

@@ -1,15 +1,17 @@
-import axios from 'axios';
 import { retrieveSymptomMedicalContext } from './ragService.js';
 
 /**
  * Hybrid Risk Assessment Service
- * Combines XGBoost predictions with Diabetica 7B LLM for enhanced accuracy and medical reasoning
+ * Combines XGBoost predictions with Diabetica 7B LLM (hosted on HuggingFace ZeroGPU)
+ * for enhanced accuracy and medical reasoning.
+ *
+ * Set DIABETICA_HF_URL env var to your HF Space URL, e.g.:
+ *   https://YOUR-USERNAME-diabetica-api.hf.space/api/predict
  */
 class HybridRiskService {
   constructor() {
-    this.lmStudioBaseUrl = process.env.LM_STUDIO_BASE_URL || 'http://127.0.0.1:1234';
-    this.lmStudioModel = process.env.LM_STUDIO_MODEL || 'diabetica-7b';
-    this.maxTokens = parseInt(process.env.LM_STUDIO_MAX_TOKENS || '2048');
+    this.hfSpaceUrl = process.env.DIABETICA_HF_URL || null;
+    this.maxTokens = parseInt(process.env.LM_STUDIO_MAX_TOKENS || '1024');
     this.ragEnabled = process.env.RAG_ENABLED === 'true';
   }
 
@@ -174,38 +176,73 @@ class HybridRiskService {
       userContext
     );
 
-    try {
-      const response = await axios.post(
-        `${this.lmStudioBaseUrl}/v1/chat/completions`,
-        {
-          model: this.lmStudioModel,
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt }
-          ],
-          max_tokens: this.maxTokens,
-          temperature: 0.3, // Lower temperature for more consistent medical assessments
-          top_p: 0.9
-        },
-        {
-          headers: { 'Content-Type': 'application/json' },
-          timeout: 30000 // 30 second timeout
-        }
-      );
+    if (!this.hfSpaceUrl) {
+      throw new Error('DIABETICA_HF_URL is not set. Add it to your environment variables.');
+    }
 
-      const llmResponse = response.data?.choices?.[0]?.message?.content;
+    try {
+      // Logic to handle Gradio 4+ (detecting if we need to poll)
+      const hfBase = this.hfSpaceUrl.replace(/\/$/, "");
       
+      console.log(`[LLM] Calling Diabetica HF Space: ${hfBase}`);
+
+      // Attempt 1: Standard API (Gradio < 4 or specific setups)
+      const directResponse = await fetch(`${hfBase}/api/predict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data: [systemPrompt, userPrompt, this.maxTokens, 0.3]
+        }),
+      });
+
+      let llmResponse = null;
+
+      if (directResponse.ok) {
+        const json = await directResponse.json();
+        llmResponse = json?.data?.[0];
+      } 
+      else if (directResponse.status === 404) {
+        // Attempt 2: Gradio 4+ Queue API (POST /call/predict -> GET /status/id)
+        console.log('[LLM] Standard API 404, attempting Gradio 4 Queue API...');
+        const queueReq = await fetch(`${hfBase}/call/predict`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            data: [systemPrompt, userPrompt, this.maxTokens, 0.3]
+          }),
+        });
+
+        if (queueReq.ok) {
+          const { event_id } = await queueReq.json();
+          console.log(`[LLM] Event queued: ${event_id}. Waiting for completion...`);
+          
+          // Poll for result (max 2 minutes)
+          for (let i = 0; i < 60; i++) {
+            await new Promise(r => setTimeout(r, 2000));
+            const statusReq = await fetch(`${hfBase}/status/${event_id}`);
+            const status = await statusReq.json();
+            
+            if (status.status === 'COMPLETE') {
+              llmResponse = status.output?.data?.[0];
+              break;
+            } else if (status.status === 'FAILED') {
+              throw new Error('HuggingFace model generation failed via queue');
+            }
+          }
+        }
+      }
+
       if (!llmResponse) {
-        throw new Error('Empty response from LLM');
+        throw new Error(`HF Space returned status ${directResponse.status} and queue failed`);
       }
 
       return this._parseLLMResponse(llmResponse);
 
     } catch (error) {
-      if (error.code === 'ECONNREFUSED') {
-        throw new Error('LM Studio not running. Start LM Studio server at ' + this.lmStudioBaseUrl);
+      if (error.name === 'AbortError') {
+        throw new Error('Diabetica HF Space timed out (90s). ZeroGPU may be under heavy load — try again.');
       }
-      throw new Error(`LLM request failed: ${error.message}`);
+      throw new Error(`HF Space LLM request failed: ${error.message}`);
     }
   }
 
@@ -410,15 +447,18 @@ Respond in this JSON format:
   }
 
   /**
-   * Check if LM Studio is available
+   * Check if the Diabetica HF Space is reachable
    * @returns {Promise<boolean>}
    */
   async checkLLMAvailability() {
+    if (!this.hfSpaceUrl) return false;
     try {
-      const response = await axios.get(`${this.lmStudioBaseUrl}/v1/models`, {
-        timeout: 5000
-      });
-      return response.status === 200;
+      // Ping the Space root (fast, no GPU needed)
+      const spaceRoot = this.hfSpaceUrl.replace('/api/predict', '');
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 8000);
+      const response = await fetch(spaceRoot, { signal: controller.signal });
+      return response.ok;
     } catch (error) {
       return false;
     }
