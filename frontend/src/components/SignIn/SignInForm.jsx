@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useLocation } from 'react-router-dom';
 import {
     Box,
     Paper,
@@ -24,6 +24,7 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { useTheme } from '@mui/material/styles';
 
 export default function SignInForm({ setSuccess, setError, navigate }) {
+    const location = useLocation();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -67,7 +68,12 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                 localStorage.setItem('accessToken', res.data.data.accessToken);
                 const roles = res.data.data.user.roles || [];
                 localStorage.setItem('roles', JSON.stringify(roles));
-                if (roles.includes('admin') || roles.includes('super_admin')) {
+                const from = location.state?.from;
+                const targetPath = typeof from === 'string' ? from : from?.pathname;
+                const isProtectedPath = targetPath && !['/signin', '/signup', '/'].includes(targetPath);
+                if (isProtectedPath) {
+                    navigate(targetPath, { replace: true });
+                } else if (roles.includes('admin') || roles.includes('super_admin')) {
                     navigate('/admin-dashboard');
                 } else {
                     navigate('/dashboard');

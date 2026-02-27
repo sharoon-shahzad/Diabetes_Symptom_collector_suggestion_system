@@ -43,10 +43,10 @@ axios.interceptors.response.use(
         originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
         return axios(originalRequest);
       }
-      // If refresh fails, clear any stale token and send user to 404/unauthorized page
+      // If refresh fails, clear any stale token and redirect to sign in
       localStorage.removeItem('accessToken');
       localStorage.removeItem('roles');
-      window.location.href = '/not-found';
+      window.location.href = '/signin';
     }
     return Promise.reject(error);
   }
