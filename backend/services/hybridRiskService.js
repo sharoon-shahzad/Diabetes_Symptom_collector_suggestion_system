@@ -186,8 +186,10 @@ class HybridRiskService {
       
       console.log(`[LLM] Calling Diabetica HF Space: ${hfBase}`);
 
-      // Attempt 1: Standard API (Gradio < 4 or specific setups)
-      const directResponse = await fetch(`${hfBase}/api/predict`, {
+      // Gradio 5 API: POST /gradio_api/call/predict → { event_id }
+      //               GET  /gradio_api/call/predict/{event_id} → SSE stream
+      console.log('[LLM] Submitting to Gradio 5 /gradio_api/call/predict ...');
+      const submitRes = await fetch(`${hfBase}/gradio_api/call/predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -195,45 +197,40 @@ class HybridRiskService {
         }),
       });
 
+      if (!submitRes.ok) {
+        const errBody = await submitRes.text();
+        throw new Error(`HF submit failed ${submitRes.status}: ${errBody.slice(0,200)}`);
+      }
+
+      const { event_id } = await submitRes.json();
+      console.log(`[LLM] Queued event_id: ${event_id}. Reading SSE (60-120s on CPU)...`);
+
+      const sseRes = await fetch(`${hfBase}/gradio_api/call/predict/${event_id}`);
+      if (!sseRes.ok) throw new Error(`SSE stream error: ${sseRes.status}`);
+
+      const sseText = await sseRes.text();
+      // Parse SSE: scan from end for last data line with string array output
       let llmResponse = null;
-
-      if (directResponse.ok) {
-        const json = await directResponse.json();
-        llmResponse = json?.data?.[0];
-      } 
-      else if (directResponse.status === 404) {
-        // Attempt 2: Gradio 4+ Queue API (POST /call/predict -> GET /status/id)
-        console.log('[LLM] Standard API 404, attempting Gradio 4 Queue API...');
-        const queueReq = await fetch(`${hfBase}/call/predict`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            data: [systemPrompt, userPrompt, this.maxTokens, 0.3]
-          }),
-        });
-
-        if (queueReq.ok) {
-          const { event_id } = await queueReq.json();
-          console.log(`[LLM] Event queued: ${event_id}. Waiting for completion...`);
-          
-          // Poll for result (max 2 minutes)
-          for (let i = 0; i < 60; i++) {
-            await new Promise(r => setTimeout(r, 2000));
-            const statusReq = await fetch(`${hfBase}/status/${event_id}`);
-            const status = await statusReq.json();
-            
-            if (status.status === 'COMPLETE') {
-              llmResponse = status.output?.data?.[0];
+      const sseLines = sseText.split('\n');
+      for (let i = sseLines.length - 1; i >= 0; i--) {
+        const line = sseLines[i].trim();
+        if (line.startsWith('data:')) {
+          try {
+            const parsed = JSON.parse(line.slice(5).trim());
+            if (Array.isArray(parsed) && typeof parsed[0] === 'string') {
+              llmResponse = parsed[0];
               break;
-            } else if (status.status === 'FAILED') {
-              throw new Error('HuggingFace model generation failed via queue');
             }
-          }
+            if (parsed?.output?.data?.[0]) {
+              llmResponse = parsed.output.data[0];
+              break;
+            }
+          } catch {}
         }
       }
 
       if (!llmResponse) {
-        throw new Error(`HF Space returned status ${directResponse.status} and queue failed`);
+        throw new Error(`Could not parse SSE response from HF. Raw: ${sseText.slice(0, 300)}`);
       }
 
       return this._parseLLMResponse(llmResponse);
