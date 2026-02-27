@@ -287,43 +287,176 @@ class MonthlyDietPlanService {
   }
   
   /**
-   * Generate meal options for all meal types
+   * Generate meal options for all meal types — 2 LLM calls (main meals + snacks).
+   * Split avoids the 2048-token output limit that truncates a full 5-meal response.
+   * 2 calls × ~3 min each = ~6 min total, well within the 10-min frontend timeout.
    */
   async generateMealOptions(personal, medical, dailyCalories, mealDistribution, foodContext, region) {
     const mealTypes = [
-      { name: 'Breakfast', timing: '7:00 AM - 9:00 AM', key: 'breakfast' },
+      { name: 'Breakfast',         timing: '7:00 AM - 9:00 AM',   key: 'breakfast'        },
       { name: 'Mid-Morning Snack', timing: '10:30 AM - 11:30 AM', key: 'mid_morning_snack' },
-      { name: 'Lunch', timing: '1:00 PM - 2:30 PM', key: 'lunch' },
-      { name: 'Evening Snack', timing: '5:00 PM - 6:00 PM', key: 'evening_snack' },
-      { name: 'Dinner', timing: '7:30 PM - 9:00 PM', key: 'dinner' }
+      { name: 'Lunch',             timing: '1:00 PM - 2:30 PM',   key: 'lunch'            },
+      { name: 'Evening Snack',     timing: '5:00 PM - 6:00 PM',   key: 'evening_snack'    },
+      { name: 'Dinner',            timing: '7:30 PM - 9:00 PM',   key: 'dinner'           },
     ];
-    
-    const mealCategories = [];
-    
-    // Generate options for each meal type sequentially
-    for (const mealType of mealTypes) {
-      console.log(`🍽️ Generating options for ${mealType.name}...`);
-      
-      const options = await this.generateOptionsForMealType(
-        mealType,
-        mealDistribution[mealType.key],
-        personal,
-        medical,
-        foodContext,
-        region
-      );
-      
-      mealCategories.push({
-        meal_type: mealType.name,
-        timing: mealType.timing,
-        target_calories: mealDistribution[mealType.key],
-        options: options
-      });
-      
-      console.log(`✅ Generated ${options.length} options for ${mealType.name}`);
-    }
-    
+
+    // ── Call 1: Breakfast + Lunch + Dinner (main meals) ──────────────────────
+    console.log('🍽️  LLM call 1/2 — main meals (breakfast, lunch, dinner)...');
+    const mainKeys  = ['breakfast', 'lunch', 'dinner'];
+    const mainDist  = { breakfast: mealDistribution.breakfast, lunch: mealDistribution.lunch, dinner: mealDistribution.dinner };
+    const mainMeals = await this._callForMealGroup(mainKeys, mainDist, personal, medical, dailyCalories, foodContext, region);
+
+    // ── Call 2: Snacks ────────────────────────────────────────────────────────
+    console.log('🍽️  LLM call 2/2 — snacks (mid_morning_snack, evening_snack)...');
+    const snackKeys  = ['mid_morning_snack', 'evening_snack'];
+    const snackDist  = { mid_morning_snack: mealDistribution.mid_morning_snack, evening_snack: mealDistribution.evening_snack };
+    const snackMeals = await this._callForMealGroup(snackKeys, snackDist, personal, medical, dailyCalories, foodContext, region);
+
+    const allMeals = { ...mainMeals, ...snackMeals };
+
+    const mealCategories = mealTypes.map(mt => {
+      const options = allMeals[mt.key] || this.getFallbackOptions(mt.name, mealDistribution[mt.key]);
+      console.log(`✅ ${mt.name}: ${options.length} options`);
+      return {
+        meal_type:       mt.name,
+        timing:          mt.timing,
+        target_calories: mealDistribution[mt.key],
+        options,
+      };
+    });
+
     return mealCategories;
+  }
+
+  /**
+   * Make one LLM call for a subset of meal keys and return a parsed map.
+   * @private
+   */
+  async _callForMealGroup(mealKeys, mealDist, personal, medical, dailyCalories, foodContext, region) {
+    const prompt = this.buildCombinedMealPrompt(mealKeys, mealDist, personal, medical, dailyCalories, foodContext, region);
+
+    let response = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        response = await this.callDiabetica(prompt);
+        break;
+      } catch (err) {
+        console.error(`❌ Attempt ${attempt}/3 failed: ${err.message}`);
+        if (attempt === 3) {
+          // All retries exhausted — return fallbacks for this group
+          const fallback = {};
+          mealKeys.forEach(k => { fallback[k] = this.getFallbackOptions(k, mealDist[k]); });
+          return fallback;
+        }
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+    return this.parseCombinedMealOptions(response, mealDist, mealKeys);
+  }
+
+  /**
+   * Build a compact prompt for a subset of meal keys.
+   */
+  buildCombinedMealPrompt(mealKeys, mealDist, personal, medical, dailyCalories, foodContext, region) {
+    const foodSnippets = foodContext.chunks
+      .slice(0, 8)
+      .map((c, i) => `[${i + 1}] ${c.substring(0, 80)}`)
+      .join('\n');
+
+    const mealNames = {
+      breakfast: 'Breakfast', mid_morning_snack: 'Mid-Morning Snack',
+      lunch: 'Lunch', evening_snack: 'Evening Snack', dinner: 'Dinner',
+    };
+
+    const calTargets = mealKeys.map(k => `${k}=${mealDist[k]} kcal`).join(', ');
+
+    // 2 options per meal — keeps output well within the 2048-token budget
+    const skeleton = '{' + mealKeys.map(k =>
+      `\n  "${k}": [\n    ${[1,2].map(n =>
+        `{"option_name":"Option ${n}","description":"Short description max 8 words","preparation_time":"10 min","difficulty":"Easy","items":[{"food":"name","portion":"amount","calories":100,"carbs":15,"protein":5,"fat":3,"fiber":2}]}`
+      ).join(',\n    ')}\n  ]`
+    ).join(',') + '\n}';
+
+    return `You are a diabetes dietitian. Create 2 options for each meal: ${mealKeys.map(k => mealNames[k]).join(', ')}.
+
+PATIENT: Age ${personal.age}, ${personal.gender}, Region: ${region}, ${medical.diabetes_type}, Diet: ${personal.dietary_preference}
+CALORIE TARGETS: ${calTargets}
+
+REGIONAL FOODS (${region}):
+${foodSnippets}
+
+RULES:
+- description: max 8 words
+- All nutritional values MUST be plain numbers (no units like g, mg)
+- 2-3 items per option
+
+Return ONLY valid JSON — no markdown, no extra text:
+${skeleton}`;
+  }
+
+  /**
+   * Parse LLM response for a specific set of meal keys.
+   */
+  parseCombinedMealOptions(aiResponse, mealDist, mealKeys) {
+    try {
+      let cleaned = aiResponse.trim().replace(/```json|```/g, '');
+      // Fix model outputting unit suffixes on numbers: "carbs": 25g → "carbs": 25
+      cleaned = cleaned.replace(/:\s*(\d+(?:\.\d+)?)[a-zA-Z]+(?=[,\s}\]])/g, ': $1');
+      const start = cleaned.indexOf('{');
+      const end   = cleaned.lastIndexOf('}');
+      if (start === -1 || end === -1) throw new Error('No JSON object in response');
+
+      const parsed  = JSON.parse(cleaned.substring(start, end + 1));
+      const result  = {};
+
+      for (const key of mealKeys) {
+        if (Array.isArray(parsed[key]) && parsed[key].length > 0) {
+          result[key] = parsed[key].map(opt => ({
+            option_name:      opt.option_name      || 'Option',
+            description:      opt.description      || '',
+            preparation_time: opt.preparation_time || '15 minutes',
+            difficulty:       opt.difficulty       || 'Easy',
+            items: Array.isArray(opt.items) ? opt.items.map(item => ({
+              food:    item.food    || '',
+              portion: item.portion || '1 serving',
+              calories: Number(item.calories) || 0,
+              carbs:    Number(item.carbs)    || 0,
+              protein:  Number(item.protein)  || 0,
+              fat:      Number(item.fat)      || 0,
+              fiber:    Number(item.fiber)    || 0,
+            })) : [],
+            total_calories: Array.isArray(opt.items)
+              ? opt.items.reduce((s, i) => s + (Number(i.calories) || 0), 0)
+              : (mealDist[key] || 300),
+          }));
+        } else {
+          console.warn(`⚠️  No valid options for ${key} — using fallback`);
+          result[key] = this.getFallbackOptions(key, mealDist[key]);
+        }
+      }
+      return result;
+    } catch (err) {
+      console.error('❌ parseCombinedMealOptions failed:', err.message);
+      const fallback = {};
+      mealKeys.forEach(k => { fallback[k] = this.getFallbackOptions(k, mealDist[k]); });
+      return fallback;
+    }
+  }
+
+  /**
+   * Single fallback option when LLM output is unparseable for a meal type.
+   */
+  getFallbackOptions(mealKey, targetCalories) {
+    const name = { breakfast:'Breakfast', mid_morning_snack:'Mid-Morning Snack', lunch:'Lunch', evening_snack:'Evening Snack', dinner:'Dinner' }[mealKey] || mealKey;
+    const kcal = targetCalories || 300;
+    return [{
+      option_name:      `${name} Option`,
+      description:      `Balanced diabetic-friendly ${name.toLowerCase()}`,
+      preparation_time: '15 minutes',
+      difficulty:       'Easy',
+      items: [{ food: 'Balanced meal', portion: '1 serving', calories: kcal, carbs: Math.round(kcal * 0.45 / 4), protein: Math.round(kcal * 0.25 / 4), fat: Math.round(kcal * 0.30 / 9), fiber: 5 }],
+      total_calories: kcal,
+    }];
   }
   
   /**
@@ -433,7 +566,9 @@ Generate ${numOptions} completely unique options now. Return ONLY valid JSON:`;
    */
   async callDiabetica(prompt) {
     const hfBase = process.env.HF_SPACE_URL || 'https://zeeshanasghar02-diabetica-api.hf.space';
-    const maxTokens = parseInt(process.env.LM_STUDIO_MAX_TOKENS || '4000');
+    // Gradio slider constraint: max_tokens must be 256–2048
+    const rawTokens = parseInt(process.env.LM_STUDIO_MAX_TOKENS || '2048');
+    const maxTokens = Math.min(Math.max(rawTokens, 256), 2048);
     const systemPrompt = 'You are a diabetes nutrition expert AI. You create diverse, culturally appropriate meal plans. Respond with ONLY valid JSON — no markdown, no code blocks, no explanations outside JSON.';
 
     try {
