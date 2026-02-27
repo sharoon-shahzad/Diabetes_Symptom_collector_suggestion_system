@@ -20,6 +20,7 @@ import PublicCMS from './cms/pages/PublicCMS';
 import DocumentUpload from './admin/DocumentUpload';
 import CommunityFeedbackDashboard from './pages/CommunityFeedbackDashboard';
 import ArticlesPage from './pages/ArticlesPage';
+import DiagnosisQuestion from './pages/DiagnosisQuestion';
 import { ToastContainer } from 'react-toastify';
 import NotFound from './pages/NotFound';
 import ProtectedRoute, { RoleProtectedRoute } from './components/Common/ProtectedRoute';
@@ -58,14 +59,10 @@ const AppContent = () => {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/onboarding"
-            element={
-              <ProtectedRoute>
-                <Onboarding />
-              </ProtectedRoute>
-            }
-          />
+          {/* Onboarding is public — unauthenticated users land here from "Get Started" */}
+          <Route path="/onboarding" element={<Onboarding />} />
+          {/* DiagnosisQuestion is part of the public assessment flow */}
+          <Route path="/diagnosis-question" element={<DiagnosisQuestion />} />
           <Route
             path="/assessment"
             element={
