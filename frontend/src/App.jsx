@@ -21,9 +21,11 @@ import DocumentUpload from './admin/DocumentUpload';
 import CommunityFeedbackDashboard from './pages/CommunityFeedbackDashboard';
 import ArticlesPage from './pages/ArticlesPage';
 import DiagnosisQuestion from './pages/DiagnosisQuestion';
+import SymptomAssessment from './pages/SymptomAssessment';
 import { ToastContainer } from 'react-toastify';
 import NotFound from './pages/NotFound';
 import ProtectedRoute, { RoleProtectedRoute } from './components/Common/ProtectedRoute';
+import { OnboardingProvider } from './contexts/OnboardingContext';
 import 'react-toastify/dist/ReactToastify.css';
 
 // Component to conditionally render header
@@ -61,8 +63,9 @@ const AppContent = () => {
           />
           {/* Onboarding is public — unauthenticated users land here from "Get Started" */}
           <Route path="/onboarding" element={<Onboarding />} />
-          {/* DiagnosisQuestion is part of the public assessment flow */}
+          {/* DiagnosisQuestion & SymptomAssessment share OnboardingProvider state (provided at App level) */}
           <Route path="/diagnosis-question" element={<DiagnosisQuestion />} />
+          <Route path="/symptom-assessment" element={<SymptomAssessment />} />
           <Route
             path="/assessment"
             element={
@@ -125,7 +128,9 @@ const App = () => {
   return (
     <ThemeProvider>
       <Router>
-        <AppContent />
+        <OnboardingProvider>
+          <AppContent />
+        </OnboardingProvider>
       </Router>
     </ThemeProvider>
   );
