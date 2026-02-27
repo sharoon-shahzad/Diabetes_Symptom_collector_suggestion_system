@@ -77,7 +77,7 @@ const MonthSelectorDialog = ({ open, onClose, onGenerate, loading }) => {
       }}
     >
       <DialogTitle sx={{ pb: 0 }}>
-        <Typography variant="h5" fontWeight={700} sx={{ color: '#1e293b' }}>
+        <Typography variant="h5" component="span" fontWeight={700} sx={{ color: '#1e293b', display: 'block' }}>
           Generate Monthly Plan
         </Typography>
         <Typography variant="body2" sx={{ color: '#64748b', mt: 0.5 }}>
