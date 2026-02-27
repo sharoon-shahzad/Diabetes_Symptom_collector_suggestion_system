@@ -192,54 +192,56 @@ class DietPlanService {
       const seenTexts = new Set();
       
       // Query with region-specific filter (DYNAMIC) - Include both diet_chart and guideline documents
-      // ChromaDB filter using $or operator for doc_type
+      // Use flat $in filter to avoid nested $and/$or complexity in qdrantService formatFilter
       const filter = {
-        $and: [
-          { country: region },
-          {
-            $or: [
-              { doc_type: 'diet_chart' },
-              { doc_type: 'guideline' }
-            ]
-          }
-        ]
+        country: region,
+        doc_type: { $in: ['diet_chart', 'guideline'] }
       };
       
-      for (const query of queries) {
-        try {
-          const queryResponse = await processQuery(
-            query,
-            {
-              topK: 8, // Increased from 5 to 8 chunks per query for more variety
-              filter: filter,
-              minScore: 0.0
-            }
-          );
-          
-          // processQuery returns an object with results array
-          const results = queryResponse.results || [];
-          
-          // Deduplicate by text content
-          results.forEach(result => {
-            const textKey = result.text.substring(0, 100);
-            if (!seenTexts.has(textKey)) {
-              seenTexts.add(textKey);
-              allResults.push(result);
-            }
-          });
-        } catch (error) {
-          console.warn(`Query failed for: ${query}`, error.message);
+      const collectResults = async (activeFilter) => {
+        for (const query of queries) {
+          try {
+            const queryResponse = await processQuery(
+              query,
+              {
+                topK: 8,
+                filter: activeFilter,
+                minScore: 0.0
+              }
+            );
+            const results = queryResponse.results || [];
+            results.forEach(result => {
+              const textKey = result.text.substring(0, 100);
+              if (!seenTexts.has(textKey)) {
+                seenTexts.add(textKey);
+                allResults.push(result);
+              }
+            });
+          } catch (error) {
+            console.warn(`Query failed for: ${query}`, error.message);
+          }
         }
-      }
-      
-      // NO FALLBACK - Require region-specific data
+      };
+
+      // Attempt 1: region + doc_type filter
+      await collectResults(filter);
+
+      // Attempt 2: doc_type only (in case country field mismatch in Qdrant)
       if (allResults.length === 0) {
-        throw new Error(`No dietary documents found for region: ${region}. Region-specific data is required.`);
+        console.warn(`⚠️  No results for region "${region}" — retrying with doc_type filter only`);
+        seenTexts.clear();
+        await collectResults({ doc_type: { $in: ['diet_chart', 'guideline'] } });
       }
-      
-      // NO FALLBACK - RAG must provide data
+
+      // Attempt 3: no filter at all (last resort)
       if (allResults.length === 0) {
-        throw new Error(`ChromaDB returned no results for region: ${region}. RAG system must be operational.`);
+        console.warn(`⚠️  No results with doc_type filter — retrying with no filter`);
+        seenTexts.clear();
+        await collectResults(null);
+      }
+
+      if (allResults.length === 0) {
+        throw new Error(`No dietary documents found for region: ${region}. Please upload relevant documents via the admin panel.`);
       }
       
       // Format chunks and extract sources
@@ -446,26 +448,12 @@ Generate the complete meal plan now. Return ONLY valid JSON (no markdown, no cod
   }
   
   /**
-   * Call Diabetica-7B model via LM Studio
-   * @param {string} prompt - Complete prompt
-   * @returns {Promise<string>} - AI response
+   * Call Diabetica-7B via Hugging Face Gradio API
    */
   async callDiabetica(prompt) {
-    try {
-      const lmStudioUrl = process.env.LM_STUDIO_BASE_URL || 'http://127.0.0.1:1234';
-      const model = process.env.LM_STUDIO_MODEL || 'diabetica-7b';
-      
-      console.log(`🤖 Calling LM Studio at ${lmStudioUrl} with model: ${model}`);
-      
-      // Add randomness to system prompt to encourage variety
-      const randomSeed = Math.floor(Math.random() * 1000000);
-      
-      const requestBody = {
-        model: model,
-        messages: [
-          {
-            role: 'system',
-            content: `You are a specialized diabetes dietitian AI (Session: ${randomSeed}). 
+    const hfBase = process.env.HF_SPACE_URL || 'https://zeeshanasghar02-diabetica-api.hf.space';
+    const maxTokens = parseInt(process.env.LM_STUDIO_MAX_TOKENS || '4000');
+    const systemPrompt = `You are a specialized diabetes dietitian AI.
 
 CRITICAL RESPONSE RULES:
 1. Respond with ONLY valid JSON - no markdown, no code blocks, no explanations
@@ -473,56 +461,53 @@ CRITICAL RESPONSE RULES:
 3. NEVER put strings, text, or advice directly in the "items" array
 4. Each food item MUST have: "food" (string), "portion" (string), "calories" (number), "carbs" (number), "protein" (number), "fat" (number), "fiber" (number)
 5. Put all advice, tips, and monitoring instructions in the "tips" array ONLY
-6. Create diverse and unique meal combinations for every request
-7. DO NOT include meals that only contain advice (like "Monitor blood glucose") - these are NOT meals
+6. Create diverse and unique meal combinations for every request`;
 
-Example of CORRECT structure:
-{
-  "meals": [{"name": "Breakfast", "items": [{"food": "Oatmeal", "portion": "1 cup", "calories": 150, ...}]}],
-  "tips": ["Monitor blood glucose levels", "Drink water"]
-}
+    try {
+      console.log(`🤖 Calling Diabetica-7B via HF Gradio at ${hfBase}`);
 
-Example of INCORRECT structure (DO NOT DO THIS):
-{
-  "meals": [{"name": "Monitoring", "items": "Monitor blood glucose levels"}]  ❌ WRONG
-}`
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        temperature: 0.85,
-        max_tokens: 4000
-      };
-      
-      console.log('📤 Request body:', JSON.stringify(requestBody, null, 2).substring(0, 500) + '...');
-      
-      const response = await axios.post(`${lmStudioUrl}/v1/chat/completions`, requestBody, {
-        timeout: 120000 // 120 second timeout for large prompts
-      });
-      
-      console.log('✅ LM Studio response received');
-      return response.data.choices[0].message.content;
-      
+      // Step 1: Submit job
+      const submitRes = await axios.post(
+        `${hfBase}/gradio_api/call/predict`,
+        { data: [systemPrompt, prompt, maxTokens, 0.85] },
+        { timeout: 30000 }
+      );
+      const { event_id } = submitRes.data;
+      if (!event_id) throw new Error('HF Gradio did not return an event_id');
+      console.log(`   HF event_id: ${event_id} — waiting for result...`);
+
+      // Step 2: Read SSE stream
+      const sseRes = await axios.get(
+        `${hfBase}/gradio_api/call/predict/${event_id}`,
+        { timeout: 300000, responseType: 'text' }  // 5 min timeout
+      );
+
+      // Step 3: Parse SSE — find last data line with the output
+      const lines = sseRes.data.split('\n');
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i].trim();
+        if (line.startsWith('data:')) {
+          try {
+            const json = JSON.parse(line.slice(5).trim());
+            if (Array.isArray(json) && typeof json[0] === 'string') return json[0];
+            if (Array.isArray(json) && Array.isArray(json[0])) return json[0][0];
+            if (json?.output?.data?.[0]) return json.output.data[0];
+          } catch { /* keep scanning */ }
+        }
+      }
+      throw new Error(`Could not parse Gradio SSE response. Raw (first 500): ${sseRes.data.substring(0, 500)}`);
+
     } catch (error) {
-      console.error('❌ Error calling LM Studio:', error.message);
-      
-      // Log detailed error information
+      console.error('❌ Error calling HF Diabetica:', error.message);
       if (error.response) {
         console.error('Response status:', error.response.status);
-        console.error('Response data:', JSON.stringify(error.response.data, null, 2));
       }
-      
-      if (error.code === 'ECONNREFUSED') {
-        throw new Error('LM Studio is not running. Start it with: lm-studio serve');
-      } else if (error.message.includes('timeout')) {
-        throw new Error('LM Studio took too long to respond (>120s). Please ensure LM Studio is running properly and model is loaded.');
-      } else if (error.response?.data?.error) {
-        throw new Error(`LM Studio error: ${error.response.data.error.message || error.response.data.error}`);
-      } else {
-        throw new Error(`LM Studio error: ${error.message}`);
+      if (error.code === 'ECONNREFUSED' || error.response?.status === 503) {
+        throw new Error('Diabetica model is offline. Please check the HF Space.');
+      } else if (error.message.includes('timeout') || error.code === 'ECONNABORTED') {
+        throw new Error('Diabetica model took too long to respond. Please try again.');
       }
+      throw new Error(`Diabetica error: ${error.message}`);
     }
   }
   
