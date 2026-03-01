@@ -80,6 +80,14 @@ const LandingPage = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [footerExpanded, setFooterExpanded] = useState({});
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = () => setIsAuthenticated(!!localStorage.getItem('accessToken'));
+    checkAuth();
+    window.addEventListener('storage', checkAuth);
+    return () => window.removeEventListener('storage', checkAuth);
+  }, []);
 
   useEffect(() => {
     // Simulate initial loading
@@ -324,69 +332,106 @@ const LandingPage = () => {
 
                 {/* Desktop Auth Buttons */}
                 <Box sx={{ display: { xs: 'none', sm: 'flex' }, gap: 1 }}>
-                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={() => navigate('/signin')}
-                      sx={{
-                        borderRadius: '20px',
-                        textTransform: 'none',
-                        fontWeight: 600,
-                        px: { xs: 1.5, md: 2.5 },
-                        py: 0,
-                        fontSize: { xs: '0.8rem', md: '0.9rem' },
-                        height: { xs: '32px', md: '36px' },
-                        minHeight: { xs: '32px', md: '36px' },
-                        minWidth: { xs: '60px', md: '80px' },
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        lineHeight: 1,
-                        whiteSpace: 'nowrap',
-                        borderColor: alpha(theme.palette.primary.main, 0.3),
-                        '&:hover': {
-                          borderColor: theme.palette.primary.main,
-                          background: alpha(theme.palette.primary.main, 0.05),
-                        },
-                      }}
-                    >
-                      Sign In
-                    </Button>
-                  </motion.div>
+                  {isAuthenticated ? (
+                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        onClick={() => navigate('/dashboard')}
+                        startIcon={<ArrowForward sx={{ fontSize: { xs: 14, md: 16 } }} />}
+                        sx={{
+                          borderRadius: '20px',
+                          textTransform: 'none',
+                          fontWeight: 600,
+                          px: { xs: 1.5, md: 2.5 },
+                          py: 0,
+                          fontSize: { xs: '0.8rem', md: '0.9rem' },
+                          height: { xs: '32px', md: '36px' },
+                          minHeight: { xs: '32px', md: '36px' },
+                          minWidth: { xs: '90px', md: '120px' },
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          lineHeight: 1,
+                          whiteSpace: 'nowrap',
+                          background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                          boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.3)}`,
+                          '&:hover': {
+                            background: `linear-gradient(135deg, ${theme.palette.primary.dark}, ${theme.palette.secondary.dark})`,
+                            boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.4)}`,
+                          },
+                        }}
+                      >
+                        Dashboard
+                      </Button>
+                    </motion.div>
+                  ) : (
+                    <>
+                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => navigate('/signin')}
+                          sx={{
+                            borderRadius: '20px',
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            px: { xs: 1.5, md: 2.5 },
+                            py: 0,
+                            fontSize: { xs: '0.8rem', md: '0.9rem' },
+                            height: { xs: '32px', md: '36px' },
+                            minHeight: { xs: '32px', md: '36px' },
+                            minWidth: { xs: '60px', md: '80px' },
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            lineHeight: 1,
+                            whiteSpace: 'nowrap',
+                            borderColor: alpha(theme.palette.primary.main, 0.3),
+                            '&:hover': {
+                              borderColor: theme.palette.primary.main,
+                              background: alpha(theme.palette.primary.main, 0.05),
+                            },
+                          }}
+                        >
+                          Sign In
+                        </Button>
+                      </motion.div>
 
-                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                    <Button
-                      variant="contained"
-                      size="small"
-                      onClick={() => navigate('/onboarding')}
-                      startIcon={<ArrowForward sx={{ fontSize: { xs: 14, md: 16 } }} />}
-                      sx={{
-                        borderRadius: '20px',
-                        textTransform: 'none',
-                        fontWeight: 600,
-                        px: { xs: 1.5, md: 2.5 },
-                        py: 0,
-                        fontSize: { xs: '0.8rem', md: '0.9rem' },
-                        height: { xs: '32px', md: '36px' },
-                        minHeight: { xs: '32px', md: '36px' },
-                        minWidth: { xs: '90px', md: '120px' },
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        lineHeight: 1,
-                        whiteSpace: 'nowrap',
-                        background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                        boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.3)}`,
-                        '&:hover': {
-                          background: `linear-gradient(135deg, ${theme.palette.primary.dark}, ${theme.palette.secondary.dark})`,
-                          boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.4)}`,
-                        },
-                      }}
-                    >
-                      Get Started
-                    </Button>
-                  </motion.div>
+                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                        <Button
+                          variant="contained"
+                          size="small"
+                          onClick={() => navigate('/onboarding')}
+                          startIcon={<ArrowForward sx={{ fontSize: { xs: 14, md: 16 } }} />}
+                          sx={{
+                            borderRadius: '20px',
+                            textTransform: 'none',
+                            fontWeight: 600,
+                            px: { xs: 1.5, md: 2.5 },
+                            py: 0,
+                            fontSize: { xs: '0.8rem', md: '0.9rem' },
+                            height: { xs: '32px', md: '36px' },
+                            minHeight: { xs: '32px', md: '36px' },
+                            minWidth: { xs: '90px', md: '120px' },
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            lineHeight: 1,
+                            whiteSpace: 'nowrap',
+                            background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                            boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.3)}`,
+                            '&:hover': {
+                              background: `linear-gradient(135deg, ${theme.palette.primary.dark}, ${theme.palette.secondary.dark})`,
+                              boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.4)}`,
+                            },
+                          }}
+                        >
+                          Get Started
+                        </Button>
+                      </motion.div>
+                    </>
+                  )}
                 </Box>
 
                 {/* Mobile Menu Button */}
@@ -451,40 +496,63 @@ const LandingPage = () => {
           
           {/* Mobile Auth Buttons */}
           <Stack spacing={2} sx={{ display: { xs: 'flex', sm: 'none' } }}>
-            <Button
-              variant="outlined"
-              fullWidth
-              onClick={() => {
-                navigate('/signin');
-                setMobileMenuOpen(false);
-              }}
-              sx={{
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 600,
-                py: 1.5,
-              }}
-            >
-              Sign In
-            </Button>
-            <Button
-              variant="contained"
-              fullWidth
-              onClick={() => {
-                navigate('/onboarding');
-                setMobileMenuOpen(false);
-              }}
-              startIcon={<ArrowForward />}
-              sx={{
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 600,
-                py: 1.5,
-                background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-              }}
-            >
-              Get Started
-            </Button>
+            {isAuthenticated ? (
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={() => {
+                  navigate('/dashboard');
+                  setMobileMenuOpen(false);
+                }}
+                startIcon={<ArrowForward />}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  py: 1.5,
+                  background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                }}
+              >
+                Dashboard
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  onClick={() => {
+                    navigate('/signin');
+                    setMobileMenuOpen(false);
+                  }}
+                  sx={{
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    py: 1.5,
+                  }}
+                >
+                  Sign In
+                </Button>
+                <Button
+                  variant="contained"
+                  fullWidth
+                  onClick={() => {
+                    navigate('/onboarding');
+                    setMobileMenuOpen(false);
+                  }}
+                  startIcon={<ArrowForward />}
+                  sx={{
+                    borderRadius: 2,
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    py: 1.5,
+                    background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                  }}
+                >
+                  Get Started
+                </Button>
+              </>
+            )}
           </Stack>
         </Box>
       </Drawer>
@@ -594,7 +662,7 @@ const LandingPage = () => {
                             <Button
                               variant="contained"
                               size="large"
-                              onClick={() => navigate('/onboarding')}
+                              onClick={() => navigate(isAuthenticated ? '/dashboard' : '/onboarding')}
                               startIcon={<ArrowForward />}
                               fullWidth={isSmallScreen}
                               sx={{
@@ -613,7 +681,7 @@ const LandingPage = () => {
                                 transition: 'all 0.3s ease',
                               }}
                             >
-                              Start Assessment
+                              {isAuthenticated ? 'Go to Dashboard' : 'Start Assessment'}
                             </Button>
                           </motion.div>
                           <motion.div 
@@ -1380,7 +1448,7 @@ const LandingPage = () => {
                   <Button
                     variant="contained"
                     size="large"
-                    onClick={() => navigate('/onboarding')}
+                    onClick={() => navigate(isAuthenticated ? '/dashboard' : '/onboarding')}
                     fullWidth={isSmallScreen}
                     sx={{
                       background: 'white',
@@ -1394,7 +1462,7 @@ const LandingPage = () => {
                       },
                     }}
                   >
-                    Start Your Assessment
+                    {isAuthenticated ? 'Go to Dashboard' : 'Start Your Assessment'}
                   </Button>
                   <Button
                     variant="outlined"
