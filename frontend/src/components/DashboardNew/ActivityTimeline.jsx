@@ -75,7 +75,7 @@ const ActivityTimeline = ({ items = [] }) => {
                 </Typography>
                 {it.time && (
                   <Typography variant="caption" sx={{ color: 'text.disabled', fontWeight: 700, letterSpacing: 0.5 }}>
-                    {new Date(it.time).toLocaleString()}
+                    {it.time}
                   </Typography>
                 )}
               </Box>

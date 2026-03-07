@@ -39,6 +39,27 @@ export const initializeQdrantDB = async () => {
             console.log(`Connected to existing Qdrant collection '${COLLECTION_NAME}'`);
         }
 
+        // Ensure payload indexes exist for filterable fields.
+        // Qdrant REQUIRES keyword indexes before any filter query works.
+        // These calls are idempotent — safe to run every startup.
+        const indexFields = ['country', 'doc_type', 'documentId', 'title', 'source'];
+        for (const field of indexFields) {
+            try {
+                await qdrantClient.createPayloadIndex(COLLECTION_NAME, {
+                    field_name: field,
+                    field_schema: 'keyword',
+                    wait: true,
+                });
+                console.log(`   ✅ Payload index ensured: "${field}"`);
+            } catch (idxErr) {
+                // Ignore "already exists" errors; log others
+                if (!idxErr.message?.includes('already exists') && idxErr.status !== 400) {
+                    console.warn(`   ⚠️  Could not create index for "${field}":`, idxErr.message);
+                }
+            }
+        }
+        console.log('✅ Qdrant payload indexes verified.');
+
         return qdrantClient;
     } catch (error) {
         console.error('Failed to initialize Qdrant:', error);
@@ -162,24 +183,38 @@ export const getStats = async () => {
 };
 
 /**
- * Basic formatter for filters (Map common metadata keys)
+ * Convert MongoDB-style filter to Qdrant native filter format.
+ * Supports: $and, $or, $in, and plain equality { key: value }.
  */
 function formatFilter(filter) {
+    if (!filter || typeof filter !== 'object') return undefined;
+
+    // $and → must
+    if (filter.$and) {
+        const must = filter.$and.map(f => formatFilter(f)).filter(Boolean);
+        return must.length > 0 ? { must } : undefined;
+    }
+
+    // $or → should
+    if (filter.$or) {
+        const should = filter.$or.map(f => formatFilter(f)).filter(Boolean);
+        return should.length > 0 ? { should } : undefined;
+    }
+
+    // Plain field conditions
     const must = [];
-    
     for (const [key, value] of Object.entries(filter)) {
-        if (value && typeof value === 'object' && value.$in) {
-            must.push({
-                key: key,
-                match: { any: value.$in }
-            });
-        } else if (value) {
-            must.push({
-                key: key,
-                match: { value: value }
-            });
+        if (value === null || value === undefined) continue;
+
+        if (typeof value === 'object' && value.$in) {
+            // { field: { $in: [...] } }
+            must.push({ key, match: { any: value.$in } });
+        } else if (typeof value !== 'object') {
+            // { field: 'value' }
+            must.push({ key, match: { value } });
         }
     }
-    
+
+    if (must.length === 1) return must[0];
     return must.length > 0 ? { must } : undefined;
 }

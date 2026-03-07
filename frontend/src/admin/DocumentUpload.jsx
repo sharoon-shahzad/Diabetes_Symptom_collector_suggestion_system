@@ -30,7 +30,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ErrorIcon from '@mui/icons-material/Error';
 import DeleteIcon from '@mui/icons-material/Delete';
-import axios from 'axios';
+import axiosInstance from '../utils/axiosInstance';
 import { toast } from 'react-toastify';
 
 const DocumentUpload = () => {
@@ -60,10 +60,7 @@ const DocumentUpload = () => {
     const fetchDocuments = async () => {
         try {
             setLoadingDocs(true);
-            const token = localStorage.getItem('accessToken');
-            const response = await axios.get('https://zeeshanasghar02-diavise-backend.hf.space/api/v1/admin/docs', {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const response = await axiosInstance.get('/admin/docs');
             if (response.data.success) {
                 setDocuments(response.data.documents || []);
             }
@@ -175,15 +172,11 @@ const DocumentUpload = () => {
             uploadFormData.append('version', formData.version);
             uploadFormData.append('force', formData.force.toString());
             
-            const response = await axios.post(
-                'https://zeeshanasghar02-diavise-backend.hf.space/api/v1/admin/docs/upload',
+            const response = await axiosInstance.post(
+                '/admin/docs/upload',
                 uploadFormData,
                 {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'multipart/form-data',
-                    },
-                    withCredentials: true,
+                    headers: { 'Content-Type': 'multipart/form-data' },
                     onUploadProgress: (progressEvent) => {
                         const percentCompleted = Math.round(
                             (progressEvent.loaded * 100) / progressEvent.total
@@ -249,10 +242,7 @@ const DocumentUpload = () => {
         }
         
         try {
-            const token = localStorage.getItem('accessToken');
-            await axios.delete(`https://zeeshanasghar02-diavise-backend.hf.space/api/v1/admin/docs/${docId}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            await axiosInstance.delete(`/admin/docs/${docId}`);
             toast.success('Document deleted successfully');
             fetchDocuments();
         } catch (err) {

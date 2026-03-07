@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+﻿import React, { useState } from 'react';
+import axiosInstance from '../../utils/axiosInstance';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import {
     Box,
@@ -59,7 +59,7 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
         setError('');
         setErrorMessage('');
         try {
-            const res = await axios.post('https://zeeshanasghar02-diavise-backend.hf.space/api/v1/auth/login', {
+            const res = await axiosInstance.post('/auth/login', {
                 email,
                 password,
             }, { withCredentials: true });
@@ -68,15 +68,62 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                 localStorage.setItem('accessToken', res.data.data.accessToken);
                 const roles = res.data.data.user.roles || [];
                 localStorage.setItem('roles', JSON.stringify(roles));
+
+                // Always clean up stale assessment flags first
+                sessionStorage.removeItem('returnToSymptomAssessment');
+                sessionStorage.removeItem('answersSavedAfterLogin');
+
+                // ── ROLE-FIRST routing ──────────────────────────────────────────
+                // Admins/super-admins go straight to their dashboard regardless
+                // of any returnTo param — they should never end up in the patient
+                // symptom-assessment flow.
+                if (roles.includes('admin') || roles.includes('super_admin')) {
+                    sessionStorage.removeItem('pendingOnboardingAnswers');
+                    navigate('/admin-dashboard', { replace: true });
+                    return;
+                }
+
+                // ── Regular-user: check if coming back from symptom assessment ──
+                // Only honour ?returnTo=symptom-assessment for non-admin users
+                // who completed the onboarding questionnaire as a guest.
+                const searchParams = new URLSearchParams(location.search);
+                const returnTo = searchParams.get('returnTo');
+
+                if (returnTo === 'symptom-assessment') {
+                    const pendingAnswersRaw = sessionStorage.getItem('pendingOnboardingAnswers');
+                    if (pendingAnswersRaw) {
+                        try {
+                            const pendingAnswers = JSON.parse(pendingAnswersRaw);
+                            if (Array.isArray(pendingAnswers) && pendingAnswers.length > 0) {
+                                await axiosInstance.post('/questions/batch-save-answers', {
+                                    answers: pendingAnswers,
+                                });
+                                sessionStorage.setItem('answersSavedAfterLogin', 'true');
+                            }
+                        } catch (saveErr) {
+                            console.error('Failed to batch-save onboarding answers:', saveErr);
+                        } finally {
+                            sessionStorage.removeItem('pendingOnboardingAnswers');
+                        }
+                    }
+                    // Keep returnToSymptomAssessment so SymptomAssessment can
+                    // detect the return on mount and show the "Continue" dialog
+                    sessionStorage.setItem('returnToSymptomAssessment', 'true');
+                    navigate('/symptom-assessment', { replace: true });
+                    return;
+                }
+
+                // ── Regular-user: normal login (direct sign-in or ProtectedRoute redirect) ──
+                sessionStorage.removeItem('pendingOnboardingAnswers');
+                // Show assessment insight popup on every login if user has been assessed
+                sessionStorage.setItem('assessmentPopupPostLogin', 'true');
                 const from = location.state?.from;
                 const targetPath = typeof from === 'string' ? from : from?.pathname;
                 const isProtectedPath = targetPath && !['/signin', '/signup', '/'].includes(targetPath);
                 if (isProtectedPath) {
                     navigate(targetPath, { replace: true });
-                } else if (roles.includes('admin') || roles.includes('super_admin')) {
-                    navigate('/admin-dashboard');
                 } else {
-                    navigate('/dashboard');
+                    navigate('/dashboard', { replace: true });
                 }
             } else {
                 const errorMsg = res.data.message || 'Login failed.';

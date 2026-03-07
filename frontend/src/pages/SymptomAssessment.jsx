@@ -354,7 +354,6 @@ const SymptomAssessment = () => {
 
     navigate('/assessment');
   };
-sessionStorage.setItem('returnToSymptomAssessment', 'true');
     
   const handleLoginRedirect = () => {
     navigate('/signin?returnTo=symptom-assessment');
@@ -672,7 +671,7 @@ sessionStorage.setItem('returnToSymptomAssessment', 'true');
           >
             <Login sx={{ fontSize: 56, color: 'primary.main' }} />
           </Box>
-          <Typography variant="h5" fontWeight={700}>
+          <Typography variant="h5" component="p" fontWeight={700}>
             Great! One More Step
           </Typography>
         </DialogTitle>

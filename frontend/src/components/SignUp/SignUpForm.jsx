@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useDateFormat } from '../../hooks/useDateFormat';
-import axios from 'axios';
+import axiosInstance from '../../utils/axiosInstance';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import {
     Box,
@@ -117,7 +117,7 @@ export default function SignUpForm({ setSuccess, setError }) {
         if (setSuccess) setSuccess('');
         if (setError) setError('');
         try {
-            const res = await axios.post('/api/v1/auth/register', {
+            const res = await axiosInstance.post('/auth/register', {
                 fullName,
                 email,
                 password,

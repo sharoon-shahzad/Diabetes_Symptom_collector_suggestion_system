@@ -40,11 +40,12 @@ axiosInstance.interceptors.response.use(
     const originalRequest = error.config;
 
     // Skip redirect and token refresh for public paths or when no token exists
-    const publicPaths = ['/auth/login', '/auth/register', '/auth/refresh-token', '/public', '/diseases/public', '/symptoms/public'];
-    const isPublicPath = publicPaths.some(path => originalRequest.url?.includes(path));
+    const publicPaths = ['/auth/login', '/auth/register', '/auth/refresh-token', '/auth/logout', '/public', '/diseases/public', '/symptoms/public'];
+    const isPublicPath = publicPaths.some(path => originalRequest?.url?.includes(path));
     const hasToken = localStorage.getItem('accessToken');
 
-    if (error.response?.status === 401 && !originalRequest._retry && !isPublicPath && hasToken) {
+    // Only attempt refresh if: 401 error, not already retried, not public path, has token
+    if (error.response?.status === 401 && !originalRequest?._retry && !isPublicPath && hasToken) {
       if (isRefreshing) {
         // Another refresh is already in flight — wait for it to complete
         return new Promise((resolve, reject) => {
@@ -59,7 +60,11 @@ axiosInstance.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const res = await axios.post(`${API_URL}/api/v1/auth/refresh-token`, {}, { withCredentials: true });
+        const res = await axios.post(`${API_URL}/api/v1/auth/refresh-token`, {}, { 
+          withCredentials: true,
+          timeout: 10000 // 10 second timeout for refresh
+        });
+        
         if (res.data?.data?.accessToken) {
           const newToken = res.data.data.accessToken;
           localStorage.setItem('accessToken', newToken);
@@ -67,14 +72,25 @@ axiosInstance.interceptors.response.use(
           processQueue(null, newToken);
           isRefreshing = false;
           return axiosInstance(originalRequest);
+        } else {
+          // Server returned success but no token — treat as failure
+          throw new Error('No access token in refresh response');
         }
       } catch (refreshError) {
+        console.warn('Token refresh failed:', refreshError?.message || refreshError);
         processQueue(refreshError, null);
         isRefreshing = false;
+        
+        // Clear auth state
         localStorage.removeItem('accessToken');
-        if (!window.location.pathname.includes('/signin')) {
+        localStorage.removeItem('roles');
+        
+        // Redirect only if not already on signin page
+        if (!window.location.pathname.includes('/signin') && !window.location.pathname.includes('/signup')) {
           window.location.href = '/signin';
         }
+        
+        return Promise.reject(refreshError);
       }
     }
     return Promise.reject(error);

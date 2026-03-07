@@ -323,8 +323,12 @@ export const deleteUser = async (req, res) => {
             });
         }
         
-        // Soft delete: set deleted_at to current date
+        // Soft delete: set deleted_at and anonymize the email so the unique
+        // index doesn't block future re-registration with the same address.
+        const originalEmail = user.email;
         user.deleted_at = new Date();
+        user.deleted_email = originalEmail;           // preserve for audit
+        user.email = `deleted_${Date.now()}_${id}@deleted.local`; // free the slot
         await user.save();
 
         console.log(`User with id ${id} soft deleted by admin at ${user.deleted_at}`);

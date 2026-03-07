@@ -25,7 +25,7 @@ import { differenceInYears, parseISO } from 'date-fns';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import axios from 'axios';
+import axiosInstance from '../../utils/axiosInstance';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, logout } from '../../utils/auth';
 import MedicalServicesIcon from '@mui/icons-material/MedicalServices';
@@ -146,10 +146,7 @@ export default function UniversalHeader() {
         setResendLoading(false);
         return;
       }
-      const token = localStorage.getItem('accessToken');
-      const res = await axios.post('https://zeeshanasghar02-diavise-backend.hf.space/api/v1/auth/resend-activation', { email }, {
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-      });
+      const res = await axiosInstance.post('/auth/resend-activation', { email });
       const data = res.data;
       if (res.status === 200) {
         setResendSuccess(data.message || 'If your account is inactive, a new activation link has been sent.');
@@ -207,10 +204,7 @@ export default function UniversalHeader() {
       return;
     }
     try {
-      const token = localStorage.getItem('accessToken');
-      const res = await axios.post('https://zeeshanasghar02-diavise-backend.hf.space/api/v1/auth/change-password', { currentPassword, newPassword }, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const res = await axiosInstance.post('/auth/change-password', { currentPassword, newPassword });
       const data = res.data;
       if (res.status === 200) {
         setPwSuccess(data.message || 'Password changed successfully.');

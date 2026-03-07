@@ -55,19 +55,14 @@ const useDashboardDataFetching = ({
 
         setUser(userData);
 
-        // Assessment insight popup: show at most once after login (not on Insights click/refresh)
+        // Assessment insight popup: show on every login if user has been assessed
         const postLoginFlag = sessionStorage.getItem('assessmentPopupPostLogin');
         if (postLoginFlag === 'true') {
           sessionStorage.removeItem('assessmentPopupPostLogin');
-
-          const alreadyShown = sessionStorage.getItem('assessmentPopupShown') === 'true';
-          if (!alreadyShown) {
-            const hasAssessment = !!userData?.last_assessment_at;
-            const isDiagnosed = userData?.diabetes_diagnosed === 'yes';
-            if (hasAssessment && !isDiagnosed) {
-              setShowAssessmentPopup(true);
-              sessionStorage.setItem('assessmentPopupShown', 'true');
-            }
+          const hasAssessment = !!userData?.last_assessment_at;
+          const isDiagnosed = userData?.diabetes_diagnosed === 'yes';
+          if (hasAssessment && !isDiagnosed) {
+            setShowAssessmentPopup(true);
           }
         }
       } catch (error) {
@@ -97,9 +92,9 @@ const useDashboardDataFetching = ({
     }
   }, [location.search, navigate, setSelectedIndex, setShowFeedbackForm]);
 
-  // Fetch disease data for Insights and My Disease Data sections
+  // Fetch disease data for Dashboard, Insights and My Disease Data sections
   useEffect(() => {
-    if (currentSection === 'Insights' || currentSection === 'My Disease Data') {
+    if (currentSection === 'Dashboard' || currentSection === 'Insights' || currentSection === 'My Disease Data') {
       setLoading(true);
       setError(null);
       console.log('Fetching disease data for section:', currentSection);

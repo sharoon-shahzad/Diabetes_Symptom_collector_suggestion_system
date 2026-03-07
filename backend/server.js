@@ -52,6 +52,7 @@ import prioritiesRoutes from './routes/priorities.js';
 import habitsRoutes from './routes/habitsRoutes.js';
 import healthRoutes from './routes/healthRoutes.js';
 import { captureAuditContext } from './middlewares/auditMiddleware.js';
+import { apiLimiter } from './middlewares/rateLimitMiddleware.js';
 import AuditLog from './models/AuditLog.js';
 import os from 'os';
 
@@ -80,6 +81,9 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
 }));
+
+// Global API rate limiter (100 requests/min per IP)
+app.use('/api/', apiLimiter);
 
 // Add logging middleware
 app.use((req, res, next) => {

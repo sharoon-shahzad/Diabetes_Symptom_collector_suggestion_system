@@ -67,18 +67,16 @@ class ExercisePlanService {
     let userRegion = personal.country;
     if (!regionCoverage.canGeneratePlan) {
       const fallback = await regionDiscoveryService.getFallbackRegion(userRegion, 'exercise_recommendation');
-      if (!fallback) {
-        console.warn(`⚠️ No exercise documents for ${userRegion}, using AI's built-in knowledge`);
-        userRegion = personal.country; // Keep original region
-      } else {
+      if (fallback) {
         userRegion = fallback;
+        console.log(`Using fallback region: ${fallback}`);
+      } else {
+        console.log(`⚠️ No exercise documents for ${userRegion}, AI will use built-in knowledge`);
       }
     }
 
     const context = await this.queryRegionalExercise(userRegion);
-    if (!context.chunks || context.chunks.length === 0) {
-      console.warn(`⚠️ No RAG context for ${userRegion}. Using AI's built-in exercise knowledge.`);
-    }
+    console.log(`📚 RAG context: ${context.chunks.length} chunks retrieved`);
 
     const prompt = this.buildExercisePrompt(personal, medical, context, targetDateObj);
     let structured;
@@ -87,8 +85,8 @@ class ExercisePlanService {
       structured = this.parseExercisePlan(aiResponse);
       console.log('✅ Exercise plan parsed successfully:', JSON.stringify(structured, null, 2));
     } catch (lmError) {
-      console.error('❌ LM Studio error:', lmError.message);
-      throw new Error(`LM Studio is required for exercise plan generation. ${lmError.message}`);
+      console.error('❌ AI generation error:', lmError.message);
+      throw new Error(`AI generation failed: ${lmError.message}`);
     }
 
     if (!structured || !structured.sessions || structured.sessions.length === 0) {
@@ -170,11 +168,6 @@ class ExercisePlanService {
   }
 
   async queryRegionalExercise(region) {
-    // Chroma is required - no fallback content
-    if (process.env.CHROMA_DISABLED === 'true') {
-      throw new Error('ChromaDB is required for exercise plan generation. Please enable ChromaDB.');
-    }
-
     const queries = [
       `${region} physical activity recommendations adults diabetes`,
       `${region} exercise guidelines intensity duration frequency diabetes`,
@@ -182,7 +175,9 @@ class ExercisePlanService {
     ];
 
     const all = []; const seen = new Set();
-    const filter = { country: region, doc_type: 'exercise_recommendation' };
+    
+    // Attempt 1: with region filter
+    const filter = { country: region, doc_type: { $in: ['exercise_recommendation', 'guideline'] } };
     for (const q of queries) {
       try {
         const response = await processQuery(q, { filter, topK: 5 });
@@ -190,30 +185,39 @@ class ExercisePlanService {
         results.forEach(r => { const k = (r.text||'').substring(0,100); if (!seen.has(k)) { seen.add(k); all.push(r); } });
       } catch (e) { 
         console.log(`⚠️ Query failed for "${q}" with filter:`, e.message);
-        if (e.message?.includes('Cannot reach ChromaDB')) {
-          throw new Error('Cannot reach ChromaDB. Please ensure ChromaDB is running.');
-        }
       }
     }
+    
+    // Attempt 2: doc_type only (no region)
     if (all.length === 0) {
-      console.log('⚠️ No results with region filter, trying without filter...');
+      console.log('⚠️ No results with region filter, trying doc_type only...');
       for (const q of queries) {
         try {
-          const response = await processQuery(q, { filter: { doc_type: 'exercise_recommendation' }, topK: 5 });
+          const response = await processQuery(q, { filter: { doc_type: { $in: ['exercise_recommendation', 'guideline'] } }, topK: 5 });
           const results = response.results || [];
           results.forEach(r => { const k = (r.text||'').substring(0,100); if (!seen.has(k)) { seen.add(k); all.push(r); } });
         } catch (e) { 
-          console.log(`⚠️ Fallback query failed for "${q}":`, e.message);
-          if (e.message?.includes('Cannot reach ChromaDB')) {
-            throw new Error('Cannot reach ChromaDB. Please ensure ChromaDB is running.');
-          }
+          console.log(`⚠️ Fallback query failed:`, e.message);
         }
       }
     }
+    
+    // Attempt 3: no filter at all
     if (all.length === 0) {
-      console.log('⚠️ No RAG results available');
-      throw new Error(`No exercise documents found for region: ${region}. Please upload exercise guidelines or use a different region.`);
+      console.log('⚠️ No results with doc_type filter, trying no filter...');
+      for (const q of queries) {
+        try {
+          const response = await processQuery(q, { topK: 5 });
+          const results = response.results || [];
+          results.forEach(r => { const k = (r.text||'').substring(0,100); if (!seen.has(k)) { seen.add(k); all.push(r); } });
+        } catch (e) { 
+          console.log(`⚠️ No-filter query failed:`, e.message);
+        }
+      }
     }
+    
+    // Return whatever we got (even empty) - LLM will use built-in knowledge
+    console.log(`📥 Retrieved ${all.length} exercise context chunks`);
     return { chunks: all.map(r => r.text), sources: this.extractSources(all) };
   }
 
@@ -227,36 +231,109 @@ class ExercisePlanService {
 
   buildExercisePrompt(personal, medical, context, dateObj) {
     const dateStr = dateObj.toISOString().split('T')[0];
-    const sys = `You are an exercise physiologist for diabetes. Output ONLY valid JSON with keys: sessions (array of {name,time,type,items:[{exercise,category,intensity,duration_min,mets,estimated_calories,notes,precautions}]}), tips (array). Ensure moderate total 45–90 min/day, include aerobic+resistance+flexibility. Use regional context.`;
-    const ctx = context.chunks.slice(0,5).join('\n');
-    return `${sys}\nDATE:${dateStr}\nPROFILE: age=${personal.age}, gender=${personal.gender}, weight=${personal.weight}kg, activity=${personal.activity_level}, country=${personal.country}, diabetes=${medical.diabetes_type}, meds=${(medical.medications||[]).join(',')}\nCONTEXT:\n${ctx}`;
+    const ctx = context.chunks.length > 0 
+      ? context.chunks.slice(0,5).map((c,i) => `[${i+1}] ${c.substring(0,100)}`).join('\n')
+      : 'No regional documents available - use your built-in exercise physiology knowledge for diabetes patients.';
+    
+    return `You are an exercise physiologist specializing in diabetes care.
+Create a daily exercise plan for DATE: ${dateStr}
+
+PATIENT PROFILE:
+- Age: ${personal.age}, Gender: ${personal.gender}
+- Weight: ${personal.weight}kg, Height: ${personal.height}cm
+- Activity Level: ${personal.activity_level}
+- Country/Region: ${personal.country}
+- Diabetes Type: ${medical.diabetes_type}
+- Medications: ${(medical.medications||[]).join(', ') || 'None specified'}
+
+REGIONAL CONTEXT:
+${ctx}
+
+REQUIREMENTS:
+- Create 2-3 exercise sessions (morning, afternoon, or evening)
+- Total daily duration: 45-90 minutes
+- Include mix of: aerobic, resistance/strength, flexibility
+- All numerical values must be plain numbers (no units in JSON)
+- duration_min: number of minutes (e.g., 15, 30)
+- estimated_calories: number (e.g., 150, 200)
+
+Return ONLY valid JSON with this structure:
+{
+  "sessions": [
+    {
+      "name": "Morning Workout",
+      "time": "7:00 AM",
+      "type": "aerobic",
+      "items": [
+        {"exercise": "Brisk Walking", "category": "Cardio", "intensity": "Moderate", "duration_min": 20, "mets": 4.5, "estimated_calories": 150, "notes": "Maintain steady pace", "precautions": ["Check blood sugar before"]}
+      ]
+    }
+  ],
+  "tips": ["Monitor blood sugar before and after exercise", "Stay hydrated"]
+}`;
   }
 
+  /**
+   * Call Diabetica-7B via HF Gradio API (same as diet plan service)
+   */
   async callLMStudio(prompt) {
+    const hfBase = process.env.HF_SPACE_URL || 'https://zeeshanasghar02-diabetica-api.hf.space';
+    const MAX_TOKENS = 2048;
+    const systemPrompt = 'You are an exercise physiologist AI specializing in diabetes care. Respond with ONLY valid JSON — no markdown, no code blocks, no explanations outside JSON.';
+
     try {
-      const lmStudioUrl = process.env.LM_STUDIO_BASE_URL || 'http://127.0.0.1:1234';
-      const model = process.env.LM_STUDIO_MODEL || 'waltonfuture-diabetica-7b';
-      console.log(`🤖 Calling LM Studio at ${lmStudioUrl} with model: ${model}`);
-      const res = await axios.post(`${lmStudioUrl}/v1/chat/completions`, {
-        model,
-        messages: [
-          { role: 'system', content: 'You are a specialized exercise physiologist AI for diabetes patients. Respond with ONLY valid JSON without any markdown or extra text.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 3000
-      }, { timeout: 90000 });
-      console.log('✅ LM Studio response received');
-      return res.data.choices[0].message.content;
+      console.log(`🤖 Calling Diabetica-7B via HF Gradio at ${hfBase}`);
+
+      // Step 1: Submit job
+      const submitRes = await axios.post(
+        `${hfBase}/gradio_api/call/predict`,
+        { data: [systemPrompt, prompt, MAX_TOKENS, 0.9] },
+        { timeout: 30000 }
+      );
+      const { event_id } = submitRes.data;
+      if (!event_id) throw new Error('HF Gradio did not return an event_id');
+      console.log(`   HF event_id: ${event_id} — waiting for result...`);
+
+      // Step 2: Read SSE stream — 120s timeout
+      const sseRes = await axios.get(
+        `${hfBase}/gradio_api/call/predict/${event_id}`,
+        { timeout: 120000, responseType: 'text' }
+      );
+
+      const raw = sseRes.data || '';
+
+      // Step 3: Detect Gradio error events immediately
+      if (raw.includes('event: error')) {
+        const errMatch = raw.match(/event: error[\s\S]*?data:\s*({[^\n]*}|null)/m);
+        const errMsg = errMatch?.[1] && errMatch[1] !== 'null'
+          ? (JSON.parse(errMatch[1])?.message || 'Gradio returned an error event')
+          : 'Gradio returned an error event';
+        throw new Error(`Gradio error: ${errMsg}`);
+      }
+
+      // Step 4: Parse SSE — scan backward for the last data line with output
+      const lines = raw.split('\n');
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i].trim();
+        if (line.startsWith('data:')) {
+          try {
+            const json = JSON.parse(line.slice(5).trim());
+            if (Array.isArray(json) && typeof json[0] === 'string') return json[0];
+            if (Array.isArray(json) && Array.isArray(json[0])) return json[0][0];
+            if (json?.output?.data?.[0]) return json.output.data[0];
+          } catch { /* keep scanning */ }
+        }
+      }
+      throw new Error(`Could not parse Gradio SSE response. Raw (first 400): ${raw.substring(0, 400)}`);
+
     } catch (error) {
-      console.error('❌ LM Studio call failed:', error.message);
-      if (error.code === 'ECONNREFUSED') {
-        throw new Error('LM Studio is not running. Please start LM Studio at http://127.0.0.1:1234');
+      console.error('❌ Error calling HF Diabetica:', error.message);
+      if (error.code === 'ECONNREFUSED' || error.response?.status === 503) {
+        throw new Error('Diabetica model is offline. Please check the HF Space or try again in a few minutes.');
+      } else if (error.message.includes('timeout') || error.code === 'ECONNABORTED') {
+        throw new Error('AI model took too long to respond. Please try again.');
       }
-      if (error.code === 'ECONNABORTED' || /timeout/i.test(error.message||'')) {
-        throw new Error('LM Studio timed out. Please ensure the model is loaded and responding at http://127.0.0.1:1234');
-      }
-      throw new Error(`Failed to generate exercise plan: ${error.response?.data?.error || error.message}`);
+      throw new Error(`AI generation failed: ${error.message}`);
     }
   }
 

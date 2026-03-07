@@ -78,15 +78,23 @@ export const register = async (req, res) => {
             });
         }
         
-        // Check if user already exists (using normalized email)
-        const existingUser = await User.findOne({ email: normalizedEmail });
+        // Check if an ACTIVE user already has this email
+        const existingUser = await User.findOne({ email: normalizedEmail, deleted_at: null });
         if (existingUser) {
             return res.status(400).json({ 
                 success: false,
                 message: 'Email already registered.' 
             });
         }
-        
+
+        // If a soft-deleted document still holds this email (unique index will block insert),
+        // anonymize it now so the slot is freed before we create the new account.
+        const deletedUser = await User.findOne({ email: normalizedEmail, deleted_at: { $ne: null } });
+        if (deletedUser) {
+            deletedUser.deleted_email = deletedUser.email;
+            deletedUser.email = `deleted_${Date.now()}_${deletedUser._id}@deleted.local`;
+            await deletedUser.save();
+        }
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
         

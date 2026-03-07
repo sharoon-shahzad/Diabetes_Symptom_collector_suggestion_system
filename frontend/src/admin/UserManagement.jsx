@@ -691,7 +691,7 @@ export default function UserManagement() {
         toast.success('✅ User updated successfully');
       } else {
         // Create new user
-        await axiosInstance.post('/api/v1/auth/register', {
+        await axiosInstance.post('/auth/register', {
           fullName: data.fullName,
           email: data.email,
           password: data.password,

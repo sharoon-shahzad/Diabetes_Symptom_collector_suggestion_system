@@ -22,6 +22,13 @@ import CommunityFeedbackDashboard from './pages/CommunityFeedbackDashboard';
 import ArticlesPage from './pages/ArticlesPage';
 import DiagnosisQuestion from './pages/DiagnosisQuestion';
 import SymptomAssessment from './pages/SymptomAssessment';
+import PersonalizedSuggestionSystem from './pages/PersonalizedSuggestionSystem';
+import PersonalizedSuggestionDashboard from './pages/PersonalizedSuggestionDashboard';
+import PersonalMedicalInfoPage from './pages/PersonalMedicalInfoPage';
+import DietPlanDashboard from './pages/DietPlanDashboard';
+import ExercisePlanDashboard from './pages/ExercisePlanDashboard';
+import LifestyleTipsDashboard from './pages/LifestyleTipsDashboard';
+import ChatAssistant from './pages/ChatAssistant';
 import { ToastContainer } from 'react-toastify';
 import NotFound from './pages/NotFound';
 import ProtectedRoute, { RoleProtectedRoute } from './components/Common/ProtectedRoute';
@@ -106,6 +113,62 @@ const AppContent = () => {
             element={
               <ProtectedRoute>
                 <CommunityFeedbackDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/personalized-suggestions"
+            element={
+              <ProtectedRoute>
+                <PersonalizedSuggestionSystem />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/personalized-suggestions/dashboard"
+            element={
+              <ProtectedRoute>
+                <PersonalizedSuggestionDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/personalized-suggestions/personal-medical"
+            element={
+              <ProtectedRoute>
+                <PersonalMedicalInfoPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/personalized-suggestions/diet-plan"
+            element={
+              <ProtectedRoute>
+                <DietPlanDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/personalized-suggestions/exercise-plan"
+            element={
+              <ProtectedRoute>
+                <ExercisePlanDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/personalized-suggestions/lifestyle-tips"
+            element={
+              <ProtectedRoute>
+                <LifestyleTipsDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/personalized-suggestions/chat-assistant"
+            element={
+              <ProtectedRoute>
+                <ChatAssistant />
               </ProtectedRoute>
             }
           />

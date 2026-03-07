@@ -39,9 +39,10 @@ const useHealthMetrics = ({
 
   // Completion percentage calculation
   const completionPct = useMemo(() => {
-    if (!diseaseData) return 0;
+    if (!diseaseData || typeof diseaseData !== 'object') return 0;
     const answered = diseaseData.answeredQuestions || 0;
-    const total = diseaseData.totalQuestions || 1;
+    const total = diseaseData.totalQuestions || 0;
+    if (total === 0) return 0;
     return Math.round((answered / total) * 100);
   }, [diseaseData]);
 

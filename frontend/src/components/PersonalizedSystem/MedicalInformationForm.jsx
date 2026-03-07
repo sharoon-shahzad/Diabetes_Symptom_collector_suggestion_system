@@ -50,7 +50,7 @@ const MedicalInformationForm = () => {
     const fetchMedicalInfo = async () => {
         setLoading(true);
         try {
-            const response = await axiosInstance.get('/api/v1/personalized-system/medical-info');
+            const response = await axiosInstance.get('/personalized-system/medical-info');
             if (response.data.success) {
                 const data = response.data.data;
                 setFormData({
@@ -231,7 +231,7 @@ const MedicalInformationForm = () => {
 
         setSaving(true);
         try {
-            const response = await axiosInstance.post('/api/v1/personalized-system/medical-info', formData);
+            const response = await axiosInstance.post('/personalized-system/medical-info', formData);
             if (response.data.success) {
                 setSuccess('Medical information saved successfully!');
             }

@@ -12,27 +12,28 @@ import {
   changePassword 
 } from '../controllers/authController.js';
 import { verifyAccessTokenMiddleware } from '../middlewares/authMiddleware.js';
+import { authLimiter, refreshTokenLimiter } from '../middlewares/rateLimitMiddleware.js';
 
 const router = express.Router();
 
-// Registration route
-router.post('/register', register);
+// Registration route (rate limited)
+router.post('/register', authLimiter, register);
 // Account activation route
 router.get('/activate/:token', activateAccount);
-// Login route
-router.post('/login', login);
-// Resend activation link route
-router.post('/resend-activation', resendActivationLink);
+// Login route (rate limited)
+router.post('/login', authLimiter, login);
+// Resend activation link route (rate limited)
+router.post('/resend-activation', authLimiter, resendActivationLink);
 // Change password route (protected)
 router.post('/change-password', verifyAccessTokenMiddleware, changePassword);
 // Logout route
 router.get('/logout', logout);
 // Get current user route (protected)
 router.get('/profile', verifyAccessTokenMiddleware, getCurrentUser);
-// Refresh access token route
-router.post('/refresh-token', refreshAccessToken);
-router.post('/forgot-password', forgotPassword);
-router.post('/reset-password/:token', resetPassword);
+// Refresh access token route (strictly rate limited to prevent loops)
+router.post('/refresh-token', refreshTokenLimiter, refreshAccessToken);
+router.post('/forgot-password', authLimiter, forgotPassword);
+router.post('/reset-password/:token', authLimiter, resetPassword);
 
 // Test email endpoint (remove in production)
 router.post('/test-email', async (req, res) => {

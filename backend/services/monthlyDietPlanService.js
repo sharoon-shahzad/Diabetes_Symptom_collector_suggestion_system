@@ -81,11 +81,12 @@ class MonthlyDietPlanService {
       
       if (!regionCoverage.canGeneratePlan) {
         const fallbackRegion = await regionDiscoveryService.getFallbackRegion(userRegion, 'diet');
-        if (!fallbackRegion) {
-          throw new Error(`No dietary documents available for your region (${userRegion}). Please contact support.`);
+        if (fallbackRegion) {
+          userRegion = fallbackRegion;
+          console.log(`Using fallback region: ${fallbackRegion}`);
+        } else {
+          console.log(`⚠️ No dietary documents for ${userRegion}, AI will use built-in knowledge`);
         }
-        userRegion = fallbackRegion;
-        console.log(`Using fallback region: ${fallbackRegion}`);
       }
       
       // 4. Calculate calorie needs and distribution
@@ -95,14 +96,9 @@ class MonthlyDietPlanService {
       
       console.log(`📊 Calorie distribution:`, mealDistribution);
       
-      // 5. Query RAG for diverse food data (more extensive for monthly plan)
+      // 5. Query RAG for diverse food data (empty results OK - AI will use built-in knowledge)
       const foodContext = await this.queryRegionalFoodsForMonth(userRegion, dailyCalories, personal);
-      
-      if (!foodContext.chunks || foodContext.chunks.length === 0) {
-        throw new Error(`Unable to retrieve dietary information for ${userRegion}. Please try again.`);
-      }
-      
-      console.log(`📚 Retrieved ${foodContext.chunks.length} food data chunks from RAG`);
+      console.log(`📚 RAG context: ${foodContext.chunks?.length || 0} chunks retrieved`);
       
       // 6. Generate meal options for each meal type using AI
       const mealCategories = await this.generateMealOptions(
@@ -178,23 +174,13 @@ class MonthlyDietPlanService {
    */
   async queryRegionalFoodsForMonth(region, calorieTarget, personal) {
     try {
-      // Extensive queries for maximum variety
+      // 5 focused queries — enough variety, respects Jina free-tier concurrency
       const queries = [
-        `${region} breakfast foods traditional morning meals diabetes nutrition`,
-        `${region} lunch recipes main meals diabetes carbohydrates protein`,
-        `${region} dinner recipes evening meals diabetes portion control`,
-        `${region} snacks appetizers diabetic friendly low glycemic`,
-        `${region} vegetarian options plant-based diabetes diet`,
-        `${region} protein sources meat fish chicken eggs diabetes`,
-        `${region} whole grains rice wheat bread diabetes nutrition`,
-        `${region} vegetables fruits fiber vitamins diabetes`,
-        `${region} dairy products milk yogurt cheese diabetes`,
-        `${region} healthy fats oils nuts seeds diabetes`,
-        `diabetic food exchange list ${region} meal planning`,
-        `${region} glycemic index food values diabetes management`,
-        `${region} portion sizes serving sizes diabetes guidelines`,
-        `${region} cooking methods food preparation diabetes`,
-        `traditional ${region} cuisine healthy modifications diabetes`
+        `${region} breakfast lunch dinner foods diabetes nutrition traditional meals`,
+        `${region} protein sources vegetables whole grains diabetes diet`,
+        `${region} snacks dairy healthy fats diabetic friendly low glycemic`,
+        `${region} glycemic index portion sizes diabetes guidelines`,
+        `traditional ${region} cuisine healthy modifications diabetes meal planning`
       ];
       
       const allResults = [];
@@ -246,10 +232,7 @@ class MonthlyDietPlanService {
         await collectResultsSequential(null);
       }
 
-      if (allResults.length === 0) {
-        throw new Error(`No dietary documents found for region: ${region}. Please upload relevant documents via the admin panel.`);
-      }
-      
+      // Return whatever we got (even empty) - LLM will use built-in knowledge
       console.log(`📥 Total unique food data chunks: ${allResults.length}`);
       
       return {
@@ -259,7 +242,8 @@ class MonthlyDietPlanService {
       
     } catch (error) {
       console.error('❌ Error querying regional foods for month:', error);
-      throw new Error(`RAG query failed for region ${region}: ${error.message}`);
+      // Return empty context instead of throwing - let AI use built-in knowledge
+      return { chunks: [], sources: [] };
     }
   }
   
@@ -287,9 +271,9 @@ class MonthlyDietPlanService {
   }
   
   /**
-   * Generate meal options for all meal types — 2 LLM calls (main meals + snacks).
-   * Split avoids the 2048-token output limit that truncates a full 5-meal response.
-   * 2 calls × ~3 min each = ~6 min total, well within the 10-min frontend timeout.
+   * Generate meal options for all 5 meal types — SINGLE LLM call, 1 option per meal.
+   * 1 option × 5 meals easily fits within the 2048-token Gradio budget.
+   * Halves LLM time vs 2-call approach (critical when HF Space is cold).
    */
   async generateMealOptions(personal, medical, dailyCalories, mealDistribution, foodContext, region) {
     const mealTypes = [
@@ -300,19 +284,9 @@ class MonthlyDietPlanService {
       { name: 'Dinner',            timing: '7:30 PM - 9:00 PM',   key: 'dinner'           },
     ];
 
-    // ── Call 1: Breakfast + Lunch + Dinner (main meals) ──────────────────────
-    console.log('🍽️  LLM call 1/2 — main meals (breakfast, lunch, dinner)...');
-    const mainKeys  = ['breakfast', 'lunch', 'dinner'];
-    const mainDist  = { breakfast: mealDistribution.breakfast, lunch: mealDistribution.lunch, dinner: mealDistribution.dinner };
-    const mainMeals = await this._callForMealGroup(mainKeys, mainDist, personal, medical, dailyCalories, foodContext, region);
-
-    // ── Call 2: Snacks ────────────────────────────────────────────────────────
-    console.log('🍽️  LLM call 2/2 — snacks (mid_morning_snack, evening_snack)...');
-    const snackKeys  = ['mid_morning_snack', 'evening_snack'];
-    const snackDist  = { mid_morning_snack: mealDistribution.mid_morning_snack, evening_snack: mealDistribution.evening_snack };
-    const snackMeals = await this._callForMealGroup(snackKeys, snackDist, personal, medical, dailyCalories, foodContext, region);
-
-    const allMeals = { ...mainMeals, ...snackMeals };
+    const allKeys = ['breakfast', 'mid_morning_snack', 'lunch', 'evening_snack', 'dinner'];
+    console.log('🍽️  Single LLM call for all 5 meals (1 option each)...');
+    const allMeals = await this._callForMealGroup(allKeys, mealDistribution, personal, medical, dailyCalories, foodContext, region, 1);
 
     const mealCategories = mealTypes.map(mt => {
       const options = allMeals[mt.key] || this.getFallbackOptions(mt.name, mealDistribution[mt.key]);
@@ -332,17 +306,17 @@ class MonthlyDietPlanService {
    * Make one LLM call for a subset of meal keys and return a parsed map.
    * @private
    */
-  async _callForMealGroup(mealKeys, mealDist, personal, medical, dailyCalories, foodContext, region) {
-    const prompt = this.buildCombinedMealPrompt(mealKeys, mealDist, personal, medical, dailyCalories, foodContext, region);
+  async _callForMealGroup(mealKeys, mealDist, personal, medical, dailyCalories, foodContext, region, optionsPerMeal = 2) {
+    const prompt = this.buildCombinedMealPrompt(mealKeys, mealDist, personal, medical, dailyCalories, foodContext, region, optionsPerMeal);
 
     let response = null;
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    for (let attempt = 1; attempt <= 2; attempt++) {  // 2 retries max: 2×120s×2groups+RAG ≈ 510s < 600s frontend timeout
       try {
         response = await this.callDiabetica(prompt);
         break;
       } catch (err) {
-        console.error(`❌ Attempt ${attempt}/3 failed: ${err.message}`);
-        if (attempt === 3) {
+        console.error(`❌ Attempt ${attempt}/2 failed: ${err.message}`);
+        if (attempt === 2) {
           // All retries exhausted — return fallbacks for this group
           const fallback = {};
           mealKeys.forEach(k => { fallback[k] = this.getFallbackOptions(k, mealDist[k]); });
@@ -357,11 +331,10 @@ class MonthlyDietPlanService {
   /**
    * Build a compact prompt for a subset of meal keys.
    */
-  buildCombinedMealPrompt(mealKeys, mealDist, personal, medical, dailyCalories, foodContext, region) {
-    const foodSnippets = foodContext.chunks
-      .slice(0, 8)
-      .map((c, i) => `[${i + 1}] ${c.substring(0, 80)}`)
-      .join('\n');
+  buildCombinedMealPrompt(mealKeys, mealDist, personal, medical, dailyCalories, foodContext, region, optionsPerMeal = 2) {
+    const foodSnippets = foodContext.chunks && foodContext.chunks.length > 0
+      ? foodContext.chunks.slice(0, 8).map((c, i) => `[${i + 1}] ${c.substring(0, 80)}`).join('\n')
+      : 'No regional documents available - use your built-in nutrition knowledge for diabetes patients. Focus on locally available foods typical for this region.';
 
     const mealNames = {
       breakfast: 'Breakfast', mid_morning_snack: 'Mid-Morning Snack',
@@ -370,14 +343,14 @@ class MonthlyDietPlanService {
 
     const calTargets = mealKeys.map(k => `${k}=${mealDist[k]} kcal`).join(', ');
 
-    // 2 options per meal — keeps output well within the 2048-token budget
+    // Build skeleton using optionsPerMeal (1 for main meals, 2 for snacks)
     const skeleton = '{' + mealKeys.map(k =>
-      `\n  "${k}": [\n    ${[1,2].map(n =>
-        `{"option_name":"Option ${n}","description":"Short description max 8 words","preparation_time":"10 min","difficulty":"Easy","items":[{"food":"name","portion":"amount","calories":100,"carbs":15,"protein":5,"fat":3,"fiber":2}]}`
+      `\n  "${k}": [\n    ${Array.from({length: optionsPerMeal}, (_, i) =>
+        `{"option_name":"Option ${i + 1}","description":"Short description max 8 words","preparation_time":"10 min","difficulty":"Easy","items":[{"food":"name","portion":"amount","calories":100,"carbs":15,"protein":5,"fat":3,"fiber":2}]}`
       ).join(',\n    ')}\n  ]`
     ).join(',') + '\n}';
 
-    return `You are a diabetes dietitian. Create 2 options for each meal: ${mealKeys.map(k => mealNames[k]).join(', ')}.
+    return `You are a diabetes dietitian. Create ${optionsPerMeal} option${optionsPerMeal > 1 ? 's' : ''} for each meal: ${mealKeys.map(k => mealNames[k]).join(', ')}.
 
 PATIENT: Age ${personal.age}, ${personal.gender}, Region: ${region}, ${medical.diabetes_type}, Diet: ${personal.dietary_preference}
 CALORIE TARGETS: ${calTargets}
@@ -566,9 +539,10 @@ Generate ${numOptions} completely unique options now. Return ONLY valid JSON:`;
    */
   async callDiabetica(prompt) {
     const hfBase = process.env.HF_SPACE_URL || 'https://zeeshanasghar02-diabetica-api.hf.space';
-    // Gradio slider constraint: max_tokens must be 256–2048
-    const rawTokens = parseInt(process.env.LM_STUDIO_MAX_TOKENS || '2048');
-    const maxTokens = Math.min(Math.max(rawTokens, 256), 2048);
+    // Always use 2048 — Gradio slider is hard-constrained to 256–2048.
+    // Never read from env: LM_STUDIO_MAX_TOKENS may be set to a small value (e.g. 100)
+    // for the old LM Studio integration, which would break Gradio validation.
+    const MAX_TOKENS = 2048;
     const systemPrompt = 'You are a diabetes nutrition expert AI. You create diverse, culturally appropriate meal plans. Respond with ONLY valid JSON — no markdown, no code blocks, no explanations outside JSON.';
 
     try {
@@ -577,35 +551,47 @@ Generate ${numOptions} completely unique options now. Return ONLY valid JSON:`;
       // Step 1: Submit job
       const submitRes = await axios.post(
         `${hfBase}/gradio_api/call/predict`,
-        { data: [systemPrompt, prompt, maxTokens, 0.9] },
+        { data: [systemPrompt, prompt, MAX_TOKENS, 0.9] },
         { timeout: 30000 }
       );
       const { event_id } = submitRes.data;
       if (!event_id) throw new Error('HF Gradio did not return an event_id');
       console.log(`   HF event_id: ${event_id} — waiting for result...`);
 
-      // Step 2: Read SSE stream (Gradio streams the result)
+      // Step 2: Read SSE stream — 120s timeout per attempt.
+      // event:error detection above exits fast on Gradio validation errors.
+      // 120s gives the model enough time to generate the response on CPU.
       const sseRes = await axios.get(
         `${hfBase}/gradio_api/call/predict/${event_id}`,
-        { timeout: 300000, responseType: 'text' }  // 5 min timeout
+        { timeout: 120000, responseType: 'text' }
       );
 
-      // Step 3: Parse SSE — find last data line with the output
-      const lines = sseRes.data.split('\n');
+      const raw = sseRes.data || '';
+
+      // Step 3: Detect Gradio error events immediately
+      if (raw.includes('event: error')) {
+        // Extract error message if available
+        const errMatch = raw.match(/event: error[\s\S]*?data:\s*({[^\n]*}|null)/m);
+        const errMsg = errMatch?.[1] && errMatch[1] !== 'null'
+          ? (JSON.parse(errMatch[1])?.message || 'Gradio returned an error event')
+          : 'Gradio returned an error event';
+        throw new Error(`Gradio error: ${errMsg}`);
+      }
+
+      // Step 4: Parse SSE — scan backward for the last data line with output
+      const lines = raw.split('\n');
       for (let i = lines.length - 1; i >= 0; i--) {
         const line = lines[i].trim();
         if (line.startsWith('data:')) {
           try {
             const json = JSON.parse(line.slice(5).trim());
-            // Gradio complete event: [['output text'], extra]
             if (Array.isArray(json) && typeof json[0] === 'string') return json[0];
             if (Array.isArray(json) && Array.isArray(json[0])) return json[0][0];
-            // Alternate format
             if (json?.output?.data?.[0]) return json.output.data[0];
           } catch { /* keep scanning */ }
         }
       }
-      throw new Error(`Could not parse Gradio SSE response. Raw (first 500): ${sseRes.data.substring(0, 500)}`);
+      throw new Error(`Could not parse Gradio SSE response. Raw (first 400): ${raw.substring(0, 400)}`);
 
     } catch (error) {
       console.error('❌ Error calling HF Diabetica:', error.message);

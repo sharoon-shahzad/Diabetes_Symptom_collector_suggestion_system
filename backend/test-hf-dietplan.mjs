@@ -139,20 +139,19 @@ Respond ONLY with this JSON structure:
 // ─────────────────────────────────────────────────────────────
 //  Helper: build the exact same prompt as _callForMealGroup
 // ─────────────────────────────────────────────────────────────
-function buildGroupPrompt(mealKeys, mealDist, region) {
+function buildGroupPrompt(mealKeys, mealDist, region, optionsPerMeal = 2) {
   const mealNames = {
     breakfast: 'Breakfast', mid_morning_snack: 'Mid-Morning Snack',
     lunch: 'Lunch', evening_snack: 'Evening Snack', dinner: 'Dinner',
   };
   const calTargets = mealKeys.map(k => `${k}=${mealDist[k]} kcal`).join(', ');
-  // 2 options per meal to stay within 2048 token budget
   const skeleton = '{' + mealKeys.map(k =>
-    `\n  "${k}": [\n    ${[1,2].map(n =>
-      `{"option_name":"Option ${n}","description":"Short description max 8 words","preparation_time":"10 min","difficulty":"Easy","items":[{"food":"name","portion":"amount","calories":100,"carbs":15,"protein":5,"fat":3,"fiber":2}]}`
+    `\n  "${k}": [\n    ${Array.from({length: optionsPerMeal}, (_, i) =>
+      `{"option_name":"Option ${i+1}","description":"Short description max 8 words","preparation_time":"10 min","difficulty":"Easy","items":[{"food":"name","portion":"amount","calories":100,"carbs":15,"protein":5,"fat":3,"fiber":2}]}`
     ).join(',\n    ')}\n  ]`
   ).join(',') + '\n}';
 
-  return `You are a diabetes dietitian. Create 2 options for each meal: ${mealKeys.map(k => mealNames[k]).join(', ')}.
+  return `You are a diabetes dietitian. Create ${optionsPerMeal} option${optionsPerMeal > 1 ? 's' : ''} for each meal: ${mealKeys.map(k => mealNames[k]).join(', ')}.
 
 PATIENT: Age 45, Male, Region: ${region}, Type 2, Diet: Non-Vegetarian
 CALORIE TARGETS: ${calTargets}
@@ -188,13 +187,13 @@ function parseMealGroup(aiResponse, mealKeys) {
 // ─────────────────────────────────────────────────────────────
 async function test3_mainMeals() {
   console.log('\n══════════════════════════════════════════');
-  console.log(' TEST 3 — Monthly plan: main meals call');
+  console.log(' TEST 3 — Monthly plan: main meals (1 option each)');
   console.log('══════════════════════════════════════════');
 
   const mealKeys = ['breakfast', 'lunch', 'dinner'];
   const mealDist = { breakfast: 450, lunch: 540, dinner: 510 };
   const sys = 'You are a diabetes nutrition expert AI. Respond with ONLY valid JSON — no markdown, no code blocks.';
-  const usr = buildGroupPrompt(mealKeys, mealDist, 'Pakistan');
+  const usr = buildGroupPrompt(mealKeys, mealDist, 'Pakistan', 1);  // 1 option per meal
 
   const result = await callDiabetica(sys, usr, 2048, 0.9);
   console.log('\n📋  Raw AI text (first 1000 chars):');

@@ -95,7 +95,7 @@ const generateDietPlan = async (req, res) => {
       });
     }
     
-    if (error.message.includes('not found') || error.message.includes('No dietary documents')) {
+    if (error.message.includes('not found') && !error.message.includes('dietary documents')) {
       return res.status(404).json({
         success: false,
         error: error.message

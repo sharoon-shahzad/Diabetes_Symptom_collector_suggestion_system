@@ -12,7 +12,7 @@ export function assessDiabetesRiskPython(features) {
     console.log('Script path:', scriptPath);
     console.log('Current working directory:', process.cwd());
 
-    const pythonCmd = process.env.PYTHON_BIN || 'python';
+    const pythonCmd = process.env.PYTHON_BIN || 'python3';
 
     const child = spawn(pythonCmd, [scriptPath], {
       cwd: path.resolve(process.cwd()),

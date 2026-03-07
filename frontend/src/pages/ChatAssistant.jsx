@@ -32,7 +32,7 @@ const ChatAssistant = ({ inModal = false }) => {
     setLoading(true);
     
     try {
-      const res = await axiosInstance.post('/chat/complete', {
+      const res = await axiosInstance.post('/chat/send', {
         message: trimmed,
         history: messages,
       });

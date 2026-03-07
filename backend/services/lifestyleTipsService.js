@@ -5,19 +5,12 @@ import { UserMedicalInfo } from '../models/UserMedicalInfo.js';
 import { processQuery } from './queryService.js';
 import axios from 'axios';
 
-// Configurable LM Studio host with sensible default
-const LM_STUDIO_HOST = process.env.LM_STUDIO_HOST || 'http://127.0.0.1:1234';
-const LM_STUDIO_API = `${LM_STUDIO_HOST}/v1/chat/completions`;
-const LM_STUDIO_TIMEOUT_MS = Number(process.env.LM_STUDIO_TIMEOUT_MS) || 300000;
-
-async function isLmStudioHealthy() {
-  try {
-    const res = await axios.get(`${LM_STUDIO_HOST}/v1/models`, { timeout: 5000 });
-    return !!res.data;
-  } catch (_) {
-    return false;
-  }
-}
+// HF Gradio API configuration
+const HF_SPACE_URL = process.env.HF_SPACE_URL || 'https://zeeshanasghar02-diabetica-api.hf.space';
+const HF_SUBMIT_TIMEOUT_MS = 30000;
+const HF_SSE_TIMEOUT_MS = 120000;
+const MAX_TOKENS = 2048;
+const SYSTEM_PROMPT = `You are a diabetes wellness coach. Generate personalized daily lifestyle tips. Always respond with valid JSON only.`;
 
 class LifestyleTipsService {
   async generateLifestyleTips(userId, targetDate) {
@@ -60,13 +53,13 @@ class LifestyleTipsService {
       const prompt = this.buildLifestylePrompt(personalInfo, medicalInfo, guidelinesContext, targetDate);
       console.log(`📝 Prompt built, length: ${prompt.length}`);
 
-      // Call LM Studio - NO FALLBACK
-      console.log(`🤖 Calling LM Studio...`);
-      const aiResponse = await this.callLMStudio(prompt);
-      console.log(`✅ LM Studio response received, length: ${aiResponse.length}`);
+      // Call HF Diabetica API
+      console.log(`🤖 Calling HF Diabetica API...`);
+      const aiResponse = await this.callDiabetica(prompt);
+      console.log(`✅ HF Diabetica response received, length: ${aiResponse.length}`);
       const parsedTips = this.parseLifestyleTips(aiResponse);
       console.log(`✅ Tips parsed successfully:`, JSON.stringify(parsedTips, null, 2));
-      const source = 'lm-studio';
+      const source = 'hf-diabetica';
 
       // Validate parsed tips
       if (!parsedTips || !parsedTips.categories || parsedTips.categories.length === 0) {
@@ -193,32 +186,51 @@ IMPORTANT: Respond ONLY with valid JSON, no markdown, no code blocks. Use this e
     return prompt;
   }
 
-  async callLMStudio(prompt) {
+  async callDiabetica(prompt) {
     try {
-      const healthy = await isLmStudioHealthy();
-      if (!healthy) throw new Error('LM Studio not reachable');
-      const response = await axios.post(
-        LM_STUDIO_API,
-        {
-          model: process.env.LM_STUDIO_MODEL || 'waltonfuture-diabetica-7b',
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.7,
-          max_tokens: 2000,
-        },
-        { timeout: LM_STUDIO_TIMEOUT_MS }
+      console.log(`📡 Submitting to HF Gradio API...`);
+      const submitRes = await axios.post(
+        `${HF_SPACE_URL}/gradio_api/call/predict`,
+        { data: [SYSTEM_PROMPT, prompt, MAX_TOKENS, 0.9] },
+        { timeout: HF_SUBMIT_TIMEOUT_MS, headers: { 'Content-Type': 'application/json' } }
+      );
+      const eventId = submitRes.data?.event_id;
+      if (!eventId) throw new Error('No event_id returned from HF Space');
+      console.log(`📝 Got event_id: ${eventId}, waiting for SSE response...`);
+
+      const sseRes = await axios.get(
+        `${HF_SPACE_URL}/gradio_api/call/predict/${eventId}`,
+        { timeout: HF_SSE_TIMEOUT_MS, responseType: 'text' }
       );
 
-      return response.data.choices?.[0]?.message?.content || '';
+      const rawText = sseRes.data || '';
+      const lines = rawText.split('\n');
+      let responseData = null;
+
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i].trim();
+        if (line.startsWith('data:')) {
+          try {
+            responseData = JSON.parse(line.slice(5).trim());
+            break;
+          } catch { /* continue scanning */ }
+        }
+      }
+
+      if (!responseData || !Array.isArray(responseData) || !responseData[0]) {
+        throw new Error('No valid response data in SSE stream');
+      }
+
+      return responseData[0];
     } catch (error) {
       const isTimeout = error.code === 'ECONNABORTED' || String(error.message || '').toLowerCase().includes('timeout');
       if (isTimeout) {
         throw new Error(
-          `LM Studio API call failed: timeout after ${Math.round(LM_STUDIO_TIMEOUT_MS / 1000)}s. ` +
-            `Please ensure the model is loaded and responding at ${LM_STUDIO_HOST}.`
+          `HF Diabetica API call failed: timeout after ${Math.round(HF_SSE_TIMEOUT_MS / 1000)}s. ` +
+            `The model may be loading or under heavy load.`
         );
       }
-
-      throw new Error(`LM Studio API call failed: ${error.message}`);
+      throw new Error(`HF Diabetica API call failed: ${error.message}`);
     }
   }
 

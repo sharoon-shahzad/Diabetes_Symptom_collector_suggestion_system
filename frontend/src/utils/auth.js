@@ -1,26 +1,19 @@
 import axiosInstance from './axiosInstance';
-import axios from 'axios';
 
-const API_URL = 'https://zeeshanasghar02-diavise-backend.hf.space';
-
-export async function refreshToken() {
-  try {
-    const res = await axios.post(`${API_URL}/api/v1/auth/refresh-token`, {}, { withCredentials: true });
-    if (res.data?.data?.accessToken) {
-      localStorage.setItem('accessToken', res.data.data.accessToken);
-      return res.data.data.accessToken;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
+// NOTE: Token refresh is handled centrally by axiosInstance.js interceptor (with mutex).
+// Do NOT add a duplicate interceptor here — it causes infinite refresh loops.
 
 export async function logout() {
-  await axiosInstance.get(`/auth/logout`, { withCredentials: true });
+  try {
+    await axiosInstance.get(`/auth/logout`, { withCredentials: true });
+  } catch (err) {
+    // Ignore errors — user is logging out anyway
+    console.warn('Logout request failed (ignored):', err?.message);
+  }
   localStorage.removeItem('accessToken');
   localStorage.removeItem('roles');
 }
+
 export async function getCurrentUser() {
   try {
     const res = await axiosInstance.get(`/auth/profile`);
@@ -30,24 +23,4 @@ export async function getCurrentUser() {
     console.error('Error fetching current user:', err);
     throw err;
   }
-}
-// Axios interceptor for automatic token refresh
-axios.interceptors.response.use(
-  response => response,
-  async error => {
-    const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      const newToken = await refreshToken();
-      if (newToken) {
-        originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
-        return axios(originalRequest);
-      }
-      // If refresh fails, clear any stale token and redirect to sign in
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('roles');
-      window.location.href = '/signin';
-    }
-    return Promise.reject(error);
-  }
-); 
+} 

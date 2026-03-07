@@ -1,5 +1,5 @@
 // Monthly Diet Plan Dashboard - Premium Professional Design
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Container,
@@ -29,7 +29,10 @@ import {
   TableHead,
   TableRow,
   LinearProgress,
-  alpha
+  alpha,
+  Fade,
+  Skeleton,
+  useTheme
 } from '@mui/material';
 import {
   Restaurant as RestaurantIcon,
@@ -40,15 +43,301 @@ import {
   CheckCircle as CheckCircleIcon,
   Refresh as RefreshIcon,
   LocalDining as DiningIcon,
-  TrendingUp as TrendingUpIcon
+  TrendingUp as TrendingUpIcon,
+  FreeBreakfast as BreakfastIcon,
+  LunchDining as LunchIcon,
+  DinnerDining as DinnerIcon,
+  Cake as SnackIcon,
+  Psychology as AIIcon,
+  AutoAwesome as SparkleIcon,
+  Lightbulb as TipIcon
 } from '@mui/icons-material';
 import axiosInstance from '../utils/axiosInstance';
 import MonthlyDietPlanView from './MonthlyDietPlanView';
+
+// Nutrition tips to show during loading
+const NUTRITION_TIPS = [
+  { tip: "Eating fiber-rich foods helps slow glucose absorption", icon: "🥗" },
+  { tip: "Protein at every meal helps maintain stable blood sugar", icon: "🥚" },
+  { tip: "Cinnamon may help improve insulin sensitivity", icon: "✨" },
+  { tip: "Staying hydrated is crucial for blood sugar management", icon: "💧" },
+  { tip: "Small, frequent meals help prevent sugar spikes", icon: "🍽️" },
+  { tip: "Walking after meals can lower blood sugar by 30%", icon: "🚶" },
+  { tip: "Vinegar before meals may reduce glucose response", icon: "🫒" },
+  { tip: "Sleep quality directly affects insulin sensitivity", icon: "😴" },
+  { tip: "Leafy greens are nutrient-dense with minimal carbs", icon: "🥬" },
+  { tip: "Nuts are excellent for blood sugar control", icon: "🥜" },
+  { tip: "Legumes have a low glycemic index despite carb content", icon: "🫘" },
+  { tip: "Berries are the best fruit choice for diabetics", icon: "🫐" }
+];
+
+// Progress stages for the loading animation
+const LOADING_STAGES = [
+  { id: 1, label: "Analyzing your health profile", duration: 15 },
+  { id: 2, label: "Searching regional food database", duration: 30 },
+  { id: 3, label: "Consulting AI nutrition expert", duration: 60 },
+  { id: 4, label: "Creating breakfast & lunch options", duration: 90 },
+  { id: 5, label: "Designing dinner & snack plans", duration: 120 },
+  { id: 6, label: "Calculating nutritional values", duration: 30 },
+  { id: 7, label: "Finalizing your personalized plan", duration: 15 }
+];
+
+// Engaging Loading Component
+const EngagingLoadingOverlay = ({ isLoading, elapsedSeconds }) => {
+  const [currentTipIndex, setCurrentTipIndex] = useState(0);
+  const [currentStage, setCurrentStage] = useState(0);
+  const [showSkeleton, setShowSkeleton] = useState(false);
+
+  // Rotate tips every 8 seconds
+  useEffect(() => {
+    if (!isLoading) return;
+    const interval = setInterval(() => {
+      setCurrentTipIndex(prev => (prev + 1) % NUTRITION_TIPS.length);
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [isLoading]);
+
+  // Update stage based on elapsed time
+  useEffect(() => {
+    if (!isLoading) return;
+    let accumulated = 0;
+    for (let i = 0; i < LOADING_STAGES.length; i++) {
+      accumulated += LOADING_STAGES[i].duration;
+      if (elapsedSeconds < accumulated) {
+        setCurrentStage(i);
+        break;
+      } else if (i === LOADING_STAGES.length - 1) {
+        setCurrentStage(LOADING_STAGES.length - 1);
+      }
+    }
+    // Show skeleton preview after 60 seconds
+    setShowSkeleton(elapsedSeconds > 60);
+  }, [isLoading, elapsedSeconds]);
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+  };
+
+  const estimatedTotal = LOADING_STAGES.reduce((sum, s) => sum + s.duration, 0);
+  const progress = Math.min((elapsedSeconds / estimatedTotal) * 100, 98);
+
+  if (!isLoading) return null;
+
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        p: 3,
+        bgcolor: alpha('#10b981', 0.03),
+        border: '2px solid',
+        borderColor: alpha('#10b981', 0.2),
+        borderRadius: 3,
+        overflow: 'hidden',
+        position: 'relative'
+      }}
+    >
+      {/* Animated gradient border */}
+      <Box
+        sx={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 4,
+          background: 'linear-gradient(90deg, #10b981, #3b82f6, #8b5cf6, #10b981)',
+          backgroundSize: '300% 100%',
+          animation: 'shimmer 2s linear infinite',
+          '@keyframes shimmer': {
+            '0%': { backgroundPosition: '100% 0' },
+            '100%': { backgroundPosition: '0% 0' }
+          }
+        }}
+      />
+
+      <Stack spacing={3}>
+        {/* Header with time */}
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Stack direction="row" spacing={1.5} alignItems="center">
+            <Box
+              sx={{
+                width: 48,
+                height: 48,
+                borderRadius: 2,
+                bgcolor: alpha('#10b981', 0.1),
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                animation: 'pulse 2s ease-in-out infinite',
+                '@keyframes pulse': {
+                  '0%, 100%': { transform: 'scale(1)' },
+                  '50%': { transform: 'scale(1.05)' }
+                }
+              }}
+            >
+              <AIIcon sx={{ color: '#10b981', fontSize: 28 }} />
+            </Box>
+            <Box>
+              <Typography variant="h6" fontWeight={700} sx={{ color: '#1e293b' }}>
+                Creating Your Plan
+              </Typography>
+              <Typography variant="caption" sx={{ color: '#64748b' }}>
+                AI-powered personalization in progress
+              </Typography>
+            </Box>
+          </Stack>
+          <Chip
+            label={formatTime(elapsedSeconds)}
+            size="small"
+            sx={{
+              bgcolor: alpha('#3b82f6', 0.1),
+              color: '#3b82f6',
+              fontWeight: 600,
+              fontFamily: 'monospace',
+              fontSize: '0.9rem'
+            }}
+          />
+        </Stack>
+
+        {/* Progress bar */}
+        <Box>
+          <Stack direction="row" justifyContent="space-between" sx={{ mb: 1 }}>
+            <Typography variant="caption" fontWeight={600} sx={{ color: '#475569' }}>
+              Progress: {Math.round(progress)}%
+            </Typography>
+            <Typography variant="caption" sx={{ color: '#94a3b8' }}>
+              ~{formatTime(Math.max(0, estimatedTotal - elapsedSeconds))} remaining
+            </Typography>
+          </Stack>
+          <LinearProgress
+            variant="determinate"
+            value={progress}
+            sx={{
+              height: 8,
+              borderRadius: 4,
+              bgcolor: alpha('#10b981', 0.1),
+              '& .MuiLinearProgress-bar': {
+                borderRadius: 4,
+                background: 'linear-gradient(90deg, #10b981, #059669)'
+              }
+            }}
+          />
+        </Box>
+
+        {/* Current stage indicator */}
+        <Stack spacing={1}>
+          {LOADING_STAGES.map((stage, index) => (
+            <Fade in={index <= currentStage} key={stage.id}>
+              <Stack
+                direction="row"
+                spacing={1.5}
+                alignItems="center"
+                sx={{
+                  opacity: index === currentStage ? 1 : index < currentStage ? 0.5 : 0.3,
+                  transition: 'all 0.3s ease'
+                }}
+              >
+                {index < currentStage ? (
+                  <CheckCircleIcon sx={{ fontSize: 18, color: '#10b981' }} />
+                ) : index === currentStage ? (
+                  <CircularProgress size={16} thickness={6} sx={{ color: '#10b981' }} />
+                ) : (
+                  <Box sx={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid #e2e8f0' }} />
+                )}
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: index === currentStage ? '#1e293b' : '#64748b',
+                    fontWeight: index === currentStage ? 600 : 400
+                  }}
+                >
+                  {stage.label}
+                </Typography>
+              </Stack>
+            </Fade>
+          ))}
+        </Stack>
+
+        {/* Nutrition tip card */}
+        <Fade in key={currentTipIndex}>
+          <Paper
+            elevation={0}
+            sx={{
+              p: 2,
+              bgcolor: alpha('#f59e0b', 0.08),
+              border: '1px solid',
+              borderColor: alpha('#f59e0b', 0.2),
+              borderRadius: 2
+            }}
+          >
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Typography fontSize={28}>{NUTRITION_TIPS[currentTipIndex].icon}</Typography>
+              <Box>
+                <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.5 }}>
+                  <TipIcon sx={{ fontSize: 14, color: '#f59e0b' }} />
+                  <Typography variant="caption" fontWeight={600} sx={{ color: '#b45309' }}>
+                    DID YOU KNOW?
+                  </Typography>
+                </Stack>
+                <Typography variant="body2" sx={{ color: '#78350f' }}>
+                  {NUTRITION_TIPS[currentTipIndex].tip}
+                </Typography>
+              </Box>
+            </Stack>
+          </Paper>
+        </Fade>
+
+        {/* Preview skeleton - shows after 60 seconds */}
+        {showSkeleton && (
+          <Fade in>
+            <Box>
+              <Typography variant="caption" fontWeight={600} sx={{ color: '#64748b', mb: 1.5, display: 'block' }}>
+                <SparkleIcon sx={{ fontSize: 14, mr: 0.5, verticalAlign: 'middle' }} />
+                Preparing your meals...
+              </Typography>
+              <Stack direction="row" spacing={2}>
+                {[
+                  { icon: <BreakfastIcon />, label: 'Breakfast' },
+                  { icon: <LunchIcon />, label: 'Lunch' },
+                  { icon: <DinnerIcon />, label: 'Dinner' }
+                ].map((meal, i) => (
+                  <Paper
+                    key={i}
+                    elevation={0}
+                    sx={{
+                      flex: 1,
+                      p: 1.5,
+                      border: '1px solid',
+                      borderColor: '#e2e8f0',
+                      borderRadius: 2,
+                      bgcolor: '#fff'
+                    }}
+                  >
+                    <Stack spacing={1} alignItems="center">
+                      <Box sx={{ color: '#10b981' }}>{meal.icon}</Box>
+                      <Typography variant="caption" fontWeight={600} sx={{ color: '#64748b' }}>
+                        {meal.label}
+                      </Typography>
+                      <Skeleton variant="text" width="80%" />
+                      <Skeleton variant="text" width="60%" />
+                    </Stack>
+                  </Paper>
+                ))}
+              </Stack>
+            </Box>
+          </Fade>
+        )}
+      </Stack>
+    </Paper>
+  );
+};
 
 // Premium Month Selector Dialog
 const MonthSelectorDialog = ({ open, onClose, onGenerate, loading }) => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   const months = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -61,107 +350,83 @@ const MonthSelectorDialog = ({ open, onClose, onGenerate, loading }) => {
     years.push(currentYear + i);
   }
 
+  // Track elapsed time during loading
+  useEffect(() => {
+    if (!loading) {
+      setElapsedSeconds(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setElapsedSeconds(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [loading]);
+
   return (
     <Dialog
       open={open}
       onClose={loading ? undefined : onClose}
-      maxWidth="sm"
+      maxWidth={loading ? "md" : "sm"}
       fullWidth
       PaperProps={{
         sx: {
-          borderRadius: 2,
+          borderRadius: 3,
           boxShadow: '0 24px 48px -12px rgba(0,0,0,0.18)',
           border: '1px solid',
-          borderColor: 'divider'
+          borderColor: 'divider',
+          transition: 'max-width 0.3s ease'
         }
       }}
     >
       <DialogTitle sx={{ pb: 0 }}>
         <Typography variant="h5" component="span" fontWeight={700} sx={{ color: '#1e293b', display: 'block' }}>
-          Generate Monthly Plan
+          {loading ? '🍽️ Crafting Your Meal Plan' : 'Generate Monthly Plan'}
         </Typography>
         <Typography variant="body2" sx={{ color: '#64748b', mt: 0.5 }}>
-          Create a personalized diet plan with multiple meal options
+          {loading 
+            ? 'Our AI is designing personalized meals based on your health profile'
+            : 'Create a personalized diet plan with multiple meal options'}
         </Typography>
       </DialogTitle>
 
       <DialogContent sx={{ pt: 3, pb: 2 }}>
         <Stack spacing={2.5}>
-          <Stack direction="row" spacing={2}>
-            <FormControl fullWidth size="small">
-              <InputLabel>Month</InputLabel>
-              <Select
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                label="Month"
-                disabled={loading}
-                sx={{ borderRadius: 1.5 }}
-              >
-                {months.map((month, index) => (
-                  <MenuItem key={index + 1} value={index + 1}>{month}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+          {!loading && (
+            <Stack direction="row" spacing={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Month</InputLabel>
+                <Select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  label="Month"
+                  disabled={loading}
+                  sx={{ borderRadius: 1.5 }}
+                >
+                  {months.map((month, index) => (
+                    <MenuItem key={index + 1} value={index + 1}>{month}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
 
-            <FormControl fullWidth size="small">
-              <InputLabel>Year</InputLabel>
-              <Select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(e.target.value)}
-                label="Year"
-                disabled={loading}
-                sx={{ borderRadius: 1.5 }}
-              >
-                {years.map((year) => (
-                  <MenuItem key={year} value={year}>{year}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Stack>
+              <FormControl fullWidth size="small">
+                <InputLabel>Year</InputLabel>
+                <Select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                  label="Year"
+                  disabled={loading}
+                  sx={{ borderRadius: 1.5 }}
+                >
+                  {years.map((year) => (
+                    <MenuItem key={year} value={year}>{year}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Stack>
+          )}
 
           {loading ? (
-            <Paper
-              elevation={0}
-              sx={{
-                p: 3,
-                bgcolor: alpha('#10b981', 0.04),
-                border: '1px solid',
-                borderColor: alpha('#10b981', 0.2),
-                borderRadius: 2
-              }}
-            >
-              <Stack spacing={2}>
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <CircularProgress size={24} sx={{ color: '#10b981' }} />
-                  <Box flex={1}>
-                    <Typography variant="subtitle2" fontWeight={600} sx={{ color: '#1e293b' }}>
-                      Generating your personalized plan
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: '#64748b' }}>
-                      This may take 2-3 minutes. Please wait...
-                    </Typography>
-                  </Box>
-                </Stack>
-                <LinearProgress 
-                  sx={{ 
-                    borderRadius: 1, 
-                    bgcolor: alpha('#10b981', 0.1),
-                    '& .MuiLinearProgress-bar': { bgcolor: '#10b981' }
-                  }} 
-                />
-                <Stack spacing={0.5}>
-                  <Typography variant="caption" sx={{ color: '#64748b' }}>
-                    Analyzing dietary requirements
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: '#64748b' }}>
-                    Creating 25 personalized meal options
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: '#64748b' }}>
-                    Calculating nutritional values
-                  </Typography>
-                </Stack>
-              </Stack>
-            </Paper>
+            <EngagingLoadingOverlay isLoading={loading} elapsedSeconds={elapsedSeconds} />
           ) : (
             <Paper
               elevation={0}
@@ -178,10 +443,10 @@ const MonthSelectorDialog = ({ open, onClose, onGenerate, loading }) => {
               </Typography>
               <Stack spacing={1}>
                 {[
-                  '5 unique options for each meal type',
-                  'Breakfast, lunch, dinner & snacks',
+                  'Personalized meal options for 5 meal types',
+                  'Breakfast, lunch, dinner & 2 snacks',
                   'Complete nutritional breakdown',
-                  'Personalized to your health profile'
+                  'Based on your health profile & region'
                 ].map((item, i) => (
                   <Stack key={i} direction="row" spacing={1} alignItems="center">
                     <CheckCircleIcon sx={{ fontSize: 16, color: '#10b981' }} />
@@ -306,8 +571,8 @@ const MonthlyDietPlanDashboard = ({ inModal = false }) => {
         month,
         year
       }, {
-        // Monthly generation can take several minutes depending on RAG/LLM latency
-        timeout: 600000
+        // Monthly generation: RAG (5 queries ~15s) + 1 LLM call (~3-4 min warm, ~8 min cold)
+        timeout: 900000
       });
 
       if (response.data.success) {

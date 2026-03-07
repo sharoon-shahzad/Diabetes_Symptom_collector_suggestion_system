@@ -15,6 +15,10 @@ const userSchema = new mongoose.Schema({
         required: true,
         unique: true,
     },
+    deleted_email: {
+        type: String,
+        default: null,
+    },
     password: {
         type: String,
         required: true,

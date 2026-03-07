@@ -131,9 +131,9 @@ const parseChromaResults = async (chromaResults, minScore = 0.0) => {
 
             // Enrich with document information if available
             let documentInfo = null;
-            if (metadata.document_id) {
+            if (metadata.documentId || metadata.document_id) {
                 try {
-                    documentInfo = await Document.findOne({ doc_id: metadata.document_id })
+                    documentInfo = await Document.findOne({ doc_id: metadata.documentId || metadata.document_id })
                         .select('title source country doc_type version page_count')
                         .lean();
                 } catch (err) {
@@ -149,7 +149,7 @@ const parseChromaResults = async (chromaResults, minScore = 0.0) => {
                 text: chunkText,
                 text_preview: chunkText.substring(0, 200) + (chunkText.length > 200 ? '...' : ''),
                 chunk_metadata: {
-                    document_id: metadata.document_id,
+                    document_id: metadata.documentId || metadata.document_id,
                     chunk_index: metadata.chunk_index,
                     page_no: metadata.page_no,
                     title: metadata.title,

@@ -23,7 +23,6 @@ import {
   Popover,
 } from '@mui/material';
 import { HelpOutline } from '@mui/icons-material';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../utils/axiosInstance';
 
@@ -57,8 +56,8 @@ const QuestionList = forwardRef(({ symptomId, symptomName, symptomDescription, i
       if (!symptomId) return;
       try {
         setLoading(true);
-        const response = await fetch(`/api/v1/questions/public/symptom/${symptomId}`);
-        const data = await response.json();
+        const response = await axiosInstance.get(`/questions/public/symptom/${symptomId}`);
+        const data = response.data;
         const questionsList = Array.isArray(data) ? data : (Array.isArray(data.data) ? data.data : []);
         setQuestions(questionsList);
         setError(null);
@@ -117,13 +116,8 @@ const QuestionList = forwardRef(({ symptomId, symptomName, symptomDescription, i
         // Only fetch user's answered questions if logged in
         if (isLoggedIn && questionsList.length > 0) {
           try {
-            const token = localStorage.getItem('accessToken');
-            const ansRes = await fetch(`/api/v1/users/my-disease-data`, {
-              headers: {
-                'Authorization': `Bearer ${token}`
-              }
-            });
-            const ansData = await ansRes.json();
+            const ansRes = await axiosInstance.get('/users/my-disease-data');
+            const ansData = ansRes.data;
             const answered = [...preFilledQuestionIds]; // Include pre-filled questions
             const loadedAnswers = {}; // Store the actual answer values
             
@@ -215,15 +209,7 @@ const QuestionList = forwardRef(({ symptomId, symptomName, symptomDescription, i
         setSaving((prev) => ({ ...prev, [questionId]: false }));
         return;
       }
-      const token = localStorage.getItem('accessToken');
-      await fetch('/api/v1/questions/answer', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ questionId, answerText })
-      });
+      await axiosInstance.post('/questions/answer', { questionId, answerText });
       setSuccess((prev) => ({ ...prev, [questionId]: true }));
       
       // Call the callback to refresh completion status
@@ -286,15 +272,7 @@ const QuestionList = forwardRef(({ symptomId, symptomName, symptomDescription, i
         if (!answerText || answerText.trim() === '') {
           throw new Error(`Please provide an answer for all questions.`);
         }
-        const token = localStorage.getItem('accessToken');
-        return fetch('/api/v1/questions/answer', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ questionId, answerText })
-        });
+        return axiosInstance.post('/questions/answer', { questionId, answerText });
       });
       await Promise.all(promises);
       setGlobalSuccess(true);

@@ -73,11 +73,12 @@ class DietPlanService {
       if (!regionCoverage.canGeneratePlan) {
         // Try fallback to global documents
         const fallbackRegion = await regionDiscoveryService.getFallbackRegion(userRegion, 'diet');
-        if (!fallbackRegion) {
-          throw new Error(`No dietary documents available for your region (${userRegion}). Please contact support to add regional guidelines.`);
+        if (fallbackRegion) {
+          userRegion = fallbackRegion;
+          console.log(`Using fallback region: ${fallbackRegion} for user from ${personal.country}`);
+        } else {
+          console.log(`⚠️ No dietary documents for ${userRegion}, AI will use built-in knowledge`);
         }
-        userRegion = fallbackRegion;
-        console.log(`Using fallback region: ${fallbackRegion} for user from ${personal.country}`);
       }
       
       // 4. Calculate calorie needs
@@ -96,12 +97,9 @@ class DietPlanService {
       .sort({ target_date: -1 })
       .limit(3);
       
-      // 6. Query RAG for regional food data
+      // 6. Query RAG for regional food data (empty results OK - AI will use built-in knowledge)
       const foodContext = await this.queryRegionalFoods(userRegion, dailyCalories, previousPlans);
-      
-      if (!foodContext.chunks || foodContext.chunks.length === 0) {
-        throw new Error(`Unable to retrieve dietary information for ${userRegion}. Please try again.`);
-      }
+      console.log(`📚 RAG context: ${foodContext.chunks?.length || 0} chunks retrieved`);
       
       // 7. Build AI prompt for Diabetica-7B
       const aiPrompt = this.buildDietPrompt(
@@ -240,9 +238,8 @@ class DietPlanService {
         await collectResults(null);
       }
 
-      if (allResults.length === 0) {
-        throw new Error(`No dietary documents found for region: ${region}. Please upload relevant documents via the admin panel.`);
-      }
+      // Return whatever we got (even empty) - LLM will use built-in knowledge
+      console.log(`📥 Retrieved ${allResults.length} dietary context chunks`);
       
       // Format chunks and extract sources
       return {
@@ -253,7 +250,8 @@ class DietPlanService {
       
     } catch (error) {
       console.error('❌ Error querying regional foods:', error);
-      throw new Error(`RAG query failed for region ${region}: ${error.message}`);
+      // Return empty context instead of throwing - let AI use built-in knowledge
+      return { chunks: [], sources: [], avoidFoods: previousFoods || [] };
     }
   }
   
@@ -367,7 +365,9 @@ MEAL CALORIE DISTRIBUTION:
 TARGET DATE: ${dayName}
 
 REGIONAL DIETARY GUIDELINES AND FOOD DATABASE (${personal.country}):
-${foodContext.chunks.slice(0, 8).map((chunk, i) => `[Source ${i + 1}]\n${chunk.substring(0, 400)}${chunk.length > 400 ? '...' : ''}`).join('\n\n---\n\n')}
+${foodContext.chunks && foodContext.chunks.length > 0 
+  ? foodContext.chunks.slice(0, 8).map((chunk, i) => `[Source ${i + 1}]\n${chunk.substring(0, 400)}${chunk.length > 400 ? '...' : ''}`).join('\n\n---\n\n')
+  : 'No regional documents available - use your built-in nutrition knowledge for diabetes patients in ' + personal.country + '. Focus on locally available foods typical for this region.'}
 
 ${previousPlans.length > 0 ? `PREVIOUS MEAL HISTORY (for variety - DO NOT repeat these exact combinations):
 ${this.formatPreviousMeals(previousPlans)}` : 'This is the first diet plan for this user.'}
@@ -452,7 +452,10 @@ Generate the complete meal plan now. Return ONLY valid JSON (no markdown, no cod
    */
   async callDiabetica(prompt) {
     const hfBase = process.env.HF_SPACE_URL || 'https://zeeshanasghar02-diabetica-api.hf.space';
-    const maxTokens = parseInt(process.env.LM_STUDIO_MAX_TOKENS || '4000');
+    // Gradio slider constraint: max_tokens must be 256–2048
+    // Always use 2048 — Gradio slider is hard-constrained to 256–2048.
+    // Never read from env: LM_STUDIO_MAX_TOKENS may be a small value (e.g. 100).
+    const maxTokens = 2048;
     const systemPrompt = `You are a specialized diabetes dietitian AI.
 
 CRITICAL RESPONSE RULES:
@@ -476,14 +479,27 @@ CRITICAL RESPONSE RULES:
       if (!event_id) throw new Error('HF Gradio did not return an event_id');
       console.log(`   HF event_id: ${event_id} — waiting for result...`);
 
-      // Step 2: Read SSE stream
+      // Step 2: Read SSE stream — 120s timeout per attempt.
+      // event:error detection above exits fast on Gradio validation errors.
+      // 120s gives the model enough time to generate the response on CPU.
       const sseRes = await axios.get(
         `${hfBase}/gradio_api/call/predict/${event_id}`,
-        { timeout: 300000, responseType: 'text' }  // 5 min timeout
+        { timeout: 120000, responseType: 'text' }
       );
 
-      // Step 3: Parse SSE — find last data line with the output
-      const lines = sseRes.data.split('\n');
+      const raw = sseRes.data || '';
+
+      // Step 3: Detect Gradio error events immediately (fail fast instead of scanning)
+      if (raw.includes('event: error')) {
+        const errMatch = raw.match(/event: error[\s\S]*?data:\s*({[^\n]*}|null)/m);
+        const errMsg = errMatch?.[1] && errMatch[1] !== 'null'
+          ? (JSON.parse(errMatch[1])?.message || 'Gradio returned an error event')
+          : 'Gradio returned an error event';
+        throw new Error(`Gradio error: ${errMsg}`);
+      }
+
+      // Step 4: Parse SSE — find last data line with the output
+      const lines = raw.split('\n');
       for (let i = lines.length - 1; i >= 0; i--) {
         const line = lines[i].trim();
         if (line.startsWith('data:')) {
@@ -495,7 +511,7 @@ CRITICAL RESPONSE RULES:
           } catch { /* keep scanning */ }
         }
       }
-      throw new Error(`Could not parse Gradio SSE response. Raw (first 500): ${sseRes.data.substring(0, 500)}`);
+      throw new Error(`Could not parse Gradio SSE response. Raw (first 500): ${raw.substring(0, 500)}`);
 
     } catch (error) {
       console.error('❌ Error calling HF Diabetica:', error.message);

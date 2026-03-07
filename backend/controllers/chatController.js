@@ -1,9 +1,13 @@
 import { UserPersonalInfo } from '../models/UserPersonalInfo.js';
 import { UserMedicalInfo } from '../models/UserMedicalInfo.js';
 import { enhanceChatWithRAG } from '../services/ragService.js';
+import axios from 'axios';
 
-const LM_STUDIO_BASE_URL = process.env.LM_STUDIO_BASE_URL || 'http://127.0.0.1:1234';
-const LM_STUDIO_MODEL = process.env.LM_STUDIO_MODEL || 'diabetica-7b';
+// HF Gradio API configuration
+const HF_SPACE_URL = process.env.HF_SPACE_URL || 'https://zeeshanasghar02-diabetica-api.hf.space';
+const HF_SUBMIT_TIMEOUT_MS = 30000;
+const HF_SSE_TIMEOUT_MS = 120000;
+const MAX_TOKENS = 1024;
 const MAX_INPUT_CHARS = 1500;
 const HISTORY_WINDOW = 5;
 
@@ -118,34 +122,47 @@ CRITICAL SAFETY INSTRUCTIONS:
 - If you don't know the answer, say so. Do not make up information.
 - If the retrieved information seems contradictory or unclear, state that and recommend consulting a doctor.`;
 
-    const finalHistory = [
-      { role: 'system', content: systemPrompt },
-      ...recentHistory,
-      { role: 'user', content: message },
-    ];
+    // Build the user prompt with context
+    const userPromptWithHistory = recentHistory.length > 0 
+      ? `Previous conversation:\n${recentHistory.map(h => `${h.role}: ${h.content}`).join('\n')}\n\nCurrent question: ${message}`
+      : message;
 
-    console.log('[CHAT] Sending to LM Studio. History length:', finalHistory.length);
+    console.log('[CHAT] Sending to HF Diabetica API');
 
-    const response = await fetch(`${LM_STUDIO_BASE_URL}/v1/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: LM_STUDIO_MODEL,
-        messages: finalHistory,
-        temperature: 0.7,
-        max_tokens: 500,
-        stream: false,
-      }),
-    });
+    // Step 1: Submit job to HF Gradio API
+    const submitRes = await axios.post(
+      `${HF_SPACE_URL}/gradio_api/call/predict`,
+      { data: [systemPrompt, userPromptWithHistory, MAX_TOKENS, 0.7] },
+      { timeout: HF_SUBMIT_TIMEOUT_MS, headers: { 'Content-Type': 'application/json' } }
+    );
+    
+    const eventId = submitRes.data?.event_id;
+    if (!eventId) throw new Error('No event_id returned from HF Space');
+    console.log('[CHAT] Got event_id:', eventId);
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error('[CHAT] LM Studio API error:', response.status, errorBody);
-      throw new Error(`AI service failed with status: ${response.status}`);
+    // Step 2: Get SSE response
+    const sseRes = await axios.get(
+      `${HF_SPACE_URL}/gradio_api/call/predict/${eventId}`,
+      { timeout: HF_SSE_TIMEOUT_MS, responseType: 'text' }
+    );
+
+    const rawText = sseRes.data || '';
+    const lines = rawText.split('\n');
+    let aiMessage = null;
+
+    // Parse SSE response - scan backward for data lines
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const line = lines[i].trim();
+      if (line.startsWith('data:')) {
+        try {
+          const json = JSON.parse(line.slice(5).trim());
+          if (Array.isArray(json) && typeof json[0] === 'string') {
+            aiMessage = json[0];
+            break;
+          }
+        } catch { /* continue scanning */ }
+      }
     }
-
-    const completion = await response.json();
-    const aiMessage = completion.choices[0]?.message?.content?.trim();
 
     if (!aiMessage) {
       throw new Error('AI service returned an empty response.');
@@ -153,18 +170,12 @@ CRITICAL SAFETY INSTRUCTIONS:
 
     console.log('[CHAT] Received AI response:', aiMessage.substring(0, 100));
 
-    // Save user message and AI response to a Chat model (implementation needed)
-    // For now, just return the response
-
+    // Return response in format expected by frontend
     return res.status(200).json({
       success: true,
-      data: {
-        _id: completion.id,
-        text: aiMessage,
-        createdAt: new Date(),
-        sender: 'ai',
-        sources: sources, // Include sources from RAG
-      },
+      reply: aiMessage,
+      sources: sources,
+      context_used: !!ragContext,
     });
 
   } catch (error) {

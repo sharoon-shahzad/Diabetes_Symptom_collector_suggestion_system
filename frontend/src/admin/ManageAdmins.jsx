@@ -691,7 +691,7 @@ export default function ManageAdmins() {
         toast.success('? User updated successfully');
       } else {
         // Create new user
-        await axiosInstance.post('/api/v1/auth/register', {
+        await axiosInstance.post('/auth/register', {
           fullName: data.fullName,
           email: data.email,
           password: data.password,
@@ -989,7 +989,7 @@ export default function ManageAdmins() {
                           />
                         </TableCell>
                         <TableCell sx={{ color: 'text.secondary' }}>
-                          {user.date_of_birth ? formatDate(user.date_of_birth) : '—'}
+                          {user.date_of_birth ? formatDate(user.date_of_birth) : 'ï¿½'}
                         </TableCell>
                         <TableCell>
                           <Tooltip title="Click to toggle status">

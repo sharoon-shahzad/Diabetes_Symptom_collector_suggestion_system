@@ -159,12 +159,10 @@ const ExercisePlanDashboard = ({ inModal = false }) => {
       
       if (status === 400) {
         setError(msg.includes('profile') ? 'Please complete Personal Info in onboarding before generating an exercise plan.' : msg);
-      } else if (status === 404) {
-        setError('Regional guidance not available right now. Using global WHO context may help; please try again.');
       } else if (status === 401) {
         setError('You are signed out. Please sign in again to generate a plan.');
       } else if (status === 503) {
-        setError('AI generator is unavailable or timed out. Please ensure LM Studio is running, then try again.');
+        setError('AI is currently processing. Please wait a moment and try again.');
       } else {
         setError(msg);
       }
@@ -212,12 +210,10 @@ const ExercisePlanDashboard = ({ inModal = false }) => {
         setError('An exercise plan for this date already exists. Open it from History or pick another date.');
       } else if (status === 400) {
         setError(msg.includes('profile') ? 'Please complete Personal Info in onboarding before generating an exercise plan.' : msg);
-      } else if (status === 404) {
-        setError('Regional guidance not available right now. Using global WHO context may help; please try again.');
       } else if (status === 401) {
         setError('You are signed out. Please sign in again to generate a plan.');
       } else if (status === 503) {
-        setError('AI generator is unavailable or timed out. Please ensure LM Studio is running, then try again.');
+        setError('AI is currently processing. Please wait a moment and try again.');
       } else {
         setError(msg);
       }
