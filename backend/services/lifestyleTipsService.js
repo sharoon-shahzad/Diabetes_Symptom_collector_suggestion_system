@@ -191,7 +191,7 @@ IMPORTANT: Respond ONLY with valid JSON, no markdown, no code blocks. Use this e
       console.log(`📡 Submitting to HF Gradio API...`);
       const submitRes = await axios.post(
         `${HF_SPACE_URL}/gradio_api/call/predict`,
-        { data: [SYSTEM_PROMPT, prompt, MAX_TOKENS, 0.9] },
+        { data: [SYSTEM_PROMPT, prompt, MAX_TOKENS, 0.3] },
         { timeout: HF_SUBMIT_TIMEOUT_MS, headers: { 'Content-Type': 'application/json' } }
       );
       const eventId = submitRes.data?.event_id;

@@ -110,21 +110,14 @@ export const register = async (req, res) => {
         
         await user.save();
         
-        // Log user creation to audit trail
-        try {
-            await createAuditLog('CREATE', 'User', req, res, user._id, {
-                before: null,
-                after: {
-                    email: user.email,
-                    fullName: user.fullName,
-                    role: 'user'
-                }
-            });
-        } catch (auditErr) {
-            console.error('Failed to log user creation to audit trail:', auditErr);
-        }
-        
-        // Assign 'user' role to the new user
+        // Audit log — fire-and-forget (it already skips when user context is missing,
+        // so awaiting it only adds latency without benefit).
+        createAuditLog('CREATE', 'User', req, res, user._id, {
+            before: null,
+            after: { email: user.email, fullName: user.fullName, role: 'user' }
+        }).catch((auditErr) => console.error('Failed to log user creation:', auditErr));
+
+        // Assign 'user' role — must complete before we fetch roles for the token payload.
         try {
             const { assignDefaultUserRole } = await import('../utils/roleUtils.js');
             const roleAssigned = await assignDefaultUserRole(user._id);
@@ -135,27 +128,27 @@ export const register = async (req, res) => {
             }
         } catch (roleError) {
             console.error('❌ Error assigning user role:', roleError);
-            // Don't fail registration if role assignment fails
         }
-        
-        // Send welcome email — non-blocking, never blocks registration
-        try {
-            const welcomeToken = crypto.randomBytes(32).toString('hex');
-            await sendActivationEmail(normalizedEmail, welcomeToken);
-        } catch (emailErr) {
+
+        // Welcome email — fire-and-forget.
+        const welcomeToken = crypto.randomBytes(32).toString('hex');
+        sendActivationEmail(normalizedEmail, welcomeToken).catch((emailErr) => {
             console.warn('⚠️  Welcome email could not be sent (non-fatal):', emailErr?.message || emailErr);
-        }
+        });
 
-        // Fetch the role(s) just assigned for the token payload
-        let roles = [];
-        try {
-            const { UsersRoles } = await import('../models/User_Role.js');
-            const userRoles = await UsersRoles.find({ user_id: user._id }).populate('role_id');
-            roles = userRoles.map(ur => ur.role_id?.role_name).filter(Boolean);
-        } catch (_) { /* best-effort */ }
+        // Fetch roles for token payload AND generate tokens in parallel to cut latency.
+        const [roles, tokens] = await Promise.all([
+            (async () => {
+                try {
+                    const { UsersRoles } = await import('../models/User_Role.js');
+                    const userRoles = await UsersRoles.find({ user_id: user._id }).populate('role_id');
+                    return userRoles.map(ur => ur.role_id?.role_name).filter(Boolean);
+                } catch (_) { return []; }
+            })(),
+            generateAccessAndRefreshTokens(user._id, user.email),
+        ]);
 
-        // Generate tokens so the client is logged in immediately after signup
-        const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id, user.email);
+        const { accessToken, refreshToken } = tokens;
 
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,

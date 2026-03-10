@@ -1,74 +1,133 @@
 import monthlyDietPlanService from '../services/monthlyDietPlanService.js';
+import MonthlyDietPlan from '../models/MonthlyDietPlan.js';
 
 /**
- * Generate a new monthly diet plan
+ * Generate a new monthly diet plan — FIRE-AND-FORGET (async)
  * POST /api/monthly-diet-plan/generate
+ *
+ * Returns 202 immediately after creating a 'pending' placeholder doc so that
+ * mobile clients don't need to hold a long HTTP connection open while the
+ * LLM (3–8 min) runs. Clients poll GET /status/:month/:year until 'complete'.
  */
 export const generateMonthlyDietPlan = async (req, res) => {
   try {
     console.log('📥 generateMonthlyDietPlan called');
     console.log('User:', req.user?.email);
-    
+
     const { month, year } = req.body;
     const userId = req.user._id;
-    
-    // Validate inputs
+
     if (!month || !year) {
-      return res.status(400).json({
-        success: false,
-        error: 'Month and year are required'
-      });
+      return res.status(400).json({ success: false, error: 'Month and year are required' });
     }
-    
+
     const monthNum = parseInt(month);
-    const yearNum = parseInt(year);
-    
+    const yearNum  = parseInt(year);
+
     if (isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid month. Must be between 1 and 12'
-      });
+      return res.status(400).json({ success: false, error: 'Invalid month. Must be between 1 and 12' });
     }
-    
     if (isNaN(yearNum) || yearNum < 2020 || yearNum > 2100) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid year'
-      });
+      return res.status(400).json({ success: false, error: 'Invalid year' });
     }
-    
-    // Generate the plan
-    console.log(`🚀 Generating monthly diet plan for ${monthNum}/${yearNum}...`);
-    const result = await monthlyDietPlanService.generateMonthlyDietPlan(userId, monthNum, yearNum);
-    
-    return res.status(201).json({
-      success: true,
-      message: 'Monthly diet plan generated successfully',
-      ...result
+
+    // Check for existing plan
+    const existing = await MonthlyDietPlan.findOne({ user_id: userId, month: monthNum, year: yearNum });
+
+    if (existing) {
+      if (existing.generation_status === 'pending') {
+        // Still generating — tell client to keep polling
+        return res.status(202).json({
+          success: true,
+          status: 'pending',
+          planId: existing._id,
+          month: monthNum,
+          year: yearNum,
+          message: 'Plan is already being generated. Keep polling /status.'
+        });
+      }
+      if (existing.generation_status === 'complete') {
+        return res.status(409).json({
+          success: false,
+          error: `A diet plan already exists for ${monthNum}/${yearNum}. Please delete it first or view it.`
+        });
+      }
+      // Status is 'failed' — delete and allow retry
+      await existing.deleteOne();
+      console.log(`🗑️ Deleted failed plan for ${monthNum}/${yearNum}, allowing retry`);
+    }
+
+    // Create a thin placeholder so the client can poll its status immediately
+    const placeholder = new MonthlyDietPlan({
+      user_id:           userId,
+      month:             monthNum,
+      year:              yearNum,
+      region:            'Global',       // overwritten by background job
+      total_daily_calories: 0,           // overwritten by background job
+      meal_categories:   [],
+      generation_status: 'pending',
+      status:            'active',
     });
-    
+    await placeholder.save();
+    console.log(`📌 Created pending placeholder plan ${placeholder._id} for ${monthNum}/${yearNum}`);
+
+    // Return 202 NOW — client no longer waits for LLM
+    res.status(202).json({
+      success: true,
+      status:  'pending',
+      planId:  placeholder._id,
+      month:   monthNum,
+      year:    yearNum,
+      message: 'Generation started. Poll GET /status/:month/:year for updates.'
+    });
+
+    // Fire-and-forget background generation — no await, response already sent
+    monthlyDietPlanService.runBackgroundGeneration(userId, monthNum, yearNum, placeholder._id)
+      .catch(err => console.error('❌ Unhandled background generation error:', err.message));
+
   } catch (error) {
     console.error('❌ Error in generateMonthlyDietPlan controller:', error);
-    
-    if (error.message.includes('already exists')) {
-      return res.status(409).json({
-        success: false,
-        error: error.message
-      });
-    }
-    
-    if (error.message.includes('not found') && !error.message.includes('dietary documents')) {
-      return res.status(404).json({
-        success: false,
-        error: error.message
-      });
-    }
-    
     return res.status(500).json({
       success: false,
-      error: 'Failed to generate monthly diet plan. Please try again.',
+      error: 'Failed to start monthly diet plan generation. Please try again.',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
+  }
+};
+
+/**
+ * Poll generation status for a specific month/year
+ * GET /api/monthly-diet-plan/status/:month/:year
+ */
+export const getGenerationStatus = async (req, res) => {
+  try {
+    const userId   = req.user._id;
+    const monthNum = parseInt(req.params.month);
+    const yearNum  = parseInt(req.params.year);
+
+    if (isNaN(monthNum) || isNaN(yearNum)) {
+      return res.status(400).json({ success: false, error: 'Invalid month or year' });
+    }
+
+    const plan = await MonthlyDietPlan.findOne({ user_id: userId, month: monthNum, year: yearNum });
+
+    if (!plan) {
+      return res.status(404).json({ success: false, status: 'not_found', error: 'No plan found for this month/year' });
+    }
+
+    return res.status(200).json({
+      success: true,
+      status:  plan.generation_status,   // 'pending' | 'complete' | 'failed'
+      planId:  plan._id,
+      month:   plan.month,
+      year:    plan.year,
+      // Send full plan only when complete so polling is lightweight
+      plan:    plan.generation_status === 'complete' ? plan : undefined,
+      error:   plan.generation_status === 'failed'   ? plan.generation_error : undefined,
+    });
+  } catch (error) {
+    console.error('❌ Error in getGenerationStatus:', error);
+    return res.status(500).json({ success: false, error: 'Failed to check generation status' });
   }
 };
 

@@ -112,6 +112,13 @@ app.get('/api/v1/server-info', (req, res) => {
 
 // Connect to database and ensure roles exist
 const startServer = async () => {
+    // Bind port FIRST so HuggingFace sees a healthy process immediately
+    const PORT = process.env.PORT || 5000;
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`✅ Server listening on port ${PORT}`);
+    });
+
+    // Connect to DB in background — never call process.exit so the server stays alive
     try {
         await connectDB();
         console.log('✅ Database connected successfully');
@@ -137,15 +144,12 @@ const startServer = async () => {
         } else {
             console.log('ℹ️  RAG is disabled (RAG_ENABLED=false)');
         }
-        
-        // Start the server
-        const PORT = process.env.PORT || 5000;
-        app.listen(PORT, '0.0.0.0', () => {
-            console.log(`✅ Server running on port ${PORT}`);
-        });
+
+        console.log('✅ Server fully initialized');
     } catch (error) {
-        console.error('❌ Failed to start server:', error);
-        process.exit(1);
+        // Log the full error but DO NOT exit — keeps the process alive so logs are visible
+        console.error('❌ Initialization error (server still running):', error.message);
+        console.error(error.stack);
     }
 };
 

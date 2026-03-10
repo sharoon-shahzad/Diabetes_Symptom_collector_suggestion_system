@@ -287,7 +287,7 @@ Return ONLY valid JSON with this structure:
       // Step 1: Submit job
       const submitRes = await axios.post(
         `${hfBase}/gradio_api/call/predict`,
-        { data: [systemPrompt, prompt, MAX_TOKENS, 0.9] },
+        { data: [systemPrompt, prompt, MAX_TOKENS, 0.3] },
         { timeout: 30000 }
       );
       const { event_id } = submitRes.data;

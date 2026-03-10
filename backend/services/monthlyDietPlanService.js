@@ -146,8 +146,16 @@ class MonthlyDietPlanService {
         status: 'active'
       });
       
-      await monthlyPlan.save();
-      
+      try {
+        await monthlyPlan.save();
+      } catch (saveErr) {
+        console.error('❌ MonthlyDietPlan.save() failed:', saveErr.message);
+        if (saveErr.name === 'ValidationError') {
+          console.error('  Validation errors:', JSON.stringify(saveErr.errors, null, 2));
+        }
+        throw saveErr;
+      }
+
       const duration = Date.now() - startTime;
       console.log(`✅ Monthly diet plan generated successfully in ${(duration / 1000).toFixed(2)}s`);
       
@@ -164,7 +172,108 @@ class MonthlyDietPlanService {
       throw error;
     }
   }
-  
+
+  /**
+   * Run full generation in the background and update an existing pending plan doc.
+   * Called after the controller has already returned 202 to the client.
+   * @param {string} userId
+   * @param {number} month
+   * @param {number} year
+   * @param {string} planId - The _id of the placeholder MonthlyDietPlan document
+   */
+  async runBackgroundGeneration(userId, month, year, planId) {
+    const startTime = Date.now();
+    console.log(`🔄 [BG] Starting background generation for plan ${planId} (${month}/${year})`);
+
+    try {
+      // 1. Get user profile
+      const user = await User.findById(userId);
+      if (!user) throw new Error('User not found');
+
+      const personalInfo = await UserPersonalInfo.findOne({ user_id: userId });
+      const medicalInfo  = await UserMedicalInfo.findOne({ user_id: userId });
+      if (!personalInfo) throw new Error('Personal information not found. Please complete your profile first.');
+
+      // Calculate age
+      const dob   = new Date(personalInfo.date_of_birth);
+      const today = new Date();
+      let age = today.getFullYear() - dob.getFullYear();
+      const md = today.getMonth() - dob.getMonth();
+      if (md < 0 || (md === 0 && today.getDate() < dob.getDate())) age--;
+
+      const personal = {
+        age,
+        gender:               personalInfo.gender,
+        weight:               personalInfo.weight,
+        height:               personalInfo.height,
+        activity_level:       personalInfo.activity_level || 'Sedentary',
+        goal:                 'maintain',
+        country:              user.country || 'Global',
+        dietary_preference:   personalInfo.dietary_preference || 'Non-Vegetarian',
+      };
+      const medical = {
+        diabetes_type: medicalInfo?.diabetes_type || 'Type 2',
+        medications:   medicalInfo?.current_medications?.map(m => m.medication_name) || [],
+      };
+
+      // 2. Region coverage
+      let userRegion = personal.country;
+      const regionCoverage = await regionDiscoveryService.checkRegionCoverage(userRegion, 'diet_chart');
+      if (!regionCoverage.canGeneratePlan) {
+        const fallback = await regionDiscoveryService.getFallbackRegion(userRegion, 'diet');
+        userRegion = fallback || userRegion;
+      }
+
+      // 3. Calories
+      const calorieData      = calorieCalculatorService.calculateDailyCalories(personal, medical);
+      const dailyCalories    = calorieData.target_calories;
+      const mealDistribution = calorieCalculatorService.distributeMealCalories(dailyCalories);
+
+      // 4. RAG
+      const foodContext = await this.queryRegionalFoodsForMonth(userRegion, dailyCalories, personal);
+      console.log(`[BG] RAG context: ${foodContext.chunks?.length || 0} chunks`);
+
+      // 5. LLM meal generation
+      const mealCategories = await this.generateMealOptions(
+        personal, medical, dailyCalories, mealDistribution, foodContext, userRegion
+      );
+
+      // 6. Update the placeholder document in-place
+      const updateData = {
+        region:               userRegion,
+        total_daily_calories: dailyCalories,
+        meal_categories:      mealCategories,
+        nutritional_guidelines: {
+          daily_carbs_range:   { min: Math.round(dailyCalories * 0.45 / 4), max: Math.round(dailyCalories * 0.55 / 4) },
+          daily_protein_range: { min: Math.round(dailyCalories * 0.15 / 4), max: Math.round(dailyCalories * 0.20 / 4) },
+          daily_fat_range:     { min: Math.round(dailyCalories * 0.25 / 9), max: Math.round(dailyCalories * 0.35 / 9) },
+          daily_fiber_target:  35,
+        },
+        sources: foodContext.sources,
+        tips:    await this.generateMonthlyTips(personal, medical, userRegion),
+        generation_context: {
+          user_profile_snapshot: personal,
+          llm_model:             'diabetica-7b',
+          generated_at:          new Date(),
+          generation_duration_ms: Date.now() - startTime,
+        },
+        generation_status: 'complete',
+        generation_error:  undefined,
+        status:            'active',
+      };
+
+      await MonthlyDietPlan.findByIdAndUpdate(planId, updateData, { new: true });
+      console.log(`✅ [BG] Plan ${planId} completed in ${((Date.now() - startTime) / 1000).toFixed(1)}s`);
+
+    } catch (err) {
+      console.error(`❌ [BG] Generation failed for plan ${planId}:`, err.message);
+      await MonthlyDietPlan.findByIdAndUpdate(planId, {
+        generation_status: 'failed',
+        generation_error:  err.message,
+      }).catch(() => {});
+    }
+  }
+
   /**
    * Query RAG for extensive food data for monthly planning
    * @param {string} region - Region/country
@@ -382,15 +491,25 @@ ${skeleton}`;
       const parsed  = JSON.parse(cleaned.substring(start, end + 1));
       const result  = {};
 
+      // Normalize LLM-returned difficulty to Mongoose enum: ['Easy','Medium','Moderate','Hard']
+      const normDiff = (d) => {
+        if (!d) return 'Easy';
+        const s = String(d).toLowerCase();
+        if (s.includes('hard') || s.includes('difficult')) return 'Hard';
+        if (s.includes('moderate')) return 'Moderate';
+        if (s.includes('medium') || s.includes('inter')) return 'Medium';
+        return 'Easy';
+      };
+
       for (const key of mealKeys) {
         if (Array.isArray(parsed[key]) && parsed[key].length > 0) {
           result[key] = parsed[key].map(opt => ({
             option_name:      opt.option_name      || 'Option',
             description:      opt.description      || '',
             preparation_time: opt.preparation_time || '15 minutes',
-            difficulty:       opt.difficulty       || 'Easy',
+            difficulty:       normDiff(opt.difficulty),
             items: Array.isArray(opt.items) ? opt.items.map(item => ({
-              food:    item.food    || '',
+              food:    item.food    || 'Food item',
               portion: item.portion || '1 serving',
               calories: Number(item.calories) || 0,
               carbs:    Number(item.carbs)    || 0,
@@ -551,7 +670,7 @@ Generate ${numOptions} completely unique options now. Return ONLY valid JSON:`;
       // Step 1: Submit job
       const submitRes = await axios.post(
         `${hfBase}/gradio_api/call/predict`,
-        { data: [systemPrompt, prompt, MAX_TOKENS, 0.9] },
+        { data: [systemPrompt, prompt, MAX_TOKENS, 0.3] },
         { timeout: 30000 }
       );
       const { event_id } = submitRes.data;

@@ -31,6 +31,16 @@ router.get('/current', monthlyDietPlanController.getCurrentMonthlyDietPlan);
 router.get('/history', monthlyDietPlanController.getMonthlyDietPlanHistory);
 
 /**
+ * @route   GET /api/monthly-diet-plan/status/:month/:year
+ * @desc    Poll the generation status of a plan (pending | complete | failed)
+ * @access  Private
+ * @params  month (1-12), year
+ *
+ * MUST be declared before /:planId so Express doesn't treat "status" as a planId.
+ */
+router.get('/status/:month/:year', monthlyDietPlanController.getGenerationStatus);
+
+/**
  * @route   GET /api/monthly-diet-plan/:planId
  * @desc    Get specific monthly diet plan by ID
  * @access  Private

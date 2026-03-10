@@ -11,7 +11,8 @@ import { retrieveSymptomMedicalContext } from './ragService.js';
 class HybridRiskService {
   constructor() {
     this.hfSpaceUrl = process.env.DIABETICA_HF_URL || process.env.HF_SPACE_URL || null;
-    this.maxTokens = parseInt(process.env.LM_STUDIO_MAX_TOKENS || '1024');
+    // Gradio slider constraint: max_tokens must be 256–2048; clamp regardless of env var
+    this.maxTokens = Math.min(Math.max(parseInt(process.env.LM_STUDIO_MAX_TOKENS || '1024'), 256), 2048);
     this.ragEnabled = process.env.RAG_ENABLED === 'true';
   }
 

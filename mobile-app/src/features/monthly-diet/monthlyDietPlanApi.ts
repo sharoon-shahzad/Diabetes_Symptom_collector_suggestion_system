@@ -54,6 +54,15 @@ export interface MonthlyDietPlanData {
   updated_at?: string;
 }
 
+export interface GenerationStatusResponse {
+  status: 'pending' | 'complete' | 'failed' | 'not_found';
+  planId?: string;
+  month?: number;
+  year?: number;
+  plan?: MonthlyDietPlanData;   // only present when status === 'complete'
+  error?: string;               // only present when status === 'failed'
+}
+
 export interface GenerateMonthlyPlanRequest {
   month: number;
   year: number;
@@ -119,6 +128,15 @@ export const monthlyDietPlanApi = createApi({
       }),
       invalidatesTags: ['MonthlyDietPlan'],
     }),
+
+    /**
+     * Poll the generation status of a monthly diet plan.
+     * Returns { status: 'pending' | 'complete' | 'failed' | 'not_found', plan?, error? }
+     */
+    getGenerationStatus: builder.query<ApiResponse<GenerationStatusResponse>, { month: number; year: number }>({
+      query: ({ month, year }) => `/monthly-diet-plan/status/${month}/${year}`,
+      // No tag caching — this is intentionally a transient polling endpoint
+    }),
   }),
 });
 
@@ -129,4 +147,6 @@ export const {
   useGetMonthlyPlanByIdQuery,
   useDeleteMonthlyPlanMutation,
   useSelectMealsMutation,
+  useGetGenerationStatusQuery,
+  useLazyGetGenerationStatusQuery,
 } = monthlyDietPlanApi;

@@ -198,7 +198,14 @@ export const baseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryE
   api,
   extraOptions
 ) => {
-  const TIMEOUT_MS = 12_000;
+  // LLM-backed generation endpoints need much longer timeouts (RAG + LLM can take 3-8 min on HF)
+  const requestUrl = typeof args === 'string' ? args : (args as FetchArgs).url ?? '';
+  const isGenerationEndpoint =
+    requestUrl.includes('/monthly-diet-plan/generate') ||
+    requestUrl.includes('/diet-plan/generate') ||
+    requestUrl.includes('/exercise-plan/generate') ||
+    requestUrl.includes('/lifestyle-tips/generate');
+  const TIMEOUT_MS = isGenerationEndpoint ? 900_000 : 30_000; // 15 min for LLM, 30 s otherwise
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 

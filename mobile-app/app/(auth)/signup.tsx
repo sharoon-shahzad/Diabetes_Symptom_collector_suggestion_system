@@ -24,7 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { TextInput } from '@components/common/TextInput';
-import { useRegisterMutation } from '@features/auth/authApi';
+
 import { useAppDispatch } from '@store/hooks';
 import { setUser } from '@features/auth/authSlice';
 import { registrationSchema, type RegistrationFormData } from '@utils/validation';
@@ -46,7 +46,7 @@ const STEPS = [
 export default function SignUpScreen() {
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const [register, { isLoading }] = useRegisterMutation();
+  const [isLoading, setIsLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [processingAssessment, setProcessingAssessment] = useState(false);
@@ -80,15 +80,37 @@ export default function SignUpScreen() {
   const handleBack = () => setCurrentStep((prev) => Math.max(prev - 1, 0));
 
   const onSubmit = async (data: RegistrationFormData) => {
+    setIsLoading(true);
     try {
-      const result = await register({
-        fullName: data.fullName,
-        email: data.email,
-        password: data.password,
-        dateOfBirth: data.dateOfBirth.toISOString(),
-        gender: data.gender,
-        phoneNumber: data.phoneNumber,
-      }).unwrap();
+      // Use raw fetch with NO AbortController/timeout for registration.
+      // The backend's SMTP connection can take 30-90 s to time out on its own,
+      // which blows past any client-side AbortController deadline and causes a
+      // false "Registration failed" even though the account was created.
+      const apiBase = await getRuntimeApiUrl();
+      const rawRes = await fetch(`${apiBase}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName: data.fullName,
+          email: data.email,
+          password: data.password,
+          date_of_birth: data.dateOfBirth.toISOString(),
+          gender: data.gender,
+          phoneNumber: data.phoneNumber,
+        }),
+        credentials: 'include',
+      });
+
+      const json = await rawRes.json();
+
+      if (!rawRes.ok || !json.success) {
+        // Real server-side error (e.g. email already registered)
+        Alert.alert('Registration Error', json?.message || 'Registration failed. Please try again.');
+        return;
+      }
+
+
+      const result = json; // shape: { success, data: { user, accessToken, refreshToken } }
 
       // Persist token so all subsequent fetch calls are authenticated
       const token = result.data?.accessToken;
@@ -121,7 +143,10 @@ export default function SignUpScreen() {
         router.replace('/(tabs)/dashboard');
       }
     } catch (error: any) {
-      Alert.alert('Registration Error', error?.data?.message || 'Registration failed. Please try again.');
+      // Only network-level errors reach here (device offline, DNS failure, etc.)
+      Alert.alert('Registration Error', 'Could not connect to server. Check your internet connection.');
+    } finally {
+      setIsLoading(false);
     }
   };
 

@@ -242,10 +242,23 @@ export const upsertPersonalInfo = async (req, res) => {
             });
         }
         
+        // Mark onboarding as complete once the four required fields are present
+        const hasRequired = personalInfoData.date_of_birth && personalInfoData.gender &&
+                            personalInfoData.height && personalInfoData.weight;
+        let onboardingCompleted = false;
+        if (hasRequired) {
+            await User.findByIdAndUpdate(userId, {
+                onboardingCompleted: true,
+                onboardingCompletedAt: new Date(),
+            });
+            onboardingCompleted = true;
+        }
+
         return res.status(200).json({
             success: true,
             message: 'Personal information saved successfully.',
             data: personalInfo,
+            onboardingCompleted,
         });
     } catch (err) {
         console.error('❌ Error saving personal info:', err);

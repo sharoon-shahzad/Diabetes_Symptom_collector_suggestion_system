@@ -1,10 +1,13 @@
-/**
+﻿/**
  * Monthly Diet Plan Dashboard
  * Lists monthly diet plans, allows generating new ones.
- * No emojis — MaterialCommunityIcons only
+ * No emojis â€” MaterialCommunityIcons only
  */
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Alert, RefreshControl, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  View, StyleSheet, ScrollView, Alert, RefreshControl,
+  TouchableOpacity, Animated, Easing,
+} from 'react-native';
 import { Text, Portal, Modal } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -20,6 +23,7 @@ import {
   useGetMonthlyPlanHistoryQuery,
   useGenerateMonthlyDietPlanMutation,
   useDeleteMonthlyPlanMutation,
+  useLazyGetGenerationStatusQuery,
 } from '@features/monthly-diet/monthlyDietPlanApi';
 import { spacing, borderRadius, shadows } from '@theme/spacing';
 import colors from '@theme/colors';
@@ -29,26 +33,196 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
+// Generation progress steps shown while AI is working
+const STEPS = [
+  { icon: 'magnify', label: 'Analyzing your health profile' },
+  { icon: 'food-apple-outline', label: 'Searching regional food database' },
+  { icon: 'brain', label: 'AI crafting your meal options' },
+  { icon: 'check-circle-outline', label: 'Finalizing & saving your plan' },
+];
+
+// Animated crafting banner â€” keeps UI alive during the LLM wait
+function GeneratingBanner({ month, year }: { month: number; year: number }) {
+  const [stepIdx, setStepIdx] = useState(0);
+  const spin = useRef(new Animated.Value(0)).current;
+  const fade = useRef(new Animated.Value(1)).current;
+
+  // Rotate spinner continuously
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(spin, { toValue: 1, duration: 1800, easing: Easing.linear, useNativeDriver: true })
+    ).start();
+  }, []);
+
+  // Cycle through steps every 18 s
+  useEffect(() => {
+    const t = setInterval(() => {
+      Animated.sequence([
+        Animated.timing(fade, { toValue: 0, duration: 300, useNativeDriver: true }),
+        Animated.timing(fade, { toValue: 1, duration: 300, useNativeDriver: true }),
+      ]).start();
+      setStepIdx(i => (i + 1) % STEPS.length);
+    }, 18000);
+    return () => clearInterval(t);
+  }, []);
+
+  const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const step = STEPS[stepIdx];
+
+  return (
+    <LinearGradient
+      colors={['#6B5B8A', '#503F6E']}
+      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+      style={styles.bannerCard}
+    >
+      {/* Spinner */}
+      <Animated.View style={{ transform: [{ rotate }], marginBottom: spacing[3] }}>
+        <MaterialCommunityIcons name="silverware-fork-knife" size={36} color="rgba(255,255,255,0.9)" />
+      </Animated.View>
+
+      <Text style={styles.bannerTitle}>
+        Crafting {MONTHS[month - 1]} {year} Plan
+      </Text>
+      <Text style={styles.bannerSub}>AI is working â€” this takes 3â€“5 minutes</Text>
+
+      {/* Step indicator */}
+      <Animated.View style={[styles.bannerStep, { opacity: fade }]}>
+        <MaterialCommunityIcons name={step.icon as any} size={16} color="rgba(255,255,255,0.8)" />
+        <Text style={styles.bannerStepText}>{step.label}â€¦</Text>
+      </Animated.View>
+
+      {/* Step dots */}
+      <View style={styles.bannerDots}>
+        {STEPS.map((_, i) => (
+          <View key={i} style={[styles.bannerDot, i === stepIdx && styles.bannerDotActive]} />
+        ))}
+      </View>
+
+      <Text style={styles.bannerNote}>Keep the app open. Your plan will appear automatically.</Text>
+    </LinearGradient>
+  );
+}
+
 export default function MonthlyDietPlanDashboardScreen() {
   const router = useRouter();
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
+  // Track generation state separately from RTK mutation isLoading
+  const [generatingState, setGeneratingState] = useState<{
+    active: boolean; month: number; year: number;
+  }>({ active: false, month: 0, year: 0 });
+
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const { data, isLoading, error, refetch } = useGetMonthlyPlanHistoryQuery({ limit: 12 });
-  const [generate, { isLoading: generating }] = useGenerateMonthlyDietPlanMutation();
+  const [generate] = useGenerateMonthlyDietPlanMutation();
   const [deletePlan] = useDeleteMonthlyPlanMutation();
+  const [triggerGetStatus] = useLazyGetGenerationStatusQuery();
 
   const plans = data?.data || (data as any)?.plans || [];
 
-  const handleGenerate = async () => {
-    try {
-      await generate({ month: selectedMonth, year: selectedYear }).unwrap();
-      setShowGenerateModal(false);
+  // Stop polling + clear generation state
+  const stopGenerating = useCallback((success: boolean, msg?: string) => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    setGeneratingState({ active: false, month: 0, year: 0 });
+    if (success) {
       refetch();
-      Alert.alert('Success', 'Monthly diet plan generated!');
+    } else if (msg) {
+      Alert.alert('Generation Failed', msg);
+    }
+  }, [refetch]);
+
+  // Start polling /status/:month/:year every 10 s until generation completes or fails
+  const startPolling = useCallback((month: number, year: number) => {
+    let attempts = 0;
+    const MAX_ATTEMPTS = 60; // 60 x 10 s = 10 min
+
+    pollRef.current = setInterval(async () => {
+      attempts++;
+      try {
+        // preferCacheValue=false forces a fresh network request each time
+        const result = await triggerGetStatus({ month, year }, false);
+        const statusPayload = (result.data as any)?.data ?? (result.data as any);
+
+        if (statusPayload?.status === 'complete') {
+          stopGenerating(true);
+          return;
+        }
+        if (statusPayload?.status === 'failed') {
+          stopGenerating(
+            false,
+            statusPayload.error || `Generation of ${MONTHS[month - 1]} ${year} plan failed. Please try again.`
+          );
+          return;
+        }
+        // 'pending' or 'not_found' -- keep waiting
+      } catch { /* network hiccup -- keep polling */ }
+
+      if (attempts >= MAX_ATTEMPTS) {
+        stopGenerating(
+          false,
+          `Generation is taking longer than expected. Please pull-to-refresh to check if your ${MONTHS[month - 1]} ${year} plan is ready.`
+        );
+      }
+    }, 10_000);
+  }, [triggerGetStatus, stopGenerating]);
+
+  // Cleanup on unmount
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+
+  const handleGenerate = async () => {
+    const month = selectedMonth;
+    const year = selectedYear;
+
+    setShowGenerateModal(false);
+    setGeneratingState({ active: true, month, year });
+
+    try {
+      const result = await generate({ month, year }).unwrap();
+      // Backend returns 202 { success: true, status: 'pending' } — start polling /status
+      const status = (result as any)?.status ?? (result as any)?.data?.status;
+
+      if (status === 'pending') {
+        startPolling(month, year);
+      } else {
+        stopGenerating(true);
+      }
     } catch (err: any) {
-      Alert.alert('Error', err?.data?.message || 'Failed to generate plan.');
+      const errMsg: string = err?.data?.error || err?.data?.message || '';
+
+      // 'Already exists' (409) — plan is complete, show it
+      if (errMsg.toLowerCase().includes('already exists')) {
+        stopGenerating(true);
+        return;
+      }
+
+      // Before giving up, check if a pending/complete plan actually exists in DB.
+      // This covers: server errors thrown AFTER the placeholder was created,
+      // or brief network drops after the 202 was sent from the server.
+      try {
+        const statusResult = await triggerGetStatus({ month, year }, false);
+        const statusPayload = (statusResult.data as any)?.data ?? (statusResult.data as any);
+        const planStatus = statusPayload?.status;
+
+        if (planStatus === 'pending') {
+          // Plan is generating — start polling, don't show error
+          startPolling(month, year);
+          return;
+        }
+        if (planStatus === 'complete') {
+          // Plan already finished (rare race condition) — show it
+          stopGenerating(true);
+          return;
+        }
+        // 'failed' or 'not_found' — show error
+      } catch { /* status check also failed — fall through to error */ }
+
+      stopGenerating(
+        false,
+        errMsg || 'Failed to start plan generation. Please check your connection and try again.'
+      );
     }
   };
 
@@ -70,8 +244,8 @@ export default function MonthlyDietPlanDashboardScreen() {
     ]);
   };
 
-  if (isLoading) return <FullScreenLoader />;
-  if (error) return <ErrorState onRetry={refetch} error="Failed to load monthly plans." />;
+  if (isLoading && plans.length === 0) return <FullScreenLoader />;
+  if (error && plans.length === 0) return <ErrorState onRetry={refetch} error="Failed to load monthly plans." />;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -117,24 +291,28 @@ export default function MonthlyDietPlanDashboardScreen() {
           </View>
         </LinearGradient>
 
-        {/* Generate button */}
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => setShowGenerateModal(true)}
-        >
-          <LinearGradient
-            colors={['#6B5B8A', '#7D6D9C']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.generateBtn}
-          >
-            <MaterialCommunityIcons name="calendar-plus" size={20} color="#FFF" />
-            <Text style={styles.generateText}>Generate New Monthly Plan</Text>
-            <MaterialCommunityIcons name="chevron-right" size={18} color="rgba(255,255,255,0.7)" />
-          </LinearGradient>
-        </TouchableOpacity>
+        {/* Animated generation banner â€” shown while AI is working */}
+        {generatingState.active && (
+          <GeneratingBanner month={generatingState.month} year={generatingState.year} />
+        )}
 
-        {plans.length === 0 ? (
+        {/* Generate button â€” hidden while generating */}
+        {!generatingState.active && (
+          <TouchableOpacity activeOpacity={0.7} onPress={() => setShowGenerateModal(true)}>
+            <LinearGradient
+              colors={['#6B5B8A', '#7D6D9C']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.generateBtn}
+            >
+              <MaterialCommunityIcons name="calendar-plus" size={20} color="#FFF" />
+              <Text style={styles.generateText}>Generate New Monthly Plan</Text>
+              <MaterialCommunityIcons name="chevron-right" size={18} color="rgba(255,255,255,0.7)" />
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
+
+        {plans.length === 0 && !generatingState.active ? (
           <EmptyState
             icon="calendar-month-outline"
             title="No Monthly Plans"
@@ -143,10 +321,12 @@ export default function MonthlyDietPlanDashboardScreen() {
         ) : (
           <>
             {/* Section Header */}
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Plan History</Text>
-              <View style={styles.sectionLine} />
-            </View>
+            {plans.length > 0 && (
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Plan History</Text>
+                <View style={styles.sectionLine} />
+              </View>
+            )}
 
             {plans.map((plan: any) => (
               <View key={plan._id} style={styles.planCard}>
@@ -199,6 +379,10 @@ export default function MonthlyDietPlanDashboardScreen() {
             </View>
             <Text style={styles.modalTitle}>Generate Monthly Plan</Text>
             <Text style={styles.modalSubtitle}>Select month and year for your plan</Text>
+            <View style={styles.modalNote}>
+              <MaterialCommunityIcons name="clock-outline" size={14} color="#E67E22" />
+              <Text style={styles.modalNoteText}>Takes 3â€“5 minutes (AI + nutrition analysis)</Text>
+            </View>
           </View>
 
           <Text style={styles.fieldLabel}>Month</Text>
@@ -232,7 +416,7 @@ export default function MonthlyDietPlanDashboardScreen() {
 
           <View style={styles.modalActions}>
             <Button variant="outline" onPress={() => setShowGenerateModal(false)}>Cancel</Button>
-            <Button variant="primary" onPress={handleGenerate} loading={generating}>Generate</Button>
+            <Button variant="primary" onPress={handleGenerate}>Start Generating</Button>
           </View>
         </Modal>
       </Portal>
@@ -258,65 +442,71 @@ const styles = StyleSheet.create({
     marginBottom: spacing[3],
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 36, height: 36, borderRadius: 18,
     backgroundColor: 'rgba(255,255,255,0.18)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'center', alignItems: 'center',
   },
   heroIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 44, height: 44, borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'center', alignItems: 'center',
   },
-  heroTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: -0.3,
-  },
+  heroTitle: { fontSize: 22, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.3 },
   heroSubtitle: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.75)',
-    fontWeight: '500',
-    marginTop: 2,
-    marginBottom: spacing[4],
+    fontSize: 13, color: 'rgba(255,255,255,0.75)',
+    fontWeight: '500', marginTop: 2, marginBottom: spacing[4],
   },
   heroStatsRow: {
     flexDirection: 'row',
     backgroundColor: 'rgba(255,255,255,0.12)',
     borderRadius: borderRadius.md,
-    paddingVertical: spacing[3],
-    paddingHorizontal: spacing[2],
+    paddingVertical: spacing[3], paddingHorizontal: spacing[2],
   },
   heroStat: { flex: 1, alignItems: 'center' },
   heroStatValue: { fontSize: 16, fontWeight: '700', color: '#FFFFFF' },
   heroStatLabel: { fontSize: 10, fontWeight: '500', color: 'rgba(255,255,255,0.7)', marginTop: 2 },
   heroStatDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 2 },
 
+  /* Generating Banner */
+  bannerCard: {
+    borderRadius: borderRadius.lg,
+    padding: spacing[6],
+    marginBottom: spacing[4],
+    alignItems: 'center',
+    ...shadows.md,
+  },
+  bannerTitle: { fontSize: 18, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.3 },
+  bannerSub: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 4, marginBottom: spacing[4] },
+  bannerStep: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    paddingHorizontal: spacing[4], paddingVertical: spacing[2],
+    borderRadius: borderRadius.full, marginBottom: spacing[3],
+  },
+  bannerStepText: { fontSize: 13, color: 'rgba(255,255,255,0.9)', fontWeight: '500' },
+  bannerDots: { flexDirection: 'row', gap: 6, marginBottom: spacing[3] },
+  bannerDot: {
+    width: 6, height: 6, borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+  },
+  bannerDotActive: { backgroundColor: '#FFFFFF', width: 18 },
+  bannerNote: {
+    fontSize: 11, color: 'rgba(255,255,255,0.6)', textAlign: 'center',
+    fontStyle: 'italic', marginTop: 4,
+  },
+
   /* Generate */
   generateBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing[3],
-    paddingHorizontal: spacing[4],
-    borderRadius: borderRadius.full,
-    gap: 8,
-    marginBottom: spacing[4],
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: spacing[3], paddingHorizontal: spacing[4],
+    borderRadius: borderRadius.full, gap: 8, marginBottom: spacing[4],
   },
   generateText: { flex: 1, fontSize: 14, fontWeight: '600', color: '#FFFFFF' },
 
   /* Section */
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[2],
-    marginBottom: spacing[3],
+    flexDirection: 'row', alignItems: 'center',
+    gap: spacing[2], marginBottom: spacing[3],
   },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.neutral[800] },
   sectionLine: { flex: 1, height: 1, backgroundColor: colors.neutral[100] },
@@ -327,84 +517,66 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
     padding: spacing[4],
     marginBottom: spacing[3],
-    borderWidth: 1,
-    borderColor: colors.neutral[100],
+    borderWidth: 1, borderColor: colors.neutral[100],
     ...shadows.xs,
   },
   planRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing[3],
-    gap: spacing[3],
+    flexDirection: 'row', alignItems: 'center',
+    marginBottom: spacing[3], gap: spacing[3],
   },
   planIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 40, height: 40, borderRadius: 12,
     backgroundColor: '#F5F3F8',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'center', alignItems: 'center',
   },
   planInfo: { flex: 1 },
   planTitle: { fontSize: 15, fontWeight: '600', color: colors.neutral[900] },
   planDate: { fontSize: 12, color: colors.neutral[500], marginTop: 2 },
   planActions: { flexDirection: 'row', gap: spacing[2] },
   viewBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing[2],
-    borderRadius: borderRadius.sm,
-    backgroundColor: '#F5F3F8',
-    gap: 6,
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: spacing[2], borderRadius: borderRadius.sm,
+    backgroundColor: '#F5F3F8', gap: 6,
   },
   viewBtnText: { fontSize: 13, fontWeight: '600', color: '#6B5B8A' },
   deleteBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.sm,
+    width: 40, height: 40, borderRadius: borderRadius.sm,
     backgroundColor: colors.error.bg,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'center', alignItems: 'center',
   },
 
   /* Modal */
   modal: {
     backgroundColor: colors.neutral[0],
-    margin: spacing[4],
-    padding: spacing[5],
-    borderRadius: borderRadius.lg,
-    maxHeight: '80%',
+    margin: spacing[4], padding: spacing[5],
+    borderRadius: borderRadius.lg, maxHeight: '85%',
   },
   modalHeader: { alignItems: 'center', marginBottom: spacing[4] },
   modalIconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 52, height: 52, borderRadius: 26,
     backgroundColor: '#F5F3F8',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing[3],
+    justifyContent: 'center', alignItems: 'center', marginBottom: spacing[3],
   },
   modalTitle: { fontSize: 18, fontWeight: '700', color: colors.neutral[900] },
   modalSubtitle: { fontSize: 13, color: colors.neutral[500], marginTop: 4 },
+  modalNote: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: '#FFF8F0', borderRadius: borderRadius.sm,
+    paddingHorizontal: spacing[3], paddingVertical: spacing[2],
+    marginTop: spacing[2],
+  },
+  modalNoteText: { fontSize: 12, color: '#E67E22', fontWeight: '500' },
   fieldLabel: { fontSize: 13, fontWeight: '600', color: colors.neutral[600], marginBottom: spacing[2] },
   monthGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[2], marginBottom: spacing[4] },
   monthButton: {
-    width: '30%',
-    paddingVertical: spacing[2],
-    borderRadius: borderRadius.sm,
-    backgroundColor: colors.neutral[50],
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.neutral[100],
+    width: '30%', paddingVertical: spacing[2], borderRadius: borderRadius.sm,
+    backgroundColor: colors.neutral[50], alignItems: 'center',
+    borderWidth: 1, borderColor: colors.neutral[100],
   },
-  monthButtonSelected: {
-    backgroundColor: '#6B5B8A',
-    borderColor: '#6B5B8A',
+  monthButtonSelected: { backgroundColor: '#6B5B8A', borderColor: '#6B5B8A' },
+  monthButtonText: { fontSize: 13, fontWeight: '500', color: colors.neutral[600] },
+  monthButtonTextSelected: { color: '#FFFFFF', fontWeight: '600' },
+  modalActions: {
+    flexDirection: 'row', gap: spacing[3], marginTop: spacing[4],
   },
-  monthButtonText: { fontSize: 13, fontWeight: '600', color: colors.neutral[600] },
-  monthButtonTextSelected: { color: '#FFFFFF' },
-  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: spacing[3], marginTop: spacing[4] },
 });

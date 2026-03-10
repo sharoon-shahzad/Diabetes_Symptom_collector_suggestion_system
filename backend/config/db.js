@@ -9,31 +9,33 @@ export const connectDB = async () => {
         
         // Connection options for stability
         const options = {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
             maxPoolSize: 10,
-            serverSelectionTimeoutMS: 5000,
-            socketTimeoutMS: 45000,
+            serverSelectionTimeoutMS: 30000,
+            socketTimeoutMS: 60000,
+            connectTimeoutMS: 30000,
         };
         
         await mongoose.connect(uri, options);
-        console.log('MongoDB connected');
+        console.log('✅ MongoDB connected');
         
         // Handle connection events
         mongoose.connection.on('error', (err) => {
-            console.error('MongoDB connection error:', err);
+            console.error('❌ MongoDB connection error:', err);
         });
         
         mongoose.connection.on('disconnected', () => {
-            console.warn('MongoDB disconnected. Attempting to reconnect...');
+            console.warn('⚠️  MongoDB disconnected. Will auto-reconnect...');
         });
         
         mongoose.connection.on('reconnected', () => {
-            console.log('MongoDB reconnected');
+            console.log('✅ MongoDB reconnected');
         });
         
     } catch (err) {
-        console.error('MongoDB connection error:', err);
+        console.error('❌ MongoDB connection failed:', err.message);
+        console.error('❌ The server will exit — check MONGO_URI and Atlas Network Access (allow 0.0.0.0/0).');
+        // Give the log time to flush before exiting
+        await new Promise(r => setTimeout(r, 3000));
         process.exit(1);
     }
 };

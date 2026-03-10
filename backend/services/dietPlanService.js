@@ -472,7 +472,7 @@ CRITICAL RESPONSE RULES:
       // Step 1: Submit job
       const submitRes = await axios.post(
         `${hfBase}/gradio_api/call/predict`,
-        { data: [systemPrompt, prompt, maxTokens, 0.85] },
+        { data: [systemPrompt, prompt, maxTokens, 0.3] },
         { timeout: 30000 }
       );
       const { event_id } = submitRes.data;

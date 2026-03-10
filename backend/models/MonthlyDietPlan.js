@@ -103,13 +103,23 @@ const monthlyDietPlanSchema = new mongoose.Schema({
   
   region: {
     type: String,
-    required: true
+    required: true,
+    default: 'Global'
   }, // e.g., 'Pakistan', 'India', 'Global'
-  
+
   total_daily_calories: {
     type: Number,
-    required: true
+    required: true,
+    default: 0
   }, // Target daily calories
+
+  // Async generation tracking — 'pending' while LLM is running, 'complete' when done
+  generation_status: {
+    type: String,
+    enum: ['pending', 'complete', 'failed'],
+    default: 'pending'
+  },
+  generation_error: { type: String },
   
   meal_categories: [mealCategorySchema], // 5 meal categories, each with 5-7 options
   
