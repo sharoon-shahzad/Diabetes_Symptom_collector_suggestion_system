@@ -10,6 +10,14 @@ import type {
   ApiResponse 
 } from '@app-types/api';
 
+// Generation status response (fire-and-forget, mirrors MonthlyDietPlan pattern)
+export interface ExercisePlanGenerationStatus {
+  status: 'pending' | 'complete' | 'failed' | 'not_found';
+  planId?: string;
+  plan?: ExercisePlan;
+  error?: string;
+}
+
 export const exercisePlanApi = createApi({
   reducerPath: 'exercisePlanApi',
   baseQuery,
@@ -23,7 +31,39 @@ export const exercisePlanApi = createApi({
       }),
       invalidatesTags: ['ExercisePlan'],
     }),
-    
+
+    /**
+     * Ensure today's plan exists (fire-and-forget).
+     * Returns { success, status: 'complete'|'pending', planId, plan? }
+     */
+    ensureTodayExercisePlan: builder.mutation<ExercisePlanGenerationStatus, void>({
+      query: () => ({
+        url: '/exercise-plan/ensure-today',
+        method: 'POST',
+      }),
+      transformResponse: (res: any) => ({
+        status:  res?.status ?? 'pending',
+        planId:  res?.planId,
+        plan:    res?.plan,
+        error:   res?.error,
+      }),
+      invalidatesTags: ['ExercisePlan'],
+    }),
+
+    /**
+     * Poll today's generation status.
+     * Returns { success, status: 'pending'|'complete'|'failed'|'not_found', planId, plan? }
+     */
+    getExercisePlanStatusToday: builder.query<ExercisePlanGenerationStatus, void>({
+      query: () => '/exercise-plan/status/today',
+      transformResponse: (res: any) => ({
+        status:  res?.status ?? 'not_found',
+        planId:  res?.planId,
+        plan:    res?.plan,
+        error:   res?.error,
+      }),
+    }),
+
     getExercisePlans: builder.query<ApiResponse<ExercisePlan[]>, void>({
       query: () => '/exercise-plan',
       providesTags: ['ExercisePlan'],
@@ -54,6 +94,8 @@ export const exercisePlanApi = createApi({
 
 export const {
   useGenerateExercisePlanMutation,
+  useEnsureTodayExercisePlanMutation,
+  useGetExercisePlanStatusTodayQuery,
   useGetExercisePlansQuery,
   useGetExercisePlanByIdQuery,
   useDeleteExercisePlanMutation,

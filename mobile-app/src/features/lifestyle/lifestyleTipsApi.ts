@@ -115,6 +115,48 @@ export const lifestyleTipsApi = createApi({
       query: () => '/lifestyle-tips/stats',
       transformResponse: (res: any) => res?.data ?? res,
     }),
+
+    /**
+     * Ensure today's tips exist (fire-and-forget).
+     * Returns { status: 'complete'|'pending', tipsId, tips? }
+     */
+    ensureTodayLifestyleTips: builder.mutation<{
+      status: 'complete' | 'pending' | 'failed';
+      tipsId?: string;
+      tips?: LifestyleTipsData | null;
+      error?: string;
+    }, void>({
+      query: () => ({
+        url: '/lifestyle-tips/ensure-today',
+        method: 'POST',
+      }),
+      transformResponse: (res: any) => ({
+        status: res?.status ?? 'pending',
+        tipsId: res?.tipsId,
+        tips:   res?.tips ?? null,
+        error:  res?.error,
+      }),
+      invalidatesTags: ['LifestyleTips'],
+    }),
+
+    /**
+     * Poll today's generation status.
+     * Returns { status: 'pending'|'complete'|'failed'|'not_found', tipsId, tips? }
+     */
+    getLifestyleTipsStatusToday: builder.query<{
+      status: 'pending' | 'complete' | 'failed' | 'not_found';
+      tipsId?: string;
+      tips?: LifestyleTipsData | null;
+      error?: string;
+    }, void>({
+      query: () => '/lifestyle-tips/status/today',
+      transformResponse: (res: any) => ({
+        status: res?.status ?? 'not_found',
+        tipsId: res?.tipsId,
+        tips:   res?.tips ?? null,
+        error:  res?.error,
+      }),
+    }),
   }),
 });
 
@@ -128,4 +170,6 @@ export const {
   useDeleteTipsMutation,
   useGetTipsRegionCoverageQuery,
   useGetTipsStatsQuery,
+  useEnsureTodayLifestyleTipsMutation,
+  useGetLifestyleTipsStatusTodayQuery,
 } = lifestyleTipsApi;

@@ -6,7 +6,8 @@
  * Gracefully degrades when Health Connect is unavailable (e.g. Expo Go).
  */
 
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
+import * as Application from 'expo-application';
 
 // ── types ─────────────────────────────────────────────────
 
@@ -82,6 +83,16 @@ const PERMISSIONS: Array<{
 
 class GoogleFitService {
   private initialized = false;
+  private readonly permissionTimeoutMs = 12000;
+  private readonly useNativePermissionDialog = true;
+
+  private getAppPackageId(): string {
+    if (Platform.OS !== 'android') {
+      return 'com.diabeteshealth.mobile';
+    }
+
+    return Application.applicationId || 'com.diabeteshealth.mobile';
+  }
 
   /** Whether the Health Connect native module is linked. */
   get isModuleAvailable(): boolean {
@@ -96,7 +107,11 @@ class GoogleFitService {
       const ok = await HC.initialize();
       this.initialized = ok;
       return ok;
-    } catch {
+    } catch (error) {
+      if (__DEV__) {
+        // Keep a local trace for native init failures that do not propagate to UI.
+        console.warn('[GoogleFit] Health Connect init failed', error);
+      }
       return false;
     }
   }
@@ -126,10 +141,44 @@ class GoogleFitService {
   async authorize(): Promise<boolean> {
     if (!HC) return false;
     try {
-      await this.init();
-      const granted = await HC.requestPermission(PERMISSIONS);
+      const inited = await this.init();
+      if (!inited) {
+        return false;
+      }
+
+      const alreadyGranted = await this.hasPermissions();
+      if (alreadyGranted) {
+        return true;
+      }
+
+      // Some release APK/device combinations can crash in the native permission contract.
+      // We use Health Connect's app-managed permission screen as a stable fallback path.
+      if (!this.useNativePermissionDialog) {
+        return false;
+      }
+
+      const permissionPromise = HC.requestPermission(PERMISSIONS);
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        const timer = setTimeout(() => {
+          clearTimeout(timer);
+          reject(new Error('Health Connect permission request timed out'));
+        }, this.permissionTimeoutMs);
+      });
+
+      const granted = (await Promise.race([
+        permissionPromise,
+        timeoutPromise,
+      ])) as Array<{ accessType: string; recordType: string }>;
+
+      if (!Array.isArray(granted)) {
+        return false;
+      }
+
       return granted.length >= PERMISSIONS.length;
-    } catch {
+    } catch (error) {
+      if (__DEV__) {
+        console.warn('[GoogleFit] authorize failed', error);
+      }
       return false;
     }
   }
@@ -152,7 +201,26 @@ class GoogleFitService {
 
   /** Open Health Connect settings. */
   openSettings(): void {
-    HC?.openHealthConnectSettings();
+    try {
+      if (HC?.openHealthConnectDataManagement) {
+        HC.openHealthConnectDataManagement(this.getAppPackageId());
+        return;
+      }
+
+      HC?.openHealthConnectSettings();
+      return;
+    } catch (error) {
+      if (__DEV__) {
+        console.warn('[GoogleFit] openHealthConnectSettings failed', error);
+      }
+    }
+
+    // Last resort fallback to the Play Store listing.
+    Linking.openURL('market://details?id=com.google.android.apps.healthdata')
+      .catch(() =>
+        Linking.openURL('https://play.google.com/store/apps/details?id=com.google.android.apps.healthdata'),
+      )
+      .catch(() => {});
   }
 
   // ── data readers ──────────────────────────────────────

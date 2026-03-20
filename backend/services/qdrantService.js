@@ -215,6 +215,5 @@ function formatFilter(filter) {
         }
     }
 
-    if (must.length === 1) return must[0];
     return must.length > 0 ? { must } : undefined;
 }

@@ -85,6 +85,7 @@ export default function ProfileScreen() {
       items: [
         { icon: 'clipboard-pulse-outline', title: 'Medical Profile', subtitle: 'Health details and conditions', route: '/profile/medical', accent: ACCENT.health },
         { icon: 'heart-pulse', title: 'Habits & Lifestyle', subtitle: 'Daily habits tracking', route: '/profile/habits', accent: ACCENT.health },
+        { icon: 'google-fit', title: 'Google Fit', subtitle: 'Connect Health Connect and sync activity data', route: '/profile/google-fit', accent: ACCENT.health },
       ],
     },
     {

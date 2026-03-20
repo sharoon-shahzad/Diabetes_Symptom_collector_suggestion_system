@@ -3,8 +3,13 @@ import { UserPersonalInfo } from '../models/UserPersonalInfo.js';
 import { UserMedicalInfo } from '../models/UserMedicalInfo.js';
 import { enhanceChatWithRAG } from '../services/ragService.js';
 
-const LM_STUDIO_BASE_URL = process.env.LM_STUDIO_BASE_URL || 'http://127.0.0.1:1234';
-const LM_STUDIO_MODEL = process.env.LM_STUDIO_MODEL || 'diabetica-7b';
+const HF_SPACE_URL = process.env.HF_SPACE_URL || 'https://zeeshanasghar02-diabetica-api.hf.space';
+const HF_SUBMIT_TIMEOUT_MS = 30000;
+const HF_SSE_TIMEOUT_MS = 90000;
+const HF_MAX_TOKENS = 768;
+const MAX_HABITS_RAG_QUERY_CHARS = 240;
+const MAX_HABITS_RAG_CONTEXT_CHARS = 1600;
+const inFlightHabitGenerations = new Map();
 
 // Helper to get start and end of current week (Friday to Thursday)
 const getCurrentWeekBounds = () => {
@@ -127,6 +132,107 @@ const formatSnapshotText = (snapshot) => {
   return lines.join('\n');
 };
 
+const buildHabitRetrievalQuery = (snapshot) => {
+  const parts = [
+    snapshot.medical.diabetesType,
+    snapshot.lifestyle.activityLevel,
+    snapshot.lifestyle.dietPreference,
+    snapshot.physical.bmi ? `BMI ${snapshot.physical.bmi}` : '',
+    'weekly diabetes habits Pakistan',
+  ].filter(Boolean);
+
+  return parts.join(' ').slice(0, MAX_HABITS_RAG_QUERY_CHARS);
+};
+
+const repairTruncatedJson = (input) => {
+  let candidate = String(input || '').replace(/,\s*$/, '');
+  const stack = [];
+  let inString = false;
+
+  for (let index = 0; index < candidate.length; index++) {
+    const char = candidate[index];
+    if (char === '\\' && inString) {
+      index += 1;
+      continue;
+    }
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (char === '{') stack.push('}');
+    else if (char === '[') stack.push(']');
+    else if ((char === '}' || char === ']') && stack.length > 0) stack.pop();
+  }
+
+  if (inString) candidate += '"';
+  while (stack.length > 0) candidate += stack.pop();
+  for (let pass = 0; pass < 4; pass++) {
+    candidate = candidate.replace(/,(\s*[}\]])/g, '$1');
+  }
+
+  return candidate;
+};
+
+const parseHabitsJson = (rawContent) => {
+  const jsonMatch = rawContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/) || rawContent.match(/\{[\s\S]*\}/);
+  const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : rawContent;
+
+  try {
+    return JSON.parse(jsonStr);
+  } catch {
+    return JSON.parse(repairTruncatedJson(jsonStr));
+  }
+};
+
+const callHabitsModel = async (systemPrompt, userPrompt) => {
+  console.log('[HABITS] Calling HF Diabetica API...');
+  const submitRes = await fetch(`${HF_SPACE_URL}/gradio_api/call/predict`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ data: [systemPrompt, userPrompt, HF_MAX_TOKENS, 0.3] }),
+    signal: AbortSignal.timeout(HF_SUBMIT_TIMEOUT_MS),
+  });
+
+  if (!submitRes.ok) {
+    throw new Error(`HF submit failed with status ${submitRes.status}`);
+  }
+
+  const submitData = await submitRes.json();
+  const eventId = submitData?.event_id;
+  if (!eventId) {
+    throw new Error('No event_id returned from HF Space');
+  }
+
+  console.log('[HABITS] Got event_id:', eventId);
+  const sseRes = await fetch(`${HF_SPACE_URL}/gradio_api/call/predict/${eventId}`, {
+    signal: AbortSignal.timeout(HF_SSE_TIMEOUT_MS),
+  });
+
+  if (!sseRes.ok) {
+    throw new Error(`HF SSE failed with status ${sseRes.status}`);
+  }
+
+  const rawText = await sseRes.text();
+  const lines = rawText.split('\n');
+
+  for (let index = lines.length - 1; index >= 0; index--) {
+    const line = lines[index].trim();
+    if (!line.startsWith('data:')) continue;
+
+    try {
+      const payload = JSON.parse(line.slice(5).trim());
+      if (Array.isArray(payload) && typeof payload[0] === 'string' && payload[0].trim()) {
+        return payload[0].trim();
+      }
+    } catch {
+      // Keep scanning
+    }
+  }
+
+  throw new Error('HF AI service returned an empty response');
+};
+
 // Generate weekly habits using LLM + RAG
 export const generateWeeklyHabits = async (req, res) => {
   try {
@@ -140,6 +246,12 @@ export const generateWeeklyHabits = async (req, res) => {
     // Check if active habits exist for current week
     const { weekStart, weekEnd } = getCurrentWeekBounds();
     console.log('[HABITS] Week bounds:', { weekStart, weekEnd });
+    const requestKey = `${String(userId)}:${weekStart.toISOString()}`;
+
+    if (inFlightHabitGenerations.has(requestKey)) {
+      console.log('[HABITS] Returning existing in-flight generation for current week');
+      return res.json(await inFlightHabitGenerations.get(requestKey));
+    }
     
     const existingHabits = await WeeklyHabits.findOne({
       user_id: userId,
@@ -176,30 +288,18 @@ export const generateWeeklyHabits = async (req, res) => {
     
     console.log('[HABITS] Clinical snapshot:', snapshotText);
     
-    // Build comprehensive prompt for habit generation
-    const habitPrompt = `You are a certified diabetes care specialist and health coach. Generate a personalized weekly habit plan for this patient.
+    // Build compact prompt for habit generation
+    const habitPrompt = `Generate a personalized weekly habit plan for this patient.
 
 PATIENT PROFILE:
 ${snapshotText}
 
 IMPORTANT GUIDELINES:
-1. Generate 5-8 specific, actionable daily habits tailored to THIS patient's data
-2. DO NOT recommend glucose monitoring, blood tests, HbA1c checks, or any IoT device usage - we don't have that technology yet
-3. Focus on: Diet, Exercise, Medication Adherence, Sleep, Stress Management, Lifestyle Modifications
-4. Each habit must be:
-   - Specific and measurable (e.g., "Walk 30 minutes" not "Exercise more")
-   - Achievable for this patient's current condition
-   - Evidence-based and clinically sound
-   - Directly related to their diabetes management
-
-5. Base recommendations on their ACTUAL data:
-   - If BMI is high: Include weight management habits
-   - If activity level is sedentary: Include progressive physical activity
-   - If sleep is poor: Include sleep hygiene habits
-   - If they take medications: Include medication adherence reminders
-   - If they smoke/drink: Include harm reduction strategies
-
-6. Consider cultural context (Pakistani patient) - recommend culturally appropriate foods and activities
+  1. Generate 5-7 specific, measurable habits.
+  2. Do not recommend glucose monitoring devices, blood tests, or IoT tools.
+  3. Focus on diet, exercise, medication adherence, sleep, stress, and lifestyle.
+  4. Keep each description concise and practical.
+  5. Consider Pakistani cultural context.
 
 RESPONSE FORMAT (MUST be valid JSON):
 {
@@ -220,111 +320,82 @@ RESPONSE FORMAT (MUST be valid JSON):
   ],
   "weekSummary": "One paragraph overview of this week's focus areas and expected outcomes"
 }
-
-EXAMPLES OF GOOD HABITS:
-- "Take morning walk before breakfast" (30 minutes, helps lower fasting glucose)
-- "Drink water throughout the day" (8 glasses, prevents dehydration, aids kidney function)
-- "Eat protein with every meal" (helps stabilize blood sugar, reduces spikes)
-- "Practice deep breathing before bed" (10 minutes, reduces stress, improves sleep)
-- "Take medications at same time daily" (improves efficacy, prevents missed doses)
-
 Generate habits that are practical, culturally appropriate, and perfectly tailored to this patient's condition. Return ONLY valid JSON, no additional text.`;
 
     // Enhance with RAG
     console.log('[HABITS] Enhancing prompt with RAG...');
-    const ragResult = await enhanceChatWithRAG(habitPrompt, personal, medical);
+    const ragQuery = buildHabitRetrievalQuery(clinicalSnapshot);
+    const ragResult = await enhanceChatWithRAG(ragQuery, userId, personal, []);
     
-    const finalPrompt = ragResult.systemPrompt 
-      ? `${ragResult.systemPrompt}\n\n${habitPrompt}` 
+    const ragContext = typeof ragResult.ragContext === 'string'
+      ? ragResult.ragContext.slice(0, MAX_HABITS_RAG_CONTEXT_CHARS)
+      : '';
+    const finalPrompt = ragContext
+      ? `${habitPrompt}\n\nGUIDELINE CONTEXT:\n${ragContext}`
       : habitPrompt;
     
     console.log('[HABITS] RAG context used:', ragResult.contextUsed);
-    
-    // Call LLM
-    const messages = [
-      {
-        role: 'system',
-        content: 'You are a diabetes care specialist and health coach. Generate personalized weekly habit plans in valid JSON format. Be specific, actionable, and evidence-based.'
-      },
-      {
-        role: 'user',
-        content: finalPrompt
+
+    const generationPromise = (async () => {
+      let habitsData;
+      let generationModel = 'hf-diabetica';
+
+      try {
+        const rawContent = await callHabitsModel(
+          'You are a diabetes care specialist and health coach. Return only valid JSON for weekly habits. Keep it concise and actionable.',
+          finalPrompt
+        );
+        console.log('[HABITS] Raw LLM response:', rawContent.substring(0, 300));
+        habitsData = parseHabitsJson(rawContent);
+
+        if (!habitsData.habits || !Array.isArray(habitsData.habits)) {
+          throw new Error('Invalid habits structure');
+        }
+      } catch (llmError) {
+        console.error('[HABITS] HF habits generation failed, using fallback:', llmError.message);
+        habitsData = generateDataDrivenHabits(clinicalSnapshot);
+        generationModel = 'data-driven-fallback';
       }
-    ];
     
-    console.log('[HABITS] Calling LM Studio API...');
-    const llmResponse = await fetch(`${LM_STUDIO_BASE_URL}/v1/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: LM_STUDIO_MODEL,
-        messages,
-        temperature: 0.7,
-        max_tokens: 2000,
-      }),
-    });
-    
-    if (!llmResponse.ok) {
-      const errorText = await llmResponse.text();
-      console.error('[HABITS] LM Studio error:', llmResponse.status, errorText);
-      throw new Error(`LM Studio API error: ${llmResponse.status}`);
-    }
-    
-    const llmData = await llmResponse.json();
-    const rawContent = llmData.choices?.[0]?.message?.content?.trim() || '{}';
-    console.log('[HABITS] Raw LLM response:', rawContent.substring(0, 300));
-    
-    // Parse JSON response
-    let habitsData;
+      const weeklyHabits = new WeeklyHabits({
+        user_id: userId,
+        weekStartDate: weekStart,
+        weekEndDate: weekEnd,
+        habits: habitsData.habits,
+        generationContext: {
+          bmi: clinicalSnapshot.physical.bmi,
+          diabetesType: clinicalSnapshot.medical.diabetesType,
+          diabetesDuration: clinicalSnapshot.medical.diabetesDuration,
+          activityLevel: clinicalSnapshot.lifestyle.activityLevel,
+          medications: clinicalSnapshot.medical.medications || [],
+          chronicConditions: clinicalSnapshot.medical.chronicConditions || []
+        },
+        llmMetadata: {
+          model: generationModel,
+          ragContextUsed: ragResult.contextUsed,
+          sources: ragResult.sources?.map(s => s.title) || []
+        },
+        status: 'active'
+      });
+
+      await weeklyHabits.save();
+
+      console.log('[HABITS] Weekly habits generated and saved');
+
+      return {
+        success: true,
+        data: weeklyHabits,
+        message: 'Weekly habits generated successfully',
+        weekSummary: habitsData.weekSummary
+      };
+    })();
+
+    inFlightHabitGenerations.set(requestKey, generationPromise);
     try {
-      // Extract JSON from markdown code blocks if present
-      const jsonMatch = rawContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/) || rawContent.match(/\{[\s\S]*\}/);
-      const jsonStr = jsonMatch ? (jsonMatch[1] || jsonMatch[0]) : rawContent;
-      habitsData = JSON.parse(jsonStr);
-      
-      if (!habitsData.habits || !Array.isArray(habitsData.habits)) {
-        throw new Error('Invalid habits structure');
-      }
-    } catch (parseError) {
-      console.error('[HABITS] JSON parse error:', parseError);
-      console.error('[HABITS] Raw content:', rawContent);
-      
-      // Fallback to data-driven habits
-      habitsData = generateDataDrivenHabits(clinicalSnapshot);
+      return res.json(await generationPromise);
+    } finally {
+      inFlightHabitGenerations.delete(requestKey);
     }
-    
-    // Save to database
-    const weeklyHabits = new WeeklyHabits({
-      user_id: userId,
-      weekStartDate: weekStart,
-      weekEndDate: weekEnd,
-      habits: habitsData.habits,
-      generationContext: {
-        bmi: clinicalSnapshot.physical.bmi,
-        diabetesType: clinicalSnapshot.medical.diabetesType,
-        diabetesDuration: clinicalSnapshot.medical.diabetesDuration,
-        activityLevel: clinicalSnapshot.lifestyle.activityLevel,
-        medications: clinicalSnapshot.medical.medications || [],
-        chronicConditions: clinicalSnapshot.medical.chronicConditions || []
-      },
-      llmMetadata: {
-        model: LM_STUDIO_MODEL,
-        ragContextUsed: ragResult.contextUsed,
-        sources: ragResult.sources?.map(s => s.title) || []
-      },
-      status: 'active'
-    });
-    
-    await weeklyHabits.save();
-    
-    console.log('[HABITS] Weekly habits generated and saved');
-    
-    return res.json({
-      success: true,
-      data: weeklyHabits,
-      message: 'Weekly habits generated successfully',
-      weekSummary: habitsData.weekSummary
-    });
     
   } catch (error) {
     console.error('[HABITS] Error generating weekly habits:', error);

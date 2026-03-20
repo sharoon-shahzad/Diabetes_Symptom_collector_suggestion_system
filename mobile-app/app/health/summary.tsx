@@ -20,6 +20,7 @@ import {
   Platform,
   UIManager,
   Linking,
+  Alert,
 } from 'react-native';
 import { Text, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -193,7 +194,7 @@ function bucketData(
 function ConnectBanner({
   onAuthorize,
 }: {
-  onAuthorize: () => void;
+  onAuthorize: () => Promise<void>;
 }) {
   return (
     <View style={styles.connectBanner}>
@@ -340,6 +341,21 @@ export default function SummaryDetailScreen() {
   const hcNeedsUpdate = hcStatus === HEALTH_CONNECT_SDK_STATUS.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED;
   const hcNotInstalled = hcStatus === HEALTH_CONNECT_SDK_STATUS.SDK_UNAVAILABLE_PROVIDER_NOT_INSTALLED;
 
+  const handleAuthorize = async () => {
+    const granted = await googleFit.authorize();
+
+    if (granted) {
+      Alert.alert('Permissions granted', 'Health Connect permissions were granted successfully.');
+      await googleFit.refresh();
+      return;
+    }
+
+    Alert.alert(
+      'Finish setup in Health Connect',
+      'Grant permissions for this app and confirm Google Fit is connected in Health Connect, then come back and pull to refresh.',
+    );
+  };
+
   const handleSelectMetric = (idx: number) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setSelectedIdx(idx);
@@ -427,7 +443,7 @@ export default function SummaryDetailScreen() {
             onPress={openHealthConnectStore}
           />
         ) : needsPermissions ? (
-          <ConnectBanner onAuthorize={googleFit.authorize} />
+          <ConnectBanner onAuthorize={handleAuthorize} />
         ) : null}
 
         {/* Quick access to Health Connect settings when available */}

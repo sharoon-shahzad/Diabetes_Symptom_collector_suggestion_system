@@ -1,4 +1,5 @@
 import exercisePlanService from '../services/exercisePlanService.js';
+import ExercisePlan from '../models/ExercisePlan.js';
 import regionDiscoveryService from '../services/regionDiscoveryService.js';
 import { generateExercisePlanPDF } from '../services/pdfGenerationService.js';
 import { sendExercisePlanEmail } from '../services/emailService.js';
@@ -268,3 +269,121 @@ const autoGenerateExercisePlan = async (req, res) => {
 };
 
 export { generateExercisePlan, getExercisePlanByDate, getCurrentExercisePlan, getExercisePlanHistory, getExercisePlanById, downloadExercisePlanPDF, deleteExercisePlan, checkUserRegionCoverage, getAvailableRegions, autoGenerateExercisePlan };
+
+/**
+ * Ensure today's exercise plan exists — fire-and-forget pattern.
+ * POST /api/v1/exercise-plan/ensure-today
+ *
+ * 1. Complete plan exists → return 200 immediately (no AI call needed)
+ * 2. Plan is being generated (pending) → return 202 with planId to keep polling
+ * 3. Plan failed → delete and restart generation
+ * 4. No plan → create placeholder, start background gen, return 202
+ */
+export const ensureTodayExercisePlan = async (req, res) => {
+  try {
+    const STALE_PENDING_MS = 60 * 60 * 1000;
+    const userId = req.user._id;
+    const today  = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const targetDateStr = today.toISOString().split('T')[0];
+
+    const existing = await ExercisePlan.findOne({ user_id: userId, target_date: today });
+
+    if (existing) {
+      const gs = existing.generation_status;
+
+      if (gs === 'complete') {
+        return res.status(200).json({ success: true, status: 'complete', planId: existing._id, plan: existing });
+      }
+      if (gs === 'pending') {
+        const createdAtMs = new Date(existing.createdAt || existing.generated_at || Date.now()).getTime();
+        const isStale = Date.now() - createdAtMs > STALE_PENDING_MS;
+        if (isStale) {
+          await existing.deleteOne();
+          console.warn(`⚠️ Stale pending exercise plan removed for ${targetDateStr}; regenerating.`);
+        } else {
+          return res.status(202).json({
+            success: true, status: 'pending', planId: existing._id,
+            message: 'Exercise plan is being generated. Poll GET /status/today for updates.',
+          });
+        }
+      } else {
+        // 'failed' — delete and regenerate
+        await existing.deleteOne();
+        console.log(`🗑️ Deleted failed exercise plan for ${targetDateStr}, restarting...`);
+      }
+    }
+
+    // Create a thin placeholder
+    const placeholder = new ExercisePlan({
+      user_id:           userId,
+      target_date:       today,
+      region:            'Global',
+      sessions:          [],
+      totals:            { duration_total_min: 0, calories_total: 0, sessions_count: 0 },
+      status:            'pending',
+      generation_status: 'pending',
+    });
+    await placeholder.save();
+    console.log(`📌 Created pending exercise plan ${placeholder._id} for ${targetDateStr}`);
+
+    // Return 202 immediately — no long wait for the client
+    res.status(202).json({
+      success: true, status: 'pending', planId: placeholder._id,
+      message: 'Exercise plan generation started. Poll GET /status/today for updates.',
+    });
+
+    // Background generation — response already sent
+    exercisePlanService.runBackgroundExerciseGeneration(String(userId), targetDateStr, placeholder._id)
+      .catch(err => console.error('❌ Unhandled background exercise gen error:', err.message));
+
+  } catch (error) {
+    console.error('Error in ensureTodayExercisePlan:', error);
+    return res.status(500).json({ success: false, error: 'Failed to ensure today\'s exercise plan.' });
+  }
+};
+
+/**
+ * Poll generation status for today's exercise plan.
+ * GET /api/v1/exercise-plan/status/today
+ */
+export const getExercisePlanStatusToday = async (req, res) => {
+  try {
+    const STALE_PENDING_MS = 20 * 60 * 1000;
+    const userId = req.user._id;
+    const today  = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+
+    const plan = await ExercisePlan.findOne({ user_id: userId, target_date: today });
+
+    if (!plan) {
+      return res.status(404).json({ success: false, status: 'not_found', error: 'No exercise plan for today' });
+    }
+
+    // Support both old plans (use status field) and new plans (use generation_status)
+    let gs = plan.generation_status || (plan.status === 'final' ? 'complete' : 'pending');
+
+    if (gs === 'pending') {
+      const createdAtMs = new Date(plan.createdAt || plan.generated_at || Date.now()).getTime();
+      if (Date.now() - createdAtMs > STALE_PENDING_MS) {
+        await ExercisePlan.findByIdAndUpdate(plan._id, {
+          generation_status: 'failed',
+          generation_error: 'Generation timed out. Please retry to regenerate today\'s plan.',
+        });
+        gs = 'failed';
+        plan.generation_error = 'Generation timed out. Please retry to regenerate today\'s plan.';
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      status:  gs,
+      planId:  plan._id,
+      plan:    gs === 'complete' ? plan : undefined,
+      error:   gs === 'failed'   ? plan.generation_error : undefined,
+    });
+  } catch (error) {
+    console.error('Error in getExercisePlanStatusToday:', error);
+    return res.status(500).json({ success: false, error: 'Failed to get exercise plan status' });
+  }
+};

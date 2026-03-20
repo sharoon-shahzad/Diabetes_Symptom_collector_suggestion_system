@@ -8,6 +8,10 @@ router.use(verifyAccessTokenMiddleware);
 
 // Order: specific before generic where necessary
 router.post('/auto-generate', exercisePlanController.autoGenerateExercisePlan);
+// Fire-and-forget: ensure today's plan exists (async, 202 + poll)
+router.post('/ensure-today', exercisePlanController.ensureTodayExercisePlan);
+// Poll today's generation status
+router.get('/status/today', exercisePlanController.getExercisePlanStatusToday);
 router.get('/region-coverage', exercisePlanController.checkUserRegionCoverage);
 router.get('/regions', exercisePlanController.getAvailableRegions);
 

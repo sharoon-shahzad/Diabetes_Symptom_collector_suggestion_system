@@ -675,11 +675,17 @@ export const assessDiabetes = async (req, res) => {
         console.log('   Recent report ID:', recentReport._id, 'Created:', recentReport.assessment_date);
       }
 
+      // Email delivery is best-effort. If the email on the account is missing/invalid,
+      // we still return assessment results and simply skip the email job.
+      const emailAddress = updatedUser?.email;
+      const isEmailFormatValid = typeof emailAddress === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress);
+      const isEmailServiceConfigured = !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+
       // Generate and send risk assessment report email in background (ONLY if no recent duplicate)
-      if (shouldSendEmail) {
+      if (shouldSendEmail && isEmailFormatValid && isEmailServiceConfigured) {
         setImmediate(async () => {
           try {
-            console.log('📊 Generating risk assessment report for user:', updatedUser.email);
+            console.log('📊 Generating risk assessment report for user:', emailAddress);
             
             // Fetch personal and medical info
             const personalInfo = await UserPersonalInfo.findOne({ user_id: userId });
@@ -739,33 +745,38 @@ export const assessDiabetes = async (req, res) => {
             decryptedMedicalInfo,
             riskData
           );
-          
-          // Update report with PDF path and mark email as sent
-          await Report.findByIdAndUpdate(reportDoc._id, {
-            pdf_path: pdfPath,
-            email_sent_at: new Date()
-          });
-          
+
+          // Persist PDF path (email_sent_at should ONLY be set after a successful send)
+          await Report.findByIdAndUpdate(reportDoc._id, { pdf_path: pdfPath });
+
           // Send email with PDF
           await sendRiskAssessmentEmail(
-            updatedUser.email,
+            emailAddress,
             updatedUser.fullName,
             riskData.risk_level,
             pdfPath
           );
+
+          // Mark email as sent after successful delivery
+          await Report.findByIdAndUpdate(reportDoc._id, { email_sent_at: new Date() });
           
-          console.log('✅ Risk assessment report email sent successfully to:', updatedUser.email);
+          console.log('✅ Risk assessment report email sent successfully to:', emailAddress);
         } catch (reportError) {
           console.error('❌ Error generating/sending risk assessment report:', reportError.message);
           console.error('Full error:', reportError);
         }
         });
       } else {
-        // Still update the report with a note that email was skipped
-        await Report.findByIdAndUpdate(reportDoc._id, {
-          email_sent_at: new Date(), // Mark as "processed" to prevent future attempts
-        });
-        console.log('📝 Report marked as processed (email skipped due to duplicate)');
+        if (!shouldSendEmail) {
+          // Still update the report with a note that email was skipped (duplicate)
+          await Report.findByIdAndUpdate(reportDoc._id, {
+            email_sent_at: new Date(), // Mark as "processed" to prevent future attempts
+          });
+          console.log('📝 Report marked as processed (email skipped due to duplicate)');
+        } else {
+          console.warn('⚠️ Skipping assessment email: missing/invalid email or email service not configured');
+          // Keep email_sent_at as null so UI/admin can detect that email wasn't delivered.
+        }
       }
 
     } catch (persistErr) {
@@ -787,6 +798,18 @@ export const assessDiabetes = async (req, res) => {
       console.error('Failed to log assessment to audit trail:', auditErr);
     }
 
+    const notices = [];
+    // If user has an invalid/missing email, warn client in a single professional message.
+    // Note: we only validate format here; actual delivery can still fail asynchronously.
+    const emailMissingOrInvalid = !user?.email || (typeof user.email === 'string' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user.email));
+    const emailServiceNotConfigured = !(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+
+    if (emailMissingOrInvalid || emailServiceNotConfigured) {
+      notices.push(
+        "Your assessment results are ready, but we couldn't email your report. The email address on your account may be invalid, or the email service may be temporarily unavailable. Please verify/update your email and try again."
+      );
+    }
+
     // Return enhanced result with metadata
     return res.status(200).json({ 
       success: true, 
@@ -796,6 +819,7 @@ export const assessDiabetes = async (req, res) => {
         has_assessment: true,
         is_cached: false,
         assessment_date: new Date(),
+        notices,
         enhancement_status: enhancementStatus,
         model_info: {
           primary_model: 'XGBoost (512 records)',

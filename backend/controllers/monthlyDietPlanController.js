@@ -36,15 +36,26 @@ export const generateMonthlyDietPlan = async (req, res) => {
 
     if (existing) {
       if (existing.generation_status === 'pending') {
-        // Still generating — tell client to keep polling
-        return res.status(202).json({
-          success: true,
-          status: 'pending',
-          planId: existing._id,
-          month: monthNum,
-          year: yearNum,
-          message: 'Plan is already being generated. Keep polling /status.'
-        });
+        // If a pending plan is stale, remove it so the user can manually retry.
+        const STALE_PENDING_MS = 2 * 60 * 60 * 1000; // 2 hours
+        const createdAt = existing.created_at || existing.createdAt;
+        const createdAtMs = createdAt ? new Date(createdAt).getTime() : Date.now();
+        const ageMs = Date.now() - createdAtMs;
+
+        if (ageMs > STALE_PENDING_MS) {
+          await existing.deleteOne();
+          console.warn(`⚠️ Deleted stale pending monthly plan for ${monthNum}/${yearNum} (age ${(ageMs / 60000).toFixed(0)} min)`);
+        } else {
+          // Still generating — tell client to keep polling
+          return res.status(202).json({
+            success: true,
+            status: 'pending',
+            planId: existing._id,
+            month: monthNum,
+            year: yearNum,
+            message: 'Plan is already being generated. Keep polling /status.'
+          });
+        }
       }
       if (existing.generation_status === 'complete') {
         return res.status(409).json({
@@ -115,12 +126,50 @@ export const getGenerationStatus = async (req, res) => {
       return res.status(404).json({ success: false, status: 'not_found', error: 'No plan found for this month/year' });
     }
 
+    // Build realistic ETA from this user's historical completed generations.
+    const recentCompleted = await MonthlyDietPlan.find({
+      user_id: userId,
+      generation_status: 'complete',
+      'generation_context.generation_duration_ms': { $exists: true, $gt: 0 }
+    })
+      .sort({ updatedAt: -1 })
+      .limit(10)
+      .select('generation_context.generation_duration_ms');
+
+    const historicalDurations = recentCompleted
+      .map((d) => d?.generation_context?.generation_duration_ms)
+      .filter((ms) => typeof ms === 'number' && ms > 0);
+
+    const DEFAULT_ESTIMATE_MS = 5 * 60 * 1000;
+    const estimatedDurationMs = historicalDurations.length > 0
+      ? Math.round(historicalDurations.reduce((sum, ms) => sum + ms, 0) / historicalDurations.length)
+      : DEFAULT_ESTIMATE_MS;
+
+    const startedAt = plan.created_at || plan.createdAt || new Date();
+    const startedAtMs = new Date(startedAt).getTime();
+    const elapsedMs = Math.max(0, Date.now() - startedAtMs);
+    const remainingMs = plan.generation_status === 'pending'
+      ? Math.max(0, estimatedDurationMs - elapsedMs)
+      : 0;
+    const progress = plan.generation_status === 'pending'
+      ? Math.min(0.97, elapsedMs / Math.max(estimatedDurationMs, 1))
+      : (plan.generation_status === 'complete' ? 1 : 0);
+
+    const generationTiming = {
+      startedAt,
+      elapsedMs,
+      estimatedDurationMs,
+      remainingMs,
+      progress,
+    };
+
     return res.status(200).json({
       success: true,
       status:  plan.generation_status,   // 'pending' | 'complete' | 'failed'
       planId:  plan._id,
       month:   plan.month,
       year:    plan.year,
+      generationTiming,
       // Send full plan only when complete so polling is lightweight
       plan:    plan.generation_status === 'complete' ? plan : undefined,
       error:   plan.generation_status === 'failed'   ? plan.generation_error : undefined,

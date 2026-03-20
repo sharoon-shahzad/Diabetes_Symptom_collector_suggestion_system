@@ -5,7 +5,7 @@
   },
   "build": {
     "preview": {
-      "credentialsSource": "local",
+      "credentialsSource": "remote",
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://zeeshanasghar02-diavise-backend.hf.space"

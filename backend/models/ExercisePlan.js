@@ -40,6 +40,9 @@ const ExercisePlanSchema = new mongoose.Schema({
   sources: { type: [SourceSchema], default: [] },
   tips: { type: [String], default: [] },
   status: { type: String, enum: ['pending', 'final'], default: 'pending' },
+  // Async generation tracking (fire-and-forget pattern, mirrors MonthlyDietPlan)
+  generation_status: { type: String, enum: ['pending', 'complete', 'failed'], default: 'pending' },
+  generation_error: { type: String },
   generated_at: { type: Date, default: Date.now }
 }, { timestamps: true });
 

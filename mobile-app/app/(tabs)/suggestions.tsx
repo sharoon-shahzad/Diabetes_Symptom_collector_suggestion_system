@@ -1,7 +1,7 @@
 /**
  * Suggestions Screen
- * Personalized health suggestions hub — diet plans, exercise plans,
- * lifestyle tips, habits tracker, monthly diet, and AI chat.
+ * Personalized health suggestions hub — exercise plans,
+ * lifestyle tips, monthly diet, and AI chat.
  * No emojis — MaterialCommunityIcons only
  */
 
@@ -22,10 +22,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { useAppSelector } from '@store/hooks';
 import { selectUser } from '@features/auth/authSlice';
-import { useGetDietPlansQuery } from '@features/diet/dietPlanApi';
 import { useGetExercisePlansQuery } from '@features/exercise/exercisePlanApi';
 import { useGetCurrentTipsQuery } from '@features/lifestyle/lifestyleTipsApi';
-import { useGetCurrentWeeklyHabitsQuery } from '@features/habits/weeklyHabitsApi';
 import { Button } from '@components/common/Button';
 import { spacing, borderRadius, shadows } from '@theme/spacing';
 import colors from '@theme/colors';
@@ -53,36 +51,27 @@ export default function SuggestionsScreen() {
   const canAccess = isDiagnosed && hasCompletedProfile;
 
   const firstName = user?.fullName?.split(' ')[0] || 'there';
-  const { data: dietData, isLoading: dietLoading, isError: dietError, refetch: dietRefetch } = useGetDietPlansQuery({}, { skip: !canAccess });
-  const { data: exerciseData, isLoading: exerciseLoading, isError: exerciseError, refetch: exerciseRefetch } = useGetExercisePlansQuery({}, { skip: !canAccess });
+  const { data: exerciseData, isLoading: exerciseLoading, isError: exerciseError, refetch: exerciseRefetch } = useGetExercisePlansQuery(undefined, { skip: !canAccess });
   const { data: tipsData, refetch: tipsRefetch } = useGetCurrentTipsQuery();
-  const { data: habitsData, refetch: habitsRefetch } = useGetCurrentWeeklyHabitsQuery();
 
-  const isLoading = dietLoading || exerciseLoading;
+  const isLoading = exerciseLoading;
 
   const handleRefresh = () => {
-    dietRefetch();
     exerciseRefetch();
     tipsRefetch();
-    habitsRefetch();
   };
 
-  const dietCount = dietData?.data?.length || 0;
-  const exerciseCount = exerciseData?.data?.length || 0;
-  const hasTips = !!tipsData;
-  const hasHabits = !!(habitsData?.data);
+  const exerciseCount = Array.isArray(exerciseData?.data)
+    ? exerciseData.data.filter((plan: any) => {
+        const hasSessions = Array.isArray(plan?.sessions) && plan.sessions.length > 0;
+        return hasSessions || plan?.status === 'final' || plan?.generation_status === 'complete';
+      }).length
+    : 0;
+  const hasTips = Array.isArray(tipsData?.categories)
+    ? tipsData.categories.some((category) => Array.isArray(category?.tips) && category.tips.length > 0)
+    : false;
 
   const features: FeatureItem[] = [
-    {
-      icon: 'food-apple-outline',
-      title: 'Diet Plans',
-      subtitle: dietCount > 0 ? `${dietCount} plan${dietCount !== 1 ? 's' : ''}` : 'Create plan',
-      route: '/personalized/diet-plan',
-      count: dietCount,
-      color: '#3D7A68',
-      bgStart: '#F3F9F7',
-      bgEnd: '#E6F2EE',
-    },
     {
       icon: 'run',
       title: 'Exercise',
@@ -110,15 +99,6 @@ export default function SuggestionsScreen() {
       color: '#4A7580',
       bgStart: '#F0F6F7',
       bgEnd: '#E3EEF0',
-    },
-    {
-      icon: 'checkbox-marked-outline',
-      title: 'Habits',
-      subtitle: hasHabits ? 'Track progress' : 'Start tracking',
-      route: '/personalized/habits',
-      color: '#8A7245',
-      bgStart: '#F9F6F0',
-      bgEnd: '#F2EDE2',
     },
     {
       icon: 'robot-outline',
@@ -162,13 +142,13 @@ export default function SuggestionsScreen() {
           </View>
           <View style={styles.heroStatsRow}>
             <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{dietCount}</Text>
-              <Text style={styles.heroStatLabel}>Diet Plans</Text>
+              <Text style={styles.heroStatValue}>{exerciseCount}</Text>
+              <Text style={styles.heroStatLabel}>Exercise Plans</Text>
             </View>
             <View style={styles.heroStatDivider} />
             <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{exerciseCount}</Text>
-              <Text style={styles.heroStatLabel}>Exercise Plans</Text>
+              <Text style={styles.heroStatValue}>{hasTips ? 'Ready' : 'Pending'}</Text>
+              <Text style={styles.heroStatLabel}>Lifestyle Tips</Text>
             </View>
             <View style={styles.heroStatDivider} />
             <View style={styles.heroStat}>
@@ -233,22 +213,7 @@ export default function SuggestionsScreen() {
             <TouchableOpacity
               style={styles.quickActionPill}
               activeOpacity={0.7}
-              onPress={() => router.push('/personalized/diet-plan/generate' as any)}
-            >
-              <LinearGradient
-                colors={['#3D7A68', '#4D8E7A']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.quickPillGradient}
-              >
-                <MaterialCommunityIcons name="plus" size={16} color="#FFF" />
-                <Text style={styles.quickPillText}>New Diet Plan</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.quickActionPill}
-              activeOpacity={0.7}
-              onPress={() => router.push('/personalized/exercise-plan/generate' as any)}
+              onPress={() => router.push('/personalized/exercise-plan' as any)}
             >
               <LinearGradient
                 colors={['#4A6078', '#5A7088']}
@@ -257,7 +222,22 @@ export default function SuggestionsScreen() {
                 style={styles.quickPillGradient}
               >
                 <MaterialCommunityIcons name="plus" size={16} color="#FFF" />
-                <Text style={styles.quickPillText}>New Exercise Plan</Text>
+                <Text style={styles.quickPillText}>Today's Exercise Plan</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickActionPill}
+              activeOpacity={0.7}
+              onPress={() => router.push('/personalized/lifestyle-tips' as any)}
+            >
+              <LinearGradient
+                colors={['#4A7580', '#5A8590']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.quickPillGradient}
+              >
+                <MaterialCommunityIcons name="plus" size={16} color="#FFF" />
+                <Text style={styles.quickPillText}>Today's Lifestyle Tips</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -321,7 +301,7 @@ export default function SuggestionsScreen() {
         )}
 
         {/* ─── Error Banner (if plans failed to load) ─── */}
-        {(dietError || exerciseError) && (
+        {exerciseError && (
           <View style={styles.errorBanner}>
             <MaterialCommunityIcons name="alert-circle-outline" size={16} color={colors.error.dark} />
             <Text style={styles.errorText}>

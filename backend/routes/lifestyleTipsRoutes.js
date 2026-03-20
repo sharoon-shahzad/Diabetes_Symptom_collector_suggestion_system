@@ -7,8 +7,12 @@ const router = express.Router();
 // All routes require authentication
 router.use(verifyAccessTokenMiddleware);
 
-// Auto-generate lifestyle tips for today
+// Auto-generate lifestyle tips for today (legacy synchronous endpoint)
 router.post('/auto-generate', lifestyleTipsController.autoGenerateLifestyleTips);
+// Fire-and-forget: ensure today's tips exist (async, 202 + poll)
+router.post('/ensure-today', lifestyleTipsController.ensureTodayLifestyleTips);
+// Poll today's generation status
+router.get('/status/today', lifestyleTipsController.getLifestyleTipsStatusToday);
 
 // Generate lifestyle tips for a specific date
 router.post('/generate', lifestyleTipsController.generateLifestyleTips);

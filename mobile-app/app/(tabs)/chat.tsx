@@ -179,14 +179,14 @@ export default function ChatScreen() {
         }),
       });
       const json = await res.json();
-      if (json.success && json.data) {
+      if (json.success && (json.reply || json.data)) {
         const aiMsg: ChatMsg = {
-          _id: json.data._id || `ai-${Date.now()}`,
-          text: json.data.text || json.data.reply || 'No response',
+          _id: json.data?._id || `ai-${Date.now()}`,
+          text: json.reply || json.data?.text || json.data?.reply || 'No response',
           sender: 'ai',
-          sources: json.data.sources || [],
-          contextUsed: json.data.context_used || false,
-          createdAt: json.data.createdAt || new Date().toISOString(),
+          sources: json.sources || json.data?.sources || [],
+          contextUsed: json.context_used ?? json.data?.context_used ?? false,
+          createdAt: json.data?.createdAt || new Date().toISOString(),
         };
         setMessages(prev => [...prev, aiMsg]);
       } else {

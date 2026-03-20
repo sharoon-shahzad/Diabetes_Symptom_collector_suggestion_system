@@ -6,10 +6,12 @@ import axios from 'axios';
 // HF Gradio API configuration
 const HF_SPACE_URL = process.env.HF_SPACE_URL || 'https://zeeshanasghar02-diabetica-api.hf.space';
 const HF_SUBMIT_TIMEOUT_MS = 30000;
-const HF_SSE_TIMEOUT_MS = 120000;
-const MAX_TOKENS = 1024;
+const HF_SSE_TIMEOUT_MS = 90000;
+const MAX_TOKENS = 512;
 const MAX_INPUT_CHARS = 1500;
-const HISTORY_WINDOW = 5;
+const HISTORY_WINDOW = 3;
+const HISTORY_MESSAGE_CHARS = 500;
+const MAX_RAG_CONTEXT_CHARS = 1800;
 
 const safeText = (val) => (typeof val === 'string' ? val.trim() : '');
 
@@ -72,7 +74,7 @@ const clipHistory = (history) => {
   const trimmed = history
     .filter((h) => h && (h.role === 'user' || h.role === 'assistant') && typeof h.content === 'string')
     .slice(-HISTORY_WINDOW)
-    .map((h) => ({ role: h.role, content: h.content.substring(0, MAX_INPUT_CHARS) }));
+    .map((h) => ({ role: h.role, content: h.content.substring(0, HISTORY_MESSAGE_CHARS) }));
   return trimmed;
 };
 
@@ -103,24 +105,24 @@ export const completeChat = async (req, res) => {
 
     // **RAG Enhancement**
     const { ragContext, sources } = await enhanceChatWithRAG(message, userId, personal, recentHistory);
+    const trimmedRagContext = typeof ragContext === 'string'
+      ? ragContext.slice(0, MAX_RAG_CONTEXT_CHARS)
+      : '';
 
-    const systemPrompt = `You are Diabuddy, a helpful and empathetic AI assistant for diabetes management. Your goal is to provide safe, accurate, and supportive information.
+    const systemPrompt = `You are Diabuddy, a supportive diabetes information assistant.
 
 User Profile Summary:
 ${profileSnippet}
 
-${ragContext ? `Relevant Information from Health Documents:
-${ragContext}` : ''}
+${trimmedRagContext ? `Relevant Information from Health Documents:
+${trimmedRagContext}` : ''}
 
 CRITICAL SAFETY INSTRUCTIONS:
-- ALWAYS prioritize user safety.
-- NEVER give medical advice. Do not diagnose, treat, or prescribe.
-- ALWAYS use disclaimers like "As an AI, I cannot give medical advice. Please consult your doctor for any health concerns."
-- If the user seems distressed or mentions a medical emergency, strongly advise them to contact a healthcare professional or emergency services immediately.
-- Be encouraging and supportive, but maintain professional boundaries.
-- Keep responses concise and easy to understand.
-- If you don't know the answer, say so. Do not make up information.
-- If the retrieved information seems contradictory or unclear, state that and recommend consulting a doctor.`;
+- Prioritize safety.
+- Never diagnose, prescribe, or replace a clinician.
+- Include a brief disclaimer for health concerns.
+- Keep answers concise, practical, and easy to understand.
+- Use retrieved information when available, but say when evidence is unclear.`;
 
     // Build the user prompt with context
     const userPromptWithHistory = recentHistory.length > 0 
@@ -132,7 +134,7 @@ CRITICAL SAFETY INSTRUCTIONS:
     // Step 1: Submit job to HF Gradio API
     const submitRes = await axios.post(
       `${HF_SPACE_URL}/gradio_api/call/predict`,
-      { data: [systemPrompt, userPromptWithHistory, MAX_TOKENS, 0.7] },
+      { data: [systemPrompt, userPromptWithHistory, MAX_TOKENS, 0.4] },
       { timeout: HF_SUBMIT_TIMEOUT_MS, headers: { 'Content-Type': 'application/json' } }
     );
     

@@ -59,6 +59,13 @@ export interface GenerationStatusResponse {
   planId?: string;
   month?: number;
   year?: number;
+  generationTiming?: {
+    startedAt?: string;
+    elapsedMs?: number;
+    estimatedDurationMs?: number;
+    remainingMs?: number;
+    progress?: number;
+  };
   plan?: MonthlyDietPlanData;   // only present when status === 'complete'
   error?: string;               // only present when status === 'failed'
 }

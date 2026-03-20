@@ -398,7 +398,10 @@ class MonthlyDietPlanService {
     const allMeals = await this._callForMealGroup(allKeys, mealDistribution, personal, medical, dailyCalories, foodContext, region, 1);
 
     const mealCategories = mealTypes.map(mt => {
-      const options = allMeals[mt.key] || this.getFallbackOptions(mt.name, mealDistribution[mt.key]);
+      const options = allMeals[mt.key];
+      if (!Array.isArray(options) || options.length === 0) {
+        throw new Error(`Model returned empty meal options for ${mt.name}`);
+      }
       console.log(`✅ ${mt.name}: ${options.length} options`);
       return {
         meal_type:       mt.name,
@@ -426,10 +429,8 @@ class MonthlyDietPlanService {
       } catch (err) {
         console.error(`❌ Attempt ${attempt}/2 failed: ${err.message}`);
         if (attempt === 2) {
-          // All retries exhausted — return fallbacks for this group
-          const fallback = {};
-          mealKeys.forEach(k => { fallback[k] = this.getFallbackOptions(k, mealDist[k]); });
-          return fallback;
+          // Hard fail after retries so we never persist static fallback meal content.
+          throw new Error(`Model generation failed after retries: ${err.message}`);
         }
         await new Promise(r => setTimeout(r, 2000));
       }
@@ -477,18 +478,68 @@ ${skeleton}`;
   }
 
   /**
+   * Auto-repair truncated or slightly malformed LLM JSON.
+   * Closes unclosed strings, arrays, and objects.
+   * @private
+   */
+  _repairTruncatedJson(s) {
+    // Remove trailing comma at end
+    s = s.replace(/,\s*$/, '');
+
+    // Walk string tracking open/close context
+    const stack = [];
+    let inStr = false;
+    for (let i = 0; i < s.length; i++) {
+      const c = s[i];
+      if (c === '\\' && inStr) { i++; continue; }
+      if (c === '"') { inStr = !inStr; continue; }
+      if (inStr) continue;
+      if (c === '{') stack.push('}');
+      else if (c === '[') stack.push(']');
+      else if ((c === '}' || c === ']') && stack.length > 0) stack.pop();
+    }
+    // Close unclosed string first
+    if (inStr) { s += '"'; s = s.replace(/,\s*$/, ''); }
+    // Close remaining brackets in reverse
+    while (stack.length > 0) s += stack.pop();
+    return s;
+  }
+
+  /**
    * Parse LLM response for a specific set of meal keys.
    */
   parseCombinedMealOptions(aiResponse, mealDist, mealKeys) {
     try {
-      let cleaned = aiResponse.trim().replace(/```json|```/g, '');
-      // Fix model outputting unit suffixes on numbers: "carbs": 25g → "carbs": 25
-      cleaned = cleaned.replace(/:\s*(\d+(?:\.\d+)?)[a-zA-Z]+(?=[,\s}\]])/g, ': $1');
-      const start = cleaned.indexOf('{');
-      const end   = cleaned.lastIndexOf('}');
-      if (start === -1 || end === -1) throw new Error('No JSON object in response');
+      let cleaned = aiResponse.trim().replace(/```json|```/g, '').trim();
 
-      const parsed  = JSON.parse(cleaned.substring(start, end + 1));
+      // Fix unit suffixes (with or without space): "carbs": 25g → 25, "25 mg" → 25
+      cleaned = cleaned.replace(/:\s*(\d+(?:\.\d+)?)\s*[a-zA-Z][a-zA-Z]*(?=[,\s\n\r"}\]])/g, ': $1');
+
+      // Remove all trailing commas before } or ] (multiple passes for nesting)
+      for (let i = 0; i < 6; i++) {
+        cleaned = cleaned.replace(/,(\s*[}\]])/g, '$1');
+      }
+
+      const start = cleaned.indexOf('{');
+      if (start === -1) throw new Error('No JSON object in response');
+
+      // Take from first { to last } as our candidate
+      let jsonStr = cleaned.substring(start);
+      const lastBrace = jsonStr.lastIndexOf('}');
+      if (lastBrace !== -1) jsonStr = jsonStr.substring(0, lastBrace + 1);
+
+      // Attempt parse; if it fails, try auto-repair for truncated output
+      let parsed;
+      try {
+        parsed = JSON.parse(jsonStr);
+      } catch (parseErr) {
+        const repaired = this._repairTruncatedJson(jsonStr);
+        try {
+          parsed = JSON.parse(repaired);
+        } catch {
+          throw parseErr; // rethrow original error
+        }
+      }
       const result  = {};
 
       // Normalize LLM-returned difficulty to Mongoose enum: ['Easy','Medium','Moderate','Hard']
@@ -522,35 +573,16 @@ ${skeleton}`;
               : (mealDist[key] || 300),
           }));
         } else {
-          console.warn(`⚠️  No valid options for ${key} — using fallback`);
-          result[key] = this.getFallbackOptions(key, mealDist[key]);
+          throw new Error(`No valid options parsed for ${key}`);
         }
       }
       return result;
     } catch (err) {
       console.error('❌ parseCombinedMealOptions failed:', err.message);
-      const fallback = {};
-      mealKeys.forEach(k => { fallback[k] = this.getFallbackOptions(k, mealDist[k]); });
-      return fallback;
+      throw new Error(`Failed to parse model response: ${err.message}`);
     }
   }
 
-  /**
-   * Single fallback option when LLM output is unparseable for a meal type.
-   */
-  getFallbackOptions(mealKey, targetCalories) {
-    const name = { breakfast:'Breakfast', mid_morning_snack:'Mid-Morning Snack', lunch:'Lunch', evening_snack:'Evening Snack', dinner:'Dinner' }[mealKey] || mealKey;
-    const kcal = targetCalories || 300;
-    return [{
-      option_name:      `${name} Option`,
-      description:      `Balanced diabetic-friendly ${name.toLowerCase()}`,
-      preparation_time: '15 minutes',
-      difficulty:       'Easy',
-      items: [{ food: 'Balanced meal', portion: '1 serving', calories: kcal, carbs: Math.round(kcal * 0.45 / 4), protein: Math.round(kcal * 0.25 / 4), fat: Math.round(kcal * 0.30 / 9), fiber: 5 }],
-      total_calories: kcal,
-    }];
-  }
-  
   /**
    * Generate 5-7 options for a specific meal type using AI
    */

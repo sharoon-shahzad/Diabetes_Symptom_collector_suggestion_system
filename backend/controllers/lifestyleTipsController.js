@@ -426,3 +426,120 @@ export const getUserStats = async (req, res) => {
     });
   }
 };
+
+/**
+ * Ensure today's lifestyle tips exist — fire-and-forget pattern.
+ * POST /api/v1/lifestyle-tips/ensure-today
+ *
+ * 1. Complete tips exist  → return 200 immediately
+ * 2. Tips are pending     → return 202 with tipsId to keep polling
+ * 3. Tips failed          → delete and restart
+ * 4. No tips              → create placeholder, start background gen, return 202
+ */
+export const ensureTodayLifestyleTips = async (req, res) => {
+  try {
+    const STALE_PENDING_MS = 60 * 60 * 1000;
+    const userId = req.user._id;
+    const today  = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const targetDateStr = today.toISOString().split('T')[0];
+
+    const existing = await LifestyleTip.findOne({ user_id: userId, target_date: today });
+
+    if (existing) {
+      const gs = existing.generation_status;
+
+      if (gs === 'complete') {
+        return res.status(200).json({ success: true, status: 'complete', tipsId: existing._id, tips: existing });
+      }
+      if (gs === 'pending') {
+        const createdAtMs = new Date(existing.createdAt || existing.generated_at || Date.now()).getTime();
+        const isStale = Date.now() - createdAtMs > STALE_PENDING_MS;
+        if (isStale) {
+          await existing.deleteOne();
+          console.warn(`⚠️ Stale pending lifestyle tips removed for ${targetDateStr}; regenerating.`);
+        } else {
+          return res.status(202).json({
+            success: true, status: 'pending', tipsId: existing._id,
+            message: 'Lifestyle tips are being generated. Poll GET /status/today for updates.',
+          });
+        }
+      } else {
+        // 'failed' — delete and try again
+        await existing.deleteOne();
+        console.log(`🗑️ Deleted failed lifestyle tips for ${targetDateStr}, restarting...`);
+      }
+    }
+
+    // Create placeholder
+    const placeholder = new LifestyleTip({
+      user_id:           userId,
+      target_date:       today,
+      region:            'Global',
+      categories:        [],
+      status:            'active',
+      generation_status: 'pending',
+    });
+    await placeholder.save();
+    console.log(`📌 Created pending lifestyle tips ${placeholder._id} for ${targetDateStr}`);
+
+    // Return 202 immediately
+    res.status(202).json({
+      success: true, status: 'pending', tipsId: placeholder._id,
+      message: 'Lifestyle tips generation started. Poll GET /status/today for updates.',
+    });
+
+    // Fire-and-forget background generation
+    lifestyleTipsService.runBackgroundLifestyleTipsGeneration(String(userId), targetDateStr, placeholder._id)
+      .catch(err => console.error('❌ Unhandled background lifestyle tips gen error:', err.message));
+
+  } catch (error) {
+    console.error('Error in ensureTodayLifestyleTips:', error);
+    return res.status(500).json({ success: false, message: 'Failed to ensure today\'s lifestyle tips.' });
+  }
+};
+
+/**
+ * Poll generation status for today's lifestyle tips.
+ * GET /api/v1/lifestyle-tips/status/today
+ */
+export const getLifestyleTipsStatusToday = async (req, res) => {
+  try {
+    const STALE_PENDING_MS = 20 * 60 * 1000;
+    const userId = req.user._id;
+    const today  = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+
+    const tips = await LifestyleTip.findOne({ user_id: userId, target_date: today });
+
+    if (!tips) {
+      return res.status(404).json({ success: false, status: 'not_found', message: 'No lifestyle tips for today' });
+    }
+
+    // Support both old docs (no generation_status) and new docs
+    let gs = tips.generation_status || 'complete';
+
+    if (gs === 'pending') {
+      const createdAtMs = new Date(tips.createdAt || tips.generated_at || Date.now()).getTime();
+      if (Date.now() - createdAtMs > STALE_PENDING_MS) {
+        await LifestyleTip.findByIdAndUpdate(tips._id, {
+          generation_status: 'failed',
+          generation_error: 'Generation timed out. Please retry to regenerate today\'s tips.',
+        });
+        gs = 'failed';
+        tips.generation_error = 'Generation timed out. Please retry to regenerate today\'s tips.';
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      status:  gs,
+      tipsId:  tips._id,
+      tips:    gs === 'complete' ? tips : undefined,
+      error:   gs === 'failed'   ? tips.generation_error : undefined,
+    });
+  } catch (error) {
+    console.error('Error in getLifestyleTipsStatusToday:', error);
+    return res.status(500).json({ success: false, message: 'Failed to get lifestyle tips status' });
+  }
+};

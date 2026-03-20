@@ -35,7 +35,12 @@
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
         "ACCESS_NETWORK_STATE",
-        "INTERNET"
+        "INTERNET",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_DISTANCE",
+        "android.permission.health.READ_TOTAL_CALORIES_BURNED",
+        "android.permission.health.READ_SLEEP",
+        "android.permission.health.READ_HEART_RATE"
       ]
     },
     "web": {
@@ -66,6 +71,8 @@
           "isSdkExtensionEnabled": true
         }
       ]
+      ,
+      "./plugins/with-health-connect-delegate"
     ],
     "experiments": {
       "typedRoutes": true
@@ -75,9 +82,9 @@
         "origin": false
       },
       "eas": {
-        "projectId": "e200e144-177f-4e67-807b-a6c9b236bce9"
+        "projectId": "ea9ae500-fe64-4472-bcad-819e603f594f"
       }
     },
-    "owner": "hassan7986"
+    "owner": "zeeshan_x_02"
   }
 }

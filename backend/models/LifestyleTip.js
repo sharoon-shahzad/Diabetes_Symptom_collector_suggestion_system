@@ -60,6 +60,14 @@ const lifestyleTipSchema = new mongoose.Schema({
     default: 'active',
   },
 
+  // Async generation tracking (fire-and-forget pattern, mirrors MonthlyDietPlan)
+  generation_status: {
+    type: String,
+    enum: ['pending', 'complete', 'failed'],
+    default: 'pending',
+  },
+  generation_error: { type: String },
+
   generated_at: {
     type: Date,
     default: Date.now,

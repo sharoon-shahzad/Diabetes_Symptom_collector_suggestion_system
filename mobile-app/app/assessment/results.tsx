@@ -2,8 +2,8 @@
  * Assessment Results Screen
  * Gradient hero + muted card design — no emojis, no old Card/Button/textStyles/colors.light.*
  */
-import React, { useMemo, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, BackHandler } from 'react-native';
+import React, { useMemo, useEffect, useRef } from 'react';
+import { View, StyleSheet, ScrollView, TouchableOpacity, BackHandler, Alert } from 'react-native';
 import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -83,6 +83,7 @@ function normalizeAssessment(raw: any): DiabetesAssessmentResult {
 export default function AssessmentResultsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ data?: string }>();
+  const noticeShownRef = useRef(false);
 
   // Always go to dashboard on back — never back into auth/questionnaire stack
   const goToDashboard = () => router.replace('/(tabs)/dashboard');
@@ -104,6 +105,15 @@ export default function AssessmentResultsScreen() {
 
   const { data: latestData, isLoading } = useGetLatestAssessmentQuery(undefined, { skip: !!passedData });
   const assessment = passedData || (latestData?.data ? normalizeAssessment(latestData.data) : null);
+
+  useEffect(() => {
+    if (noticeShownRef.current) return;
+    const notices = (assessment as any)?.notices;
+    if (Array.isArray(notices) && notices.length > 0) {
+      noticeShownRef.current = true;
+      Alert.alert('Note', String(notices[0]));
+    }
+  }, [assessment]);
 
   if (isLoading && !passedData) return <FullScreenLoader />;
 

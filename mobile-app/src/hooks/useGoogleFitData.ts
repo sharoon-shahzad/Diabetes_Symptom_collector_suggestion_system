@@ -124,8 +124,13 @@ export function useGoogleFitData(
       const latest = await googleFitService.getLatestValues();
       if (!mountedRef.current) return;
       setLatestValues(latest);
-    } catch {
-      // Silently fail — data stays empty
+    } catch (error) {
+      if (!mountedRef.current) return;
+      setIsAvailable(false);
+      setIsAuthorized(false);
+      if (__DEV__) {
+        console.warn('[GoogleFit] fetchData failed', error);
+      }
     } finally {
       if (mountedRef.current) setIsLoading(false);
     }
@@ -147,7 +152,13 @@ export function useGoogleFitData(
         if (result) await fetchData();
       }
       return result;
-    } catch {
+    } catch (error) {
+      if (mountedRef.current) {
+        setIsAuthorized(false);
+      }
+      if (__DEV__) {
+        console.warn('[GoogleFit] authorize hook failed', error);
+      }
       return false;
     }
   }, [fetchData]);

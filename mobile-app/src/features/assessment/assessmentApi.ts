@@ -27,6 +27,7 @@ export interface DiabetesAssessmentResult {
   has_assessment: boolean;
   is_cached: boolean;
   assessment_date: string;
+  notices?: string[];
   enhancement_status?: {
     enhanced: boolean;
     reason: string;

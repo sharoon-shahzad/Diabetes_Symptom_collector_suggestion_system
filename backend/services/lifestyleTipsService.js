@@ -8,12 +8,122 @@ import axios from 'axios';
 // HF Gradio API configuration
 const HF_SPACE_URL = process.env.HF_SPACE_URL || 'https://zeeshanasghar02-diabetica-api.hf.space';
 const HF_SUBMIT_TIMEOUT_MS = 30000;
-const HF_SSE_TIMEOUT_MS = 120000;
-const MAX_TOKENS = 2048;
+const HF_SSE_TIMEOUT_MS = 90000;
+const MAX_TOKENS = 768;
+const MAX_GUIDELINE_CHUNKS = 4;
+const MAX_GUIDELINE_CHARS = 1400;
 const SYSTEM_PROMPT = `You are a diabetes wellness coach. Generate personalized daily lifestyle tips. Always respond with valid JSON only.`;
+const inFlightLifestyleGenerations = new Map();
 
 class LifestyleTipsService {
+  parseNumeric(value) {
+    if (typeof value === 'number' && !Number.isNaN(value)) return value;
+    if (value == null) return null;
+    const matches = String(value).match(/[-+]?[0-9]*\.?[0-9]+/g);
+    if (!matches || matches.length === 0) return null;
+    const n = parseFloat(matches[0]);
+    return Number.isNaN(n) ? null : n;
+  }
+
+  extractConditionNames(medicalInfo) {
+    if (!medicalInfo) return [];
+    const conditions = medicalInfo.chronic_conditions || medicalInfo.conditions || [];
+    if (!Array.isArray(conditions)) return [];
+    return conditions
+      .map((condition) => condition?.condition_name || condition?.name || condition)
+      .map((condition) => String(condition || '').trim())
+      .filter(Boolean);
+  }
+
+  buildLifestyleFingerprint(parsedTips) {
+    const tokens = [];
+    (parsedTips?.categories || []).forEach((category) => {
+      tokens.push(`cat:${String(category?.name || '').toLowerCase()}`);
+      (category?.tips || []).forEach((tip) => {
+        tokens.push(`title:${String(tip?.title || '').toLowerCase()}`);
+        tokens.push(`desc:${String(tip?.description || '').toLowerCase().slice(0, 80)}`);
+      });
+    });
+    (parsedTips?.personalized_insights || []).forEach((insight) => {
+      tokens.push(`insight:${String(insight || '').toLowerCase().slice(0, 80)}`);
+    });
+    return Array.from(new Set(tokens.filter(Boolean))).sort().join('|');
+  }
+
+  jaccardSimilarity(aStr, bStr) {
+    const a = new Set(String(aStr || '').split('|').filter(Boolean));
+    const b = new Set(String(bStr || '').split('|').filter(Boolean));
+    if (a.size === 0 || b.size === 0) return 0;
+    let intersection = 0;
+    a.forEach((val) => { if (b.has(val)) intersection++; });
+    return intersection / (a.size + b.size - intersection);
+  }
+
+  async hasSimilarLifestyleTipsForDate(userId, targetDateObj, parsedTips) {
+    const fingerprint = this.buildLifestyleFingerprint(parsedTips);
+    if (!fingerprint) return false;
+
+    const others = await LifestyleTip.find({
+      user_id: { $ne: userId },
+      target_date: targetDateObj,
+      generation_status: 'complete',
+    })
+      .select('categories personalized_insights')
+      .limit(12)
+      .lean();
+
+    for (const other of others) {
+      const otherFingerprint = this.buildLifestyleFingerprint(other || {});
+      if (!otherFingerprint) continue;
+      if (otherFingerprint === fingerprint) return true;
+      const similarity = this.jaccardSimilarity(fingerprint, otherFingerprint);
+      if (similarity >= 0.88) return true;
+    }
+
+    return false;
+  }
+
+  extractMedicationNames(medicalInfo) {
+    if (!medicalInfo) return [];
+
+    if (Array.isArray(medicalInfo.current_medications)) {
+      return medicalInfo.current_medications
+        .map((medication) => medication?.medication_name || medication?.name || medication)
+        .map((medication) => String(medication || '').trim())
+        .filter(Boolean);
+    }
+
+    if (Array.isArray(medicalInfo.medications)) {
+      return medicalInfo.medications
+        .map((medication) => medication?.medication_name || medication?.name || medication)
+        .map((medication) => String(medication || '').trim())
+        .filter(Boolean);
+    }
+
+    return [];
+  }
+
   async generateLifestyleTips(userId, targetDate) {
+    const normalizedTargetDate = new Date(targetDate);
+    normalizedTargetDate.setUTCHours(0, 0, 0, 0);
+    const requestKey = `${String(userId)}:${normalizedTargetDate.toISOString().slice(0, 10)}`;
+
+    if (inFlightLifestyleGenerations.has(requestKey)) {
+      console.log(`⏳ Lifestyle tips generation already in progress for ${requestKey}`);
+      return inFlightLifestyleGenerations.get(requestKey);
+    }
+
+    const generationPromise = this._generateLifestyleTips(userId, targetDate, normalizedTargetDate);
+    inFlightLifestyleGenerations.set(requestKey, generationPromise);
+
+    try {
+      return await generationPromise;
+    } finally {
+      inFlightLifestyleGenerations.delete(requestKey);
+    }
+  }
+
+  async _generateLifestyleTips(userId, targetDate, targetDateObj) {
     try {
       console.log(`📋 Generating lifestyle tips for userId: ${userId}, targetDate: ${targetDate}`);
       
@@ -32,9 +142,6 @@ class LifestyleTipsService {
 
       // Check if tips already exist for this date
       // Normalize to UTC midnight to avoid timezone issues
-      const targetDateObj = new Date(targetDate);
-      targetDateObj.setUTCHours(0, 0, 0, 0);
-      
       const existingTips = await LifestyleTip.findOne({
         user_id: userId,
         target_date: targetDateObj,
@@ -50,14 +157,16 @@ class LifestyleTipsService {
       console.log(`✅ Guidelines retrieved: ${guidelinesContext.chunks?.length || 0} chunks`);
 
       // Build personalized prompt
-      const prompt = this.buildLifestylePrompt(personalInfo, medicalInfo, guidelinesContext, targetDate);
+      const prompt = this.buildLifestylePrompt(personalInfo, medicalInfo, guidelinesContext, targetDate, {
+        diversityHint: `user-${String(userId).slice(-6)}`,
+      });
       console.log(`📝 Prompt built, length: ${prompt.length}`);
 
       // Call HF Diabetica API
       console.log(`🤖 Calling HF Diabetica API...`);
       const aiResponse = await this.callDiabetica(prompt);
       console.log(`✅ HF Diabetica response received, length: ${aiResponse.length}`);
-      const parsedTips = this.parseLifestyleTips(aiResponse);
+      let parsedTips = this.parseLifestyleTips(aiResponse);
       console.log(`✅ Tips parsed successfully:`, JSON.stringify(parsedTips, null, 2));
       const source = 'hf-diabetica';
 
@@ -66,6 +175,20 @@ class LifestyleTipsService {
         console.error('❌ No valid tips generated');
         throw new Error('Failed to generate lifestyle tips: No valid categories created');
       }
+
+      const similarTipsDetected = await this.hasSimilarLifestyleTipsForDate(userId, targetDateObj, parsedTips);
+      if (similarTipsDetected) {
+        console.warn('⚠️ Similar same-day lifestyle tips detected for another user; regenerating with stronger personalization.');
+        const regenPrompt = this.buildLifestylePrompt(personalInfo, medicalInfo, guidelinesContext, targetDate, {
+          diversityHint: `regen-${String(userId).slice(-6)}-${Date.now().toString().slice(-4)}`,
+        });
+        const regenResponse = await this.callDiabetica(regenPrompt, { temperature: 0.5 });
+        const regenerated = this.parseLifestyleTips(regenResponse);
+        if (regenerated?.categories?.length > 0) {
+          parsedTips = regenerated;
+        }
+      }
+
       console.log(`✅ ${parsedTips.categories.length} categories generated`);
 
       // Create and save tips
@@ -107,7 +230,7 @@ class LifestyleTipsService {
       const response = await processQuery(
         `lifestyle tips guidelines and daily habits for diabetes management in ${region}`,
         {
-          topK: 10,
+          topK: MAX_GUIDELINE_CHUNKS,
           filter: { country: region },
         }
       );
@@ -123,50 +246,76 @@ class LifestyleTipsService {
         })),
       };
     } catch (error) {
-      console.warn('Failed to query regional guidelines, using fallback:', error.message);
-      return this.getFallbackLifestyleContext(region);
+      console.warn('Failed to query regional guidelines; continuing without regional context:', error.message);
+      return {
+        chunks: [],
+        sources: [],
+      };
     }
   }
 
-  buildLifestylePrompt(personalInfo, medicalInfo, guidelinesContext, targetDate) {
+  buildLifestylePrompt(personalInfo, medicalInfo, guidelinesContext, targetDate, options = {}) {
     const sleepHours = personalInfo.sleep_hours || 7;
     const activityLevel = personalInfo.activity_level || 'Moderate';
     const smokingStatus = personalInfo.smoking_status || 'Never';
     const alcoholUse = personalInfo.alcohol_use || 'Never';
+    const height = this.parseNumeric(personalInfo.height);
+    const weight = this.parseNumeric(personalInfo.weight);
+    const bmi = (height && weight) ? Number((weight / ((height / 100) * (height / 100))).toFixed(1)) : null;
     const diabetesType = medicalInfo.diabetes_type || 'Type 2';
-    const medications = medicalInfo.medications || [];
+    const medications = this.extractMedicationNames(medicalInfo);
+    const chronicConditions = this.extractConditionNames(medicalInfo);
+    const hba1c = this.parseNumeric(medicalInfo?.recent_lab_results?.hba1c?.value);
+    const fastingGlucose = this.parseNumeric(medicalInfo?.recent_lab_results?.fasting_glucose?.value);
+    const systolic = this.parseNumeric(medicalInfo?.blood_pressure?.systolic);
+    const diastolic = this.parseNumeric(medicalInfo?.blood_pressure?.diastolic);
+    const diversityHint = options.diversityHint || '';
 
-    const guidelinesText = guidelinesContext.chunks?.slice(0, 5).join('\n') || '';
+    const guidelinesText = (guidelinesContext.chunks || [])
+      .slice(0, MAX_GUIDELINE_CHUNKS)
+      .join('\n')
+      .slice(0, MAX_GUIDELINE_CHARS);
 
-    const prompt = `You are a diabetes wellness coach. Generate personalized daily lifestyle tips for a patient with these characteristics:
+    const prompt = `Generate concise personalized daily lifestyle tips for this diabetes patient.
 
-**Patient Profile:**
+PATIENT PROFILE:
 - Sleep hours per night: ${sleepHours} hours
 - Activity level: ${activityLevel}
 - Smoking status: ${smokingStatus}
 - Alcohol use: ${alcoholUse}
+- Height: ${height ?? 'Unknown'} cm
+- Weight: ${weight ?? 'Unknown'} kg
+- BMI: ${bmi ?? 'Unknown'}
 - Diabetes type: ${diabetesType}
 - Current medications: ${medications.length > 0 ? medications.map((m) => m.name || m).join(', ') : 'Not specified'}
+- Chronic conditions: ${chronicConditions.length > 0 ? chronicConditions.join(', ') : 'Not specified'}
+- HbA1c: ${hba1c ?? 'Unknown'}
+- Fasting glucose: ${fastingGlucose ?? 'Unknown'}
+- Blood pressure: ${systolic && diastolic ? `${systolic}/${diastolic}` : 'Unknown'}
 
-**Target Date:** ${new Date(targetDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+TARGET DATE: ${new Date(targetDate).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
 
-**Guidelines Reference:**
-${guidelinesText}
+GUIDELINES REFERENCE:
+${guidelinesText || 'No regional guideline context was retrieved for this request.'}
 
-Generate personalized lifestyle tips organized into 5-6 categories relevant to diabetes management:
-1. Sleep Hygiene (💤) - 3 tips
-2. Stress Management (🧘) - 3 tips
-3. Nutrition & Hydration (🥗) - 3 tips
-4. Physical Activity (🚶) - 3 tips
-5. Blood Sugar Monitoring (📊) - 2-3 tips
-6. Additional lifestyle factors if relevant (e.g., foot care, medication adherence)
+Generate 4 categories relevant to diabetes management:
+1. sleep_hygiene - 2 tips
+2. stress_management - 2 tips
+3. nutrition - 2 tips
+4. activity - 2 tips
 
 For each tip, provide:
 - A clear, actionable title
-- A detailed description (2-3 sentences) explaining WHY it matters and HOW to do it
+- A short description (1-2 sentences, max 100 chars if possible)
 - Priority level (high/medium/low)
 
-Also provide 3-5 personalized insights based on their profile that explain how these tips specifically benefit them.
+Also provide 2-3 short personalized insights based on their profile.
+
+STRICT PERSONALIZATION RULES:
+- This is a personalized system; avoid generic repeated tips.
+- Tailor tips directly to this profile's risk signals (sleep, BMI, smoking, alcohol, labs, chronic conditions).
+- Ensure category tips and insight wording are not near-duplicates of other users on the same date.
+- Internal personalization hint: ${diversityHint || 'none'}
 
 IMPORTANT: Respond ONLY with valid JSON, no markdown, no code blocks. Use this exact structure:
 
@@ -174,7 +323,7 @@ IMPORTANT: Respond ONLY with valid JSON, no markdown, no code blocks. Use this e
   "categories": [
     {
       "name": "sleep_hygiene",
-      "icon": "💤",
+      "icon": "sleep",
       "tips": [
         {"title": "...", "description": "...", "priority": "high"}
       ]
@@ -186,12 +335,14 @@ IMPORTANT: Respond ONLY with valid JSON, no markdown, no code blocks. Use this e
     return prompt;
   }
 
-  async callDiabetica(prompt) {
+  async callDiabetica(prompt, options = {}) {
+    const maxTokens = options.maxTokens || MAX_TOKENS;
+    const temperature = typeof options.temperature === 'number' ? options.temperature : 0.3;
     try {
       console.log(`📡 Submitting to HF Gradio API...`);
       const submitRes = await axios.post(
         `${HF_SPACE_URL}/gradio_api/call/predict`,
-        { data: [SYSTEM_PROMPT, prompt, MAX_TOKENS, 0.3] },
+        { data: [SYSTEM_PROMPT, prompt, maxTokens, temperature] },
         { timeout: HF_SUBMIT_TIMEOUT_MS, headers: { 'Content-Type': 'application/json' } }
       );
       const eventId = submitRes.data?.event_id;
@@ -234,6 +385,37 @@ IMPORTANT: Respond ONLY with valid JSON, no markdown, no code blocks. Use this e
     }
   }
 
+  _repairTruncatedJson(s) {
+    let candidate = String(s || '').replace(/,\s*$/, '');
+    const stack = [];
+    let inString = false;
+
+    for (let index = 0; index < candidate.length; index++) {
+      const char = candidate[index];
+      if (char === '\\' && inString) {
+        index += 1;
+        continue;
+      }
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+      if (inString) continue;
+      if (char === '{') stack.push('}');
+      else if (char === '[') stack.push(']');
+      else if ((char === '}' || char === ']') && stack.length > 0) stack.pop();
+    }
+
+    if (inString) candidate += '"';
+    while (stack.length > 0) candidate += stack.pop();
+
+    for (let pass = 0; pass < 4; pass++) {
+      candidate = candidate.replace(/,(\s*[}\]])/g, '$1');
+    }
+
+    return candidate;
+  }
+
   parseLifestyleTips(aiResponse) {
     console.log(`📝 Parsing lifestyle tips, response length: ${aiResponse?.length || 0}`);
     try {
@@ -255,7 +437,14 @@ IMPORTANT: Respond ONLY with valid JSON, no markdown, no code blocks. Use this e
         }
       }
 
-      const parsed = JSON.parse(jsonStr);
+      let parsed;
+      try {
+        parsed = JSON.parse(jsonStr);
+      } catch (parseError) {
+        const repaired = this._repairTruncatedJson(jsonStr);
+        parsed = JSON.parse(repaired);
+        console.log('✅ JSON parsed successfully after repair');
+      }
       console.log('✅ JSON parsed successfully');
 
       // Validate and structure
@@ -355,20 +544,85 @@ IMPORTANT: Respond ONLY with valid JSON, no markdown, no code blocks. Use this e
     };
   }
 
-  getFallbackLifestyleContext(region) {
-    // Fallback tips if ChromaDB is unavailable
-    return {
-      chunks: [
-        'Daily lifestyle habits are crucial for diabetes management. Maintain consistent sleep schedule, manage stress through mindfulness, stay hydrated, monitor blood sugar regularly, take medications as prescribed, inspect feet daily, maintain dental health, and build social support networks.',
-      ],
-      sources: [
-        {
-          title: 'Diabetes Management Guidelines',
-          country: region,
-          doc_type: 'lifestyle_guideline',
-        },
-      ],
-    };
+  /**
+   * Run full lifestyle tips generation in the background and update an existing pending doc.
+   * Called after the controller has already returned 202 to the client.
+   * Mirrors MonthlyDietPlanService.runBackgroundGeneration pattern.
+   * @param {string} userId
+   * @param {string} targetDate - 'YYYY-MM-DD'
+   * @param {string} tipsId - The _id of the placeholder LifestyleTip document
+   */
+  async runBackgroundLifestyleTipsGeneration(userId, targetDate, tipsId) {
+    const startTime = Date.now();
+    const traceId = `lsbg_${tipsId}_${startTime}`;
+    console.log(`🔄 [BG][${traceId}] Starting background lifestyle tips generation for user ${userId}, tips ${tipsId} (${targetDate})`);
+
+    try {
+      // 1. Get user profile
+      const user = await User.findById(userId);
+      if (!user) throw new Error('User not found');
+
+      const personalInfoDoc = await UserPersonalInfo.findOne({ user_id: userId });
+      const medicalInfoDoc  = await UserMedicalInfo.findOne({ user_id: userId });
+
+      const personalInfo = personalInfoDoc ? personalInfoDoc.toObject() : {};
+      const medicalInfo  = medicalInfoDoc  ? medicalInfoDoc.toObject()  : {};
+
+      const region = user.country || 'Global';
+
+      // 2. RAG context
+      const guidelinesContext = await this.queryRegionalLifestyleGuidelines(region);
+      console.log(`[BG] Guidelines: ${guidelinesContext.chunks?.length || 0} chunks`);
+
+      // 3. Build target date
+      const targetDateObj = new Date(targetDate);
+      targetDateObj.setUTCHours(0, 0, 0, 0);
+
+      // 4. AI generation
+      const prompt     = this.buildLifestylePrompt(personalInfo, medicalInfo, guidelinesContext, targetDate, {
+        diversityHint: `bg-${String(userId).slice(-6)}-${String(tipsId).slice(-4)}`,
+      });
+      const aiResponse = await this.callDiabetica(prompt);
+      console.log(`🧠 [BG][${traceId}] AI response length: ${aiResponse?.length || 0}`);
+      let parsedTips = this.parseLifestyleTips(aiResponse);
+
+      if (!parsedTips || !parsedTips.categories || parsedTips.categories.length === 0) {
+        throw new Error('No valid lifestyle tip categories generated');
+      }
+
+      const similarTipsDetected = await this.hasSimilarLifestyleTipsForDate(userId, targetDateObj, parsedTips);
+      if (similarTipsDetected) {
+        console.warn(`⚠️ [BG][${traceId}] Similar same-day lifestyle tips detected; regenerating with stronger personalization.`);
+        const regenPrompt = this.buildLifestylePrompt(personalInfo, medicalInfo, guidelinesContext, targetDate, {
+          diversityHint: `bg-regen-${String(userId).slice(-6)}-${Date.now().toString().slice(-4)}`,
+        });
+        const regenResponse = await this.callDiabetica(regenPrompt, { temperature: 0.5 });
+        const regenerated = this.parseLifestyleTips(regenResponse);
+        if (regenerated?.categories?.length > 0) {
+          parsedTips = regenerated;
+        }
+      }
+
+      // 5. Update the placeholder doc
+      await LifestyleTip.findByIdAndUpdate(tipsId, {
+        categories:            parsedTips.categories,
+        personalized_insights: parsedTips.personalized_insights || [],
+        sources:               guidelinesContext.sources,
+        status:                'active',
+        generation_status:     'complete',
+        generation_error:      undefined,
+        generated_at:          new Date(),
+      }, { new: true });
+
+      console.log(`✅ [BG][${traceId}] Lifestyle tips ${tipsId} completed in ${((Date.now() - startTime) / 1000).toFixed(1)}s`);
+
+    } catch (err) {
+      console.error(`❌ [BG][${traceId}] Lifestyle tips generation failed for ${tipsId}:`, err.message);
+      await LifestyleTip.findByIdAndUpdate(tipsId, {
+        generation_status: 'failed',
+        generation_error:  err.message,
+      }).catch(() => {});
+    }
   }
 }
 

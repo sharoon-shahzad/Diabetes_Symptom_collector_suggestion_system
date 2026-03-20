@@ -1,7 +1,7 @@
 ﻿/**
  * Monthly Diet Plan Dashboard
  * Lists monthly diet plans, allows generating new ones.
- * No emojis â€” MaterialCommunityIcons only
+ * No emojis - MaterialCommunityIcons only
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
@@ -41,11 +41,24 @@ const STEPS = [
   { icon: 'check-circle-outline', label: 'Finalizing & saving your plan' },
 ];
 
-// Animated crafting banner â€” keeps UI alive during the LLM wait
-function GeneratingBanner({ month, year }: { month: number; year: number }) {
+// Animated crafting banner - keeps UI alive during the LLM wait
+function GeneratingBanner({
+  month,
+  year,
+  startedAt,
+  estimatedDurationMs,
+}: {
+  month: number;
+  year: number;
+  startedAt: number;
+  estimatedDurationMs: number;
+}) {
   const [stepIdx, setStepIdx] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const spin = useRef(new Animated.Value(0)).current;
   const fade = useRef(new Animated.Value(1)).current;
+
+  const ESTIMATED_SECONDS = Math.max(60, Math.floor(estimatedDurationMs / 1000));
 
   // Rotate spinner continuously
   useEffect(() => {
@@ -66,8 +79,36 @@ function GeneratingBanner({ month, year }: { month: number; year: number }) {
     return () => clearInterval(t);
   }, []);
 
+  useEffect(() => {
+    const tick = () => {
+      const elapsed = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+      setElapsedSeconds(elapsed);
+    };
+
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [startedAt]);
+
   const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   const step = STEPS[stepIdx];
+
+  // When elapsed exceeds estimate, slowly creep from 0.93→0.99 over the next 3 minutes
+  const isOverdue = elapsedSeconds > ESTIMATED_SECONDS;
+  const overtimeSeconds = isOverdue ? (elapsedSeconds - ESTIMATED_SECONDS) : 0;
+  const progressRatio = isOverdue
+    ? Math.min(0.93 + 0.06 * Math.min(overtimeSeconds / 180, 1), 0.99)
+    : Math.min(elapsedSeconds / ESTIMATED_SECONDS, 0.93);
+
+  const elapsedMin = Math.floor(elapsedSeconds / 60);
+  const elapsedSec = elapsedSeconds % 60;
+  const remainingSeconds = Math.max(0, ESTIMATED_SECONDS - elapsedSeconds);
+  const remainingMin = Math.floor(remainingSeconds / 60);
+  const remainingSec = remainingSeconds % 60;
+  // Smart ETA label — avoids showing "ETA 0:00" when server takes longer than default estimate
+  const etaLabel = isOverdue
+    ? (overtimeSeconds < 60 ? 'Almost done...' : 'Wrapping up...')
+    : `ETA ${remainingMin}:${String(remainingSec).padStart(2, '0')}`;
 
   return (
     <LinearGradient
@@ -83,12 +124,27 @@ function GeneratingBanner({ month, year }: { month: number; year: number }) {
       <Text style={styles.bannerTitle}>
         Crafting {MONTHS[month - 1]} {year} Plan
       </Text>
-      <Text style={styles.bannerSub}>AI is working â€” this takes 3â€“5 minutes</Text>
+      <Text style={styles.bannerSub}>AI is working - this usually takes 5-7 minutes</Text>
+
+      <View style={styles.bannerMetaRow}>
+        <View style={styles.bannerMetaChip}>
+          <MaterialCommunityIcons name="timer-outline" size={14} color="rgba(255,255,255,0.9)" />
+          <Text style={styles.bannerMetaText}>Elapsed {elapsedMin}:{String(elapsedSec).padStart(2, '0')}</Text>
+        </View>
+        <View style={styles.bannerMetaChip}>
+          <MaterialCommunityIcons name="clock-time-four-outline" size={14} color="rgba(255,255,255,0.9)" />
+          <Text style={styles.bannerMetaText}>{etaLabel}</Text>
+        </View>
+      </View>
+
+      <View style={styles.bannerProgressTrack}>
+        <View style={[styles.bannerProgressFill, { width: `${Math.max(6, progressRatio * 100)}%` }]} />
+      </View>
 
       {/* Step indicator */}
       <Animated.View style={[styles.bannerStep, { opacity: fade }]}>
         <MaterialCommunityIcons name={step.icon as any} size={16} color="rgba(255,255,255,0.8)" />
-        <Text style={styles.bannerStepText}>{step.label}â€¦</Text>
+        <Text style={styles.bannerStepText}>{step.label}...</Text>
       </Animated.View>
 
       {/* Step dots */}
@@ -111,10 +167,11 @@ export default function MonthlyDietPlanDashboardScreen() {
 
   // Track generation state separately from RTK mutation isLoading
   const [generatingState, setGeneratingState] = useState<{
-    active: boolean; month: number; year: number;
-  }>({ active: false, month: 0, year: 0 });
+    active: boolean; month: number; year: number; startedAt: number; estimatedDurationMs: number;
+  }>({ active: false, month: 0, year: 0, startedAt: 0, estimatedDurationMs: 7 * 60 * 1000 });
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoNavigatedRef = useRef<string | null>(null);
 
   const { data, isLoading, error, refetch } = useGetMonthlyPlanHistoryQuery({ limit: 12 });
   const [generate] = useGenerateMonthlyDietPlanMutation();
@@ -122,11 +179,30 @@ export default function MonthlyDietPlanDashboardScreen() {
   const [triggerGetStatus] = useLazyGetGenerationStatusQuery();
 
   const plans = data?.data || (data as any)?.plans || [];
+  const completedPlans = plans.filter((plan: any) => !plan?.generation_status || plan.generation_status === 'complete');
+
+  const navigateToPlanDetail = useCallback((planId: string) => {
+    if (!planId) return;
+    if (autoNavigatedRef.current === planId) return;
+
+    autoNavigatedRef.current = planId;
+    router.push(`/personalized/monthly-diet-plan/${planId}` as any);
+  }, [router]);
+
+  const resolvePlanIdFromHistory = useCallback(async (month: number, year: number) => {
+    const refreshed: any = await refetch();
+    const refreshedPlans = refreshed?.data?.data || refreshed?.data?.plans || [];
+    const matched = refreshedPlans.find(
+      (plan: any) => plan?.month === month && plan?.year === year && (!plan?.generation_status || plan?.generation_status === 'complete')
+    );
+
+    return matched?._id as string | undefined;
+  }, [refetch]);
 
   // Stop polling + clear generation state
   const stopGenerating = useCallback((success: boolean, msg?: string) => {
     if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
-    setGeneratingState({ active: false, month: 0, year: 0 });
+    setGeneratingState({ active: false, month: 0, year: 0, startedAt: 0, estimatedDurationMs: 7 * 60 * 1000 });
     if (success) {
       refetch();
     } else if (msg) {
@@ -134,20 +210,54 @@ export default function MonthlyDietPlanDashboardScreen() {
     }
   }, [refetch]);
 
+  const completeGeneration = useCallback(async (month: number, year: number, planId?: string) => {
+    stopGenerating(true);
+
+    const resolvedId = planId || await resolvePlanIdFromHistory(month, year);
+    if (resolvedId) {
+      navigateToPlanDetail(resolvedId);
+      return;
+    }
+
+    Alert.alert(
+      'Plan Ready',
+      `${MONTHS[month - 1]} ${year} plan was generated successfully. Pull to refresh if it is not visible yet.`
+    );
+  }, [navigateToPlanDetail, resolvePlanIdFromHistory, stopGenerating]);
+
   // Start polling /status/:month/:year every 10 s until generation completes or fails
   const startPolling = useCallback((month: number, year: number) => {
-    let attempts = 0;
-    const MAX_ATTEMPTS = 60; // 60 x 10 s = 10 min
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
 
     pollRef.current = setInterval(async () => {
-      attempts++;
       try {
         // preferCacheValue=false forces a fresh network request each time
         const result = await triggerGetStatus({ month, year }, false);
         const statusPayload = (result.data as any)?.data ?? (result.data as any);
 
+        if (statusPayload?.status === 'pending' && statusPayload?.generationTiming) {
+          const timing = statusPayload.generationTiming;
+          const startedAtMs = timing?.startedAt ? new Date(timing.startedAt).getTime() : Date.now();
+          const estimated = typeof timing?.estimatedDurationMs === 'number' && timing.estimatedDurationMs > 0
+            ? timing.estimatedDurationMs
+            : 7 * 60 * 1000;
+
+          setGeneratingState((prev) => ({
+            ...prev,
+            active: true,
+            month,
+            year,
+            startedAt: startedAtMs,
+            estimatedDurationMs: estimated,
+          }));
+        }
+
         if (statusPayload?.status === 'complete') {
-          stopGenerating(true);
+          const completedPlanId = statusPayload?.planId || statusPayload?.plan?._id;
+          await completeGeneration(month, year, completedPlanId);
           return;
         }
         if (statusPayload?.status === 'failed') {
@@ -159,15 +269,8 @@ export default function MonthlyDietPlanDashboardScreen() {
         }
         // 'pending' or 'not_found' -- keep waiting
       } catch { /* network hiccup -- keep polling */ }
-
-      if (attempts >= MAX_ATTEMPTS) {
-        stopGenerating(
-          false,
-          `Generation is taking longer than expected. Please pull-to-refresh to check if your ${MONTHS[month - 1]} ${year} plan is ready.`
-        );
-      }
     }, 10_000);
-  }, [triggerGetStatus, stopGenerating]);
+  }, [triggerGetStatus, stopGenerating, completeGeneration]);
 
   // Cleanup on unmount
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
@@ -177,24 +280,24 @@ export default function MonthlyDietPlanDashboardScreen() {
     const year = selectedYear;
 
     setShowGenerateModal(false);
-    setGeneratingState({ active: true, month, year });
+    setGeneratingState({ active: true, month, year, startedAt: Date.now(), estimatedDurationMs: 7 * 60 * 1000 });
 
     try {
       const result = await generate({ month, year }).unwrap();
-      // Backend returns 202 { success: true, status: 'pending' } — start polling /status
+      // Backend returns 202 { success: true, status: 'pending' } - start polling /status
       const status = (result as any)?.status ?? (result as any)?.data?.status;
 
       if (status === 'pending') {
         startPolling(month, year);
       } else {
-        stopGenerating(true);
+        await completeGeneration(month, year, (result as any)?.planId || (result as any)?.data?.planId);
       }
     } catch (err: any) {
       const errMsg: string = err?.data?.error || err?.data?.message || '';
 
-      // 'Already exists' (409) — plan is complete, show it
+      // 'Already exists' (409) - plan is complete, show it
       if (errMsg.toLowerCase().includes('already exists')) {
-        stopGenerating(true);
+        await completeGeneration(month, year);
         return;
       }
 
@@ -207,17 +310,17 @@ export default function MonthlyDietPlanDashboardScreen() {
         const planStatus = statusPayload?.status;
 
         if (planStatus === 'pending') {
-          // Plan is generating — start polling, don't show error
+          // Plan is generating - start polling, don't show error
           startPolling(month, year);
           return;
         }
         if (planStatus === 'complete') {
-          // Plan already finished (rare race condition) — show it
-          stopGenerating(true);
+          // Plan already finished (rare race condition) - show it
+          await completeGeneration(month, year, statusPayload?.planId || statusPayload?.plan?._id);
           return;
         }
-        // 'failed' or 'not_found' — show error
-      } catch { /* status check also failed — fall through to error */ }
+        // 'failed' or 'not_found' - show error
+      } catch { /* status check also failed - fall through to error */ }
 
       stopGenerating(
         false,
@@ -273,30 +376,35 @@ export default function MonthlyDietPlanDashboardScreen() {
           <Text style={styles.heroSubtitle}>Comprehensive monthly meal planning with multiple options</Text>
           <View style={styles.heroStatsRow}>
             <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{plans.length}</Text>
+              <Text style={styles.heroStatValue}>{completedPlans.length}</Text>
               <Text style={styles.heroStatLabel}>Total Plans</Text>
             </View>
             <View style={styles.heroStatDivider} />
             <View style={styles.heroStat}>
               <Text style={styles.heroStatValue}>
-                {plans.length > 0 ? MONTHS[(plans[0].month || 1) - 1]?.substring(0, 3) : '--'}
+                {completedPlans.length > 0 ? MONTHS[(completedPlans[0].month || 1) - 1]?.substring(0, 3) : '--'}
               </Text>
               <Text style={styles.heroStatLabel}>Latest Month</Text>
             </View>
             <View style={styles.heroStatDivider} />
             <View style={styles.heroStat}>
-              <Text style={styles.heroStatValue}>{plans.length > 0 ? plans[0].year : '--'}</Text>
+              <Text style={styles.heroStatValue}>{completedPlans.length > 0 ? completedPlans[0].year : '--'}</Text>
               <Text style={styles.heroStatLabel}>Year</Text>
             </View>
           </View>
         </LinearGradient>
 
-        {/* Animated generation banner â€” shown while AI is working */}
+        {/* Animated generation banner - shown while AI is working */}
         {generatingState.active && (
-          <GeneratingBanner month={generatingState.month} year={generatingState.year} />
+          <GeneratingBanner
+            month={generatingState.month}
+            year={generatingState.year}
+            startedAt={generatingState.startedAt}
+            estimatedDurationMs={generatingState.estimatedDurationMs}
+          />
         )}
 
-        {/* Generate button â€” hidden while generating */}
+        {/* Generate button - hidden while generating */}
         {!generatingState.active && (
           <TouchableOpacity activeOpacity={0.7} onPress={() => setShowGenerateModal(true)}>
             <LinearGradient
@@ -312,7 +420,7 @@ export default function MonthlyDietPlanDashboardScreen() {
           </TouchableOpacity>
         )}
 
-        {plans.length === 0 && !generatingState.active ? (
+        {completedPlans.length === 0 && !generatingState.active ? (
           <EmptyState
             icon="calendar-month-outline"
             title="No Monthly Plans"
@@ -321,14 +429,14 @@ export default function MonthlyDietPlanDashboardScreen() {
         ) : (
           <>
             {/* Section Header */}
-            {plans.length > 0 && (
+            {completedPlans.length > 0 && (
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Plan History</Text>
                 <View style={styles.sectionLine} />
               </View>
             )}
 
-            {plans.map((plan: any) => (
+            {completedPlans.map((plan: any) => (
               <View key={plan._id} style={styles.planCard}>
                 <View style={styles.planRow}>
                   <View style={styles.planIconWrap}>
@@ -381,7 +489,7 @@ export default function MonthlyDietPlanDashboardScreen() {
             <Text style={styles.modalSubtitle}>Select month and year for your plan</Text>
             <View style={styles.modalNote}>
               <MaterialCommunityIcons name="clock-outline" size={14} color="#E67E22" />
-              <Text style={styles.modalNoteText}>Takes 3â€“5 minutes (AI + nutrition analysis)</Text>
+              <Text style={styles.modalNoteText}>Takes 3-5 minutes (AI + nutrition analysis)</Text>
             </View>
           </View>
 
@@ -477,6 +585,34 @@ const styles = StyleSheet.create({
   },
   bannerTitle: { fontSize: 18, fontWeight: '700', color: '#FFFFFF', letterSpacing: -0.3 },
   bannerSub: { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 4, marginBottom: spacing[4] },
+  bannerMetaRow: {
+    flexDirection: 'row',
+    gap: spacing[2],
+    marginBottom: spacing[3],
+  },
+  bannerMetaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderRadius: borderRadius.full,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[1],
+  },
+  bannerMetaText: { fontSize: 12, color: 'rgba(255,255,255,0.92)', fontWeight: '600' },
+  bannerProgressTrack: {
+    width: '100%',
+    height: 8,
+    borderRadius: borderRadius.full,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    marginBottom: spacing[3],
+    overflow: 'hidden',
+  },
+  bannerProgressFill: {
+    height: '100%',
+    borderRadius: borderRadius.full,
+    backgroundColor: '#FFFFFF',
+  },
   bannerStep: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: 'rgba(255,255,255,0.12)',
@@ -493,6 +629,24 @@ const styles = StyleSheet.create({
   bannerNote: {
     fontSize: 11, color: 'rgba(255,255,255,0.6)', textAlign: 'center',
     fontStyle: 'italic', marginTop: 4,
+  },
+  pendingChipWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    backgroundColor: '#F4F0FB',
+    borderWidth: 1,
+    borderColor: '#D8CBEF',
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
+    marginBottom: spacing[4],
+  },
+  pendingChipText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#5E4D7E',
+    fontWeight: '500',
   },
 
   /* Generate */

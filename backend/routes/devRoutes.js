@@ -1,6 +1,9 @@
 import express from 'express';
 import ExercisePlan from '../models/ExercisePlan.js';
 import LifestyleTip from '../models/LifestyleTip.js';
+import { User } from '../models/User.js';
+import exercisePlanService from '../services/exercisePlanService.js';
+import lifestyleTipsService from '../services/lifestyleTipsService.js';
 
 const router = express.Router();
 
@@ -62,6 +65,97 @@ router.delete('/clear-today-tips', async (req, res) => {
     return res.status(500).json({
       success: false,
       error: 'Failed to delete tips'
+    });
+  }
+});
+
+// Force-refresh today's exercise/lifestyle generation for a specific user.
+// Body: { email?: string, userId?: string }
+router.post('/refresh-today-user', async (req, res) => {
+  try {
+    const { email, userId } = req.body || {};
+
+    if (!email && !userId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Provide email or userId in request body',
+      });
+    }
+
+    let user;
+    if (userId) {
+      user = await User.findById(userId).select('_id email').lean();
+    } else {
+      user = await User.findOne({ email }).select('_id email').lean();
+    }
+
+    if (!user?._id) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found',
+      });
+    }
+
+    const userIdStr = String(user._id);
+
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const targetDateStr = today.toISOString().split('T')[0];
+
+    // Remove today's docs so old results cannot be shown.
+    const [exerciseDeleteResult, tipsDeleteResult] = await Promise.all([
+      ExercisePlan.deleteMany({ user_id: user._id, target_date: today }),
+      LifestyleTip.deleteMany({ user_id: user._id, target_date: today }),
+    ]);
+
+    const exercisePlaceholder = new ExercisePlan({
+      user_id: user._id,
+      target_date: today,
+      region: 'Global',
+      sessions: [],
+      totals: { duration_total_min: 0, calories_total: 0, sessions_count: 0 },
+      status: 'pending',
+      generation_status: 'pending',
+    });
+
+    const tipsPlaceholder = new LifestyleTip({
+      user_id: user._id,
+      target_date: today,
+      region: 'Global',
+      categories: [],
+      status: 'active',
+      generation_status: 'pending',
+    });
+
+    await Promise.all([exercisePlaceholder.save(), tipsPlaceholder.save()]);
+
+    exercisePlanService
+      .runBackgroundExerciseGeneration(userIdStr, targetDateStr, exercisePlaceholder._id)
+      .catch((err) => console.error(`❌ [DEV] refresh exercise failed for ${userIdStr}:`, err.message));
+
+    lifestyleTipsService
+      .runBackgroundLifestyleTipsGeneration(userIdStr, targetDateStr, tipsPlaceholder._id)
+      .catch((err) => console.error(`❌ [DEV] refresh lifestyle failed for ${userIdStr}:`, err.message));
+
+    return res.status(202).json({
+      success: true,
+      message: 'Refresh triggered for user',
+      user: { id: userIdStr, email: user.email || null },
+      date: targetDateStr,
+      deleted: {
+        exercise: exerciseDeleteResult.deletedCount || 0,
+        lifestyle: tipsDeleteResult.deletedCount || 0,
+      },
+      placeholders: {
+        exercisePlanId: exercisePlaceholder._id,
+        lifestyleTipsId: tipsPlaceholder._id,
+      },
+    });
+  } catch (error) {
+    console.error('Error refreshing user plans:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to refresh user plans',
     });
   }
 });

@@ -9,6 +9,136 @@ const UserPersonalInfo = mongoose.model('UserPersonalInfo');
 const UserMedicalInfo = mongoose.model('UserMedicalInfo');
 
 class ExercisePlanService {
+  toNum(value) {
+    const parsed = this.parseNumber(value);
+    return parsed == null ? null : parsed;
+  }
+
+  extractConditionNames(medicalInfo) {
+    if (!medicalInfo) return [];
+    const conditions = medicalInfo.chronic_conditions || medicalInfo.conditions || [];
+    if (!Array.isArray(conditions)) return [];
+    return conditions
+      .map((condition) => condition?.condition_name || condition?.name || condition)
+      .map((condition) => String(condition || '').trim())
+      .filter(Boolean);
+  }
+
+  buildUserHealthSnapshot(user, personalInfo, medicalInfo, goal = 'improve_fitness') {
+    const dob = new Date(personalInfo?.date_of_birth || user?.date_of_birth || Date.now());
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const md = today.getMonth() - dob.getMonth();
+    if (md < 0 || (md === 0 && today.getDate() < dob.getDate())) age--;
+
+    const weight = this.toNum(personalInfo?.weight);
+    const height = this.toNum(personalInfo?.height);
+    const bmi = (weight && height) ? Number((weight / ((height / 100) * (height / 100))).toFixed(1)) : null;
+
+    const personal = {
+      age: Number.isFinite(age) ? age : null,
+      gender: personalInfo?.gender || user?.gender || 'Unknown',
+      weight,
+      height,
+      bmi,
+      activity_level: personalInfo?.activity_level || 'Sedentary',
+      smoking_status: personalInfo?.smoking_status || 'Unknown',
+      alcohol_use: personalInfo?.alcohol_use || 'Unknown',
+      sleep_hours: this.toNum(personalInfo?.sleep_hours),
+      goal,
+      country: user?.country || personalInfo?.address?.country || 'Global',
+    };
+
+    const medications = this.extractMedicationNames(medicalInfo);
+    const chronicConditions = this.extractConditionNames(medicalInfo);
+    const hba1c = this.toNum(medicalInfo?.recent_lab_results?.hba1c?.value);
+    const fastingGlucose = this.toNum(medicalInfo?.recent_lab_results?.fasting_glucose?.value);
+    const systolic = this.toNum(medicalInfo?.blood_pressure?.systolic);
+    const diastolic = this.toNum(medicalInfo?.blood_pressure?.diastolic);
+
+    const medical = {
+      diabetes_type: medicalInfo?.diabetes_type || 'Type 2',
+      medications,
+      chronic_conditions: chronicConditions,
+      hba1c,
+      fasting_glucose: fastingGlucose,
+      blood_pressure: (systolic && diastolic) ? `${systolic}/${diastolic}` : null,
+    };
+
+    return { personal, medical };
+  }
+
+  buildExerciseFingerprint(structured) {
+    const tokens = [];
+    (structured?.sessions || []).forEach((session) => {
+      tokens.push(`session:${String(session?.name || '').toLowerCase()}`);
+      (session?.items || []).forEach((item) => {
+        tokens.push(`exercise:${String(item?.exercise || '').toLowerCase()}`);
+        tokens.push(`duration:${String(item?.duration_min || '')}`);
+        tokens.push(`intensity:${String(item?.intensity || '').toLowerCase()}`);
+      });
+    });
+    (structured?.tips || []).forEach((tip) => {
+      tokens.push(`tip:${String(tip || '').toLowerCase().slice(0, 80)}`);
+    });
+    return Array.from(new Set(tokens.filter(Boolean))).sort().join('|');
+  }
+
+  jaccardSimilarity(aStr, bStr) {
+    const a = new Set(String(aStr || '').split('|').filter(Boolean));
+    const b = new Set(String(bStr || '').split('|').filter(Boolean));
+    if (a.size === 0 || b.size === 0) return 0;
+    let intersection = 0;
+    a.forEach((val) => { if (b.has(val)) intersection++; });
+    return intersection / (a.size + b.size - intersection);
+  }
+
+  async hasSimilarExercisePlanForDate(userId, targetDateObj, structured) {
+    const fingerprint = this.buildExerciseFingerprint(structured);
+    if (!fingerprint) return false;
+
+    const others = await ExercisePlan.find({
+      user_id: { $ne: userId },
+      target_date: targetDateObj,
+      $or: [
+        { generation_status: 'complete' },
+        { status: 'final' },
+      ],
+    })
+      .select('sessions tips')
+      .limit(12)
+      .lean();
+
+    for (const other of others) {
+      const otherFingerprint = this.buildExerciseFingerprint(other || {});
+      if (!otherFingerprint) continue;
+      if (otherFingerprint === fingerprint) return true;
+      const similarity = this.jaccardSimilarity(fingerprint, otherFingerprint);
+      if (similarity >= 0.88) return true;
+    }
+    return false;
+  }
+
+  extractMedicationNames(medicalInfo) {
+    if (!medicalInfo) return [];
+
+    if (Array.isArray(medicalInfo.current_medications)) {
+      return medicalInfo.current_medications
+        .map((medication) => medication?.medication_name || medication?.name || medication)
+        .map((medication) => String(medication || '').trim())
+        .filter(Boolean);
+    }
+
+    if (Array.isArray(medicalInfo.medications)) {
+      return medicalInfo.medications
+        .map((medication) => medication?.medication_name || medication?.name || medication)
+        .map((medication) => String(medication || '').trim())
+        .filter(Boolean);
+    }
+
+    return [];
+  }
+
   // Extract a number from varied AI outputs (e.g., "180-270 kcal", "60 min", 45)
   parseNumber(value) {
     if (typeof value === 'number' && !Number.isNaN(value)) return value;
@@ -37,25 +167,7 @@ class ExercisePlanService {
     
     if (!personalInfo) throw new Error('Personal information not found. Please complete your profile first.');
 
-    const dob = new Date(personalInfo.date_of_birth);
-    const today = new Date();
-    let age = today.getFullYear() - dob.getFullYear();
-    const md = today.getMonth() - dob.getMonth();
-    if (md < 0 || (md === 0 && today.getDate() < dob.getDate())) age--;
-
-    const personal = {
-      age,
-      gender: personalInfo.gender,
-      weight: personalInfo.weight,
-      height: personalInfo.height,
-      activity_level: personalInfo.activity_level || 'Sedentary',
-      goal: goal,
-      country: user.country || 'Global'
-    };
-    const medical = {
-      diabetes_type: medicalInfo?.diabetes_type || 'Type 2',
-      medications: medicalInfo?.medications || []
-    };
+    const { personal, medical } = this.buildUserHealthSnapshot(user, personalInfo, medicalInfo, goal);
 
     // Normalize to UTC midnight to avoid timezone issues
     const targetDateObj = new Date(targetDate);
@@ -78,7 +190,9 @@ class ExercisePlanService {
     const context = await this.queryRegionalExercise(userRegion);
     console.log(`📚 RAG context: ${context.chunks.length} chunks retrieved`);
 
-    const prompt = this.buildExercisePrompt(personal, medical, context, targetDateObj);
+    const prompt = this.buildExercisePrompt(personal, medical, context, targetDateObj, {
+      diversityHint: `user-${String(userId).slice(-6)}`,
+    });
     let structured;
     try {
       const aiResponse = await this.callLMStudio(prompt);
@@ -92,6 +206,19 @@ class ExercisePlanService {
     if (!structured || !structured.sessions || structured.sessions.length === 0) {
       console.error('❌ No valid exercise sessions generated');
       throw new Error('Failed to generate exercise plan: No valid sessions created');
+    }
+
+    const similarPlanDetected = await this.hasSimilarExercisePlanForDate(userId, targetDateObj, structured);
+    if (similarPlanDetected) {
+      console.warn('⚠️ Similar same-day exercise plan detected for another user; regenerating with stronger personalization.');
+      const regenPrompt = this.buildExercisePrompt(personal, medical, context, targetDateObj, {
+        diversityHint: `regen-${String(userId).slice(-6)}-${Date.now().toString().slice(-4)}`,
+      });
+      const regenResponse = await this.callLMStudio(regenPrompt, { temperature: 0.5 });
+      const regenerated = this.parseExercisePlan(regenResponse);
+      if (regenerated?.sessions?.length > 0) {
+        structured = regenerated;
+      }
     }
 
     const totals = this.calculateTotals(structured.sessions, personal.weight);
@@ -229,8 +356,9 @@ class ExercisePlanService {
     return Array.from(map.values());
   }
 
-  buildExercisePrompt(personal, medical, context, dateObj) {
+  buildExercisePrompt(personal, medical, context, dateObj, options = {}) {
     const dateStr = dateObj.toISOString().split('T')[0];
+    const diversityHint = options.diversityHint || '';
     const ctx = context.chunks.length > 0 
       ? context.chunks.slice(0,5).map((c,i) => `[${i+1}] ${c.substring(0,100)}`).join('\n')
       : 'No regional documents available - use your built-in exercise physiology knowledge for diabetes patients.';
@@ -241,10 +369,18 @@ Create a daily exercise plan for DATE: ${dateStr}
 PATIENT PROFILE:
 - Age: ${personal.age}, Gender: ${personal.gender}
 - Weight: ${personal.weight}kg, Height: ${personal.height}cm
+- BMI: ${personal.bmi ?? 'Not provided'}
 - Activity Level: ${personal.activity_level}
+- Sleep Hours: ${personal.sleep_hours ?? 'Unknown'}
+- Smoking Status: ${personal.smoking_status}
+- Alcohol Use: ${personal.alcohol_use}
 - Country/Region: ${personal.country}
 - Diabetes Type: ${medical.diabetes_type}
 - Medications: ${(medical.medications||[]).join(', ') || 'None specified'}
+- Chronic Conditions: ${(medical.chronic_conditions||[]).join(', ') || 'None specified'}
+- HbA1c: ${medical.hba1c ?? 'Unknown'}
+- Fasting Glucose: ${medical.fasting_glucose ?? 'Unknown'}
+- Blood Pressure: ${medical.blood_pressure ?? 'Unknown'}
 
 REGIONAL CONTEXT:
 ${ctx}
@@ -256,6 +392,10 @@ REQUIREMENTS:
 - All numerical values must be plain numbers (no units in JSON)
 - duration_min: number of minutes (e.g., 15, 30)
 - estimated_calories: number (e.g., 150, 200)
+- This is a personalized system; tailor the plan to this exact profile and do not output a generic template.
+- If profile contains risk signals (high BMI, poor sleep, smoking, elevated HbA1c), adjust intensity/progression and precautions accordingly.
+- Ensure exercise names, duration splits, and tips are not a near-duplicate of other users for the same date.
+- Internal personalization hint: ${diversityHint || 'none'}
 
 Return ONLY valid JSON with this structure:
 {
@@ -276,10 +416,11 @@ Return ONLY valid JSON with this structure:
   /**
    * Call Diabetica-7B via HF Gradio API (same as diet plan service)
    */
-  async callLMStudio(prompt) {
+  async callLMStudio(prompt, options = {}) {
     const hfBase = process.env.HF_SPACE_URL || 'https://zeeshanasghar02-diabetica-api.hf.space';
-    const MAX_TOKENS = 2048;
-    const systemPrompt = 'You are an exercise physiologist AI specializing in diabetes care. Respond with ONLY valid JSON — no markdown, no code blocks, no explanations outside JSON.';
+    const MAX_TOKENS = options.maxTokens || 2048;
+    const temperature = typeof options.temperature === 'number' ? options.temperature : 0.3;
+    const systemPrompt = options.systemPrompt || 'You are an exercise physiologist AI specializing in diabetes care. Respond with ONLY valid JSON - no markdown, no code blocks, no explanations outside JSON.';
 
     try {
       console.log(`🤖 Calling Diabetica-7B via HF Gradio at ${hfBase}`);
@@ -287,7 +428,7 @@ Return ONLY valid JSON with this structure:
       // Step 1: Submit job
       const submitRes = await axios.post(
         `${hfBase}/gradio_api/call/predict`,
-        { data: [systemPrompt, prompt, MAX_TOKENS, 0.3] },
+        { data: [systemPrompt, prompt, MAX_TOKENS, temperature] },
         { timeout: 30000 }
       );
       const { event_id } = submitRes.data;
@@ -335,6 +476,17 @@ Return ONLY valid JSON with this structure:
       }
       throw new Error(`AI generation failed: ${error.message}`);
     }
+  }
+
+  async repairExerciseJson(rawResponse) {
+    const repairSystemPrompt = 'You repair malformed JSON for exercise plans. Return ONLY valid JSON with keys "sessions" and "tips". No markdown, no prose.';
+    const repairPrompt = `Fix the malformed JSON below into strict valid JSON using this schema:\n\n{\n  "sessions": [\n    {\n      "name": "string",\n      "time": "string",\n      "type": "string",\n      "items": [\n        {\n          "exercise": "string",\n          "category": "string",\n          "intensity": "string",\n          "duration_min": number,\n          "mets": number,\n          "estimated_calories": number,\n          "notes": "string",\n          "precautions": ["string"]\n        }\n      ]\n    }\n  ],\n  "tips": ["string"]\n}\n\nMALFORMED JSON:\n${String(rawResponse || '').slice(0, 6000)}`;
+
+    return this.callLMStudio(repairPrompt, {
+      systemPrompt: repairSystemPrompt,
+      maxTokens: 2048,
+      temperature: 0.1,
+    });
   }
 
   parseExercisePlan(aiResponse) {
@@ -504,6 +656,120 @@ Return ONLY valid JSON with this structure:
       }
     });
     return totals;
+  }
+
+  /**
+   * Run full generation in the background and update an existing pending plan doc.
+   * Called after the controller has already returned 202 to the client.
+   * Mirrors MonthlyDietPlanService.runBackgroundGeneration pattern.
+   * @param {string} userId
+   * @param {string} targetDate - 'YYYY-MM-DD'
+   * @param {string} planId - The _id of the placeholder ExercisePlan document
+   */
+  async runBackgroundExerciseGeneration(userId, targetDate, planId) {
+    const startTime = Date.now();
+    const traceId = `exbg_${planId}_${startTime}`;
+    console.log(`🔄 [BG][${traceId}] Starting background exercise plan generation for user ${userId}, plan ${planId} (${targetDate})`);
+
+    try {
+      // 1. Get user profile
+      const user = await User.findById(userId);
+      if (!user) throw new Error('User not found');
+
+      const personalInfo = await UserPersonalInfo.findOne({ user_id: userId });
+      const medicalInfo  = await UserMedicalInfo.findOne({ user_id: userId });
+      if (!personalInfo) throw new Error('Personal information not found. Please complete your profile first.');
+
+      // Calculate age
+      const dob = new Date(personalInfo.date_of_birth);
+      const today = new Date();
+      let age = today.getFullYear() - dob.getFullYear();
+      const md = today.getMonth() - dob.getMonth();
+      if (md < 0 || (md === 0 && today.getDate() < dob.getDate())) age--;
+
+      const { personal, medical } = this.buildUserHealthSnapshot(user, personalInfo, medicalInfo, 'improve_fitness');
+
+      // 2. Region coverage
+      let userRegion = personal.country;
+      const regionCoverage = await regionDiscoveryService.checkRegionCoverage(userRegion, 'exercise_recommendation');
+      if (!regionCoverage.canGeneratePlan) {
+        const fallback = await regionDiscoveryService.getFallbackRegion(userRegion, 'exercise_recommendation');
+        if (fallback) userRegion = fallback;
+      }
+
+      // 3. RAG context
+      const context = await this.queryRegionalExercise(userRegion);
+      console.log(`[BG] RAG context: ${context.chunks.length} chunks`);
+
+      // 4. Build target date object (UTC midnight)
+      const [yStr, mStr, dStr] = String(targetDate).split('-');
+      const targetDateObj = new Date(parseInt(yStr), parseInt(mStr) - 1, parseInt(dStr));
+      targetDateObj.setUTCHours(0, 0, 0, 0);
+
+      // 5. AI generation via HF Gradio
+      const prompt = this.buildExercisePrompt(personal, medical, context, targetDateObj, {
+        diversityHint: `bg-${String(userId).slice(-6)}-${String(planId).slice(-4)}`,
+      });
+      let aiResponse = await this.callLMStudio(prompt);
+      console.log(`🧠 [BG][${traceId}] AI response length: ${aiResponse?.length || 0}`);
+
+      let structured;
+      let parseError;
+      try {
+        structured = this.parseExercisePlan(aiResponse);
+      } catch (err) {
+        parseError = err;
+      }
+
+      if (!structured) {
+        console.warn(`⚠️ [BG][${traceId}] Initial parse failed, attempting JSON repair pass...`);
+        const repairedResponse = await this.repairExerciseJson(aiResponse);
+        console.log(`🧠 [BG][${traceId}] Repair response length: ${repairedResponse?.length || 0}`);
+        structured = this.parseExercisePlan(repairedResponse);
+      }
+
+      if (!structured || !structured.sessions || structured.sessions.length === 0) {
+        if (parseError) throw parseError;
+        throw new Error('No valid exercise sessions generated');
+      }
+
+      const similarPlanDetected = await this.hasSimilarExercisePlanForDate(userId, targetDateObj, structured);
+      if (similarPlanDetected) {
+        console.warn(`⚠️ [BG][${traceId}] Similar same-day exercise plan detected; regenerating with stronger personalization.`);
+        const regenPrompt = this.buildExercisePrompt(personal, medical, context, targetDateObj, {
+          diversityHint: `bg-regen-${String(userId).slice(-6)}-${Date.now().toString().slice(-4)}`,
+        });
+        const regenResponse = await this.callLMStudio(regenPrompt, { temperature: 0.5 });
+        const regenerated = this.parseExercisePlan(regenResponse);
+        if (regenerated?.sessions?.length > 0) {
+          structured = regenerated;
+        }
+      }
+
+      const totals = this.calculateTotals(structured.sessions, personal.weight);
+
+      // 6. Update placeholder doc with full data
+      await ExercisePlan.findByIdAndUpdate(planId, {
+        region:           userRegion,
+        sessions:         structured.sessions,
+        totals,
+        sources:          context.sources,
+        tips:             structured.tips || [],
+        status:           'final',
+        generation_status: 'complete',
+        generation_error: undefined,
+        generated_at:     new Date(),
+      }, { new: true });
+
+      console.log(`✅ [BG][${traceId}] Exercise plan ${planId} completed in ${((Date.now() - startTime) / 1000).toFixed(1)}s`);
+
+    } catch (err) {
+      console.error(`❌ [BG][${traceId}] Exercise plan generation failed for ${planId}:`, err.message);
+      await ExercisePlan.findByIdAndUpdate(planId, {
+        generation_status: 'failed',
+        generation_error:  err.message,
+      }).catch(() => {});
+    }
   }
 }
 

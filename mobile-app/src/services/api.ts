@@ -204,7 +204,9 @@ export const baseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryE
     requestUrl.includes('/monthly-diet-plan/generate') ||
     requestUrl.includes('/diet-plan/generate') ||
     requestUrl.includes('/exercise-plan/generate') ||
-    requestUrl.includes('/lifestyle-tips/generate');
+    requestUrl.includes('/lifestyle-tips/generate') ||
+    requestUrl.includes('/assessment/diabetes') ||
+    requestUrl.includes('/assessment/run');
   const TIMEOUT_MS = isGenerationEndpoint ? 900_000 : 30_000; // 15 min for LLM, 30 s otherwise
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
