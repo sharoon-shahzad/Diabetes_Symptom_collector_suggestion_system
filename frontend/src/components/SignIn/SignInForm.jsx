@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import axiosInstance from '../../utils/axiosInstance';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import {
@@ -21,6 +21,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import LockIcon from '@mui/icons-material/Lock';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import GoogleIcon from '@mui/icons-material/Google';
 import { useTheme } from '@mui/material/styles';
 
 export default function SignInForm({ setSuccess, setError, navigate }) {
@@ -32,7 +33,134 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
     const [rememberMe, setRememberMe] = useState(false);
     const [focusedField, setFocusedField] = useState(null);
     const [errorMessage, setErrorMessage] = useState('');
+    const [googleLoading, setGoogleLoading] = useState(false);
+    const googleButtonContainerRef = useRef(null);
     const theme = useTheme();
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+    const handleAuthSuccess = async (payload) => {
+        if (payload?.data?.user && payload?.data?.accessToken) {
+            localStorage.setItem('accessToken', payload.data.accessToken);
+            const roles = payload.data.user.roles || [];
+            localStorage.setItem('roles', JSON.stringify(roles));
+
+            sessionStorage.removeItem('returnToSymptomAssessment');
+            sessionStorage.removeItem('answersSavedAfterLogin');
+
+            if (roles.includes('admin') || roles.includes('super_admin')) {
+                sessionStorage.removeItem('pendingOnboardingAnswers');
+                navigate('/admin-dashboard', { replace: true });
+                return;
+            }
+
+            const searchParams = new URLSearchParams(location.search);
+            const returnTo = searchParams.get('returnTo');
+            if (returnTo === 'symptom-assessment') {
+                const pendingAnswersRaw = sessionStorage.getItem('pendingOnboardingAnswers');
+                if (pendingAnswersRaw) {
+                    try {
+                        const pendingAnswers = JSON.parse(pendingAnswersRaw);
+                        if (Array.isArray(pendingAnswers) && pendingAnswers.length > 0) {
+                            await axiosInstance.post('/questions/batch-save-answers', {
+                                answers: pendingAnswers,
+                            });
+                            sessionStorage.setItem('answersSavedAfterLogin', 'true');
+                        }
+                    } catch (saveErr) {
+                        console.error('Failed to batch-save onboarding answers:', saveErr);
+                    } finally {
+                        sessionStorage.removeItem('pendingOnboardingAnswers');
+                    }
+                }
+                sessionStorage.setItem('returnToSymptomAssessment', 'true');
+                navigate('/symptom-assessment', { replace: true });
+                return;
+            }
+
+            sessionStorage.removeItem('pendingOnboardingAnswers');
+            sessionStorage.setItem('assessmentPopupPostLogin', 'true');
+            const from = location.state?.from;
+            const targetPath = typeof from === 'string' ? from : from?.pathname;
+            const isProtectedPath = targetPath && !['/signin', '/signup', '/'].includes(targetPath);
+            if (isProtectedPath) {
+                navigate(targetPath, { replace: true });
+            } else {
+                navigate('/dashboard', { replace: true });
+            }
+            return;
+        }
+
+        const errorMsg = payload?.message || 'Login failed.';
+        setErrorMessage(errorMsg);
+        setError(errorMsg);
+        setSuccess('');
+    };
+
+    const handleGoogleLogin = async (idToken) => {
+        if (!idToken) {
+            const msg = 'Google token missing. Please try again.';
+            setErrorMessage(msg);
+            setError(msg);
+            return;
+        }
+
+        setGoogleLoading(true);
+        setSuccess('');
+        setError('');
+        setErrorMessage('');
+
+        try {
+            const res = await axiosInstance.post('/auth/google', { idToken }, { withCredentials: true });
+            await handleAuthSuccess(res.data);
+        } catch (err) {
+            const errorMsg = err.response?.data?.message || 'Google login failed.';
+            setErrorMessage(errorMsg);
+            setError(errorMsg);
+            setSuccess('');
+        } finally {
+            setGoogleLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!googleClientId || !googleButtonContainerRef.current) return undefined;
+
+        const setupGoogle = () => {
+            if (!window.google?.accounts?.id) return;
+            window.google.accounts.id.initialize({
+                client_id: googleClientId,
+                callback: (response) => {
+                    handleGoogleLogin(response?.credential);
+                },
+            });
+            googleButtonContainerRef.current.innerHTML = '';
+            window.google.accounts.id.renderButton(googleButtonContainerRef.current, {
+                type: 'standard',
+                shape: 'pill',
+                size: 'large',
+                text: 'continue_with',
+                width: 320,
+            });
+        };
+
+        if (window.google?.accounts?.id) {
+            setupGoogle();
+            return undefined;
+        }
+
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.onload = setupGoogle;
+        document.body.appendChild(script);
+
+        return () => {
+            if (script.parentNode) {
+                script.parentNode.removeChild(script);
+            }
+        };
+    }, [googleClientId]);
 
     const validate = () => {
         if (!email || !password) {
@@ -64,73 +192,7 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                 password,
             }, { withCredentials: true });
 
-            if (res.data.data && res.data.data.user && res.data.data.accessToken) {
-                localStorage.setItem('accessToken', res.data.data.accessToken);
-                const roles = res.data.data.user.roles || [];
-                localStorage.setItem('roles', JSON.stringify(roles));
-
-                // Always clean up stale assessment flags first
-                sessionStorage.removeItem('returnToSymptomAssessment');
-                sessionStorage.removeItem('answersSavedAfterLogin');
-
-                // ── ROLE-FIRST routing ──────────────────────────────────────────
-                // Admins/super-admins go straight to their dashboard regardless
-                // of any returnTo param — they should never end up in the patient
-                // symptom-assessment flow.
-                if (roles.includes('admin') || roles.includes('super_admin')) {
-                    sessionStorage.removeItem('pendingOnboardingAnswers');
-                    navigate('/admin-dashboard', { replace: true });
-                    return;
-                }
-
-                // ── Regular-user: check if coming back from symptom assessment ──
-                // Only honour ?returnTo=symptom-assessment for non-admin users
-                // who completed the onboarding questionnaire as a guest.
-                const searchParams = new URLSearchParams(location.search);
-                const returnTo = searchParams.get('returnTo');
-
-                if (returnTo === 'symptom-assessment') {
-                    const pendingAnswersRaw = sessionStorage.getItem('pendingOnboardingAnswers');
-                    if (pendingAnswersRaw) {
-                        try {
-                            const pendingAnswers = JSON.parse(pendingAnswersRaw);
-                            if (Array.isArray(pendingAnswers) && pendingAnswers.length > 0) {
-                                await axiosInstance.post('/questions/batch-save-answers', {
-                                    answers: pendingAnswers,
-                                });
-                                sessionStorage.setItem('answersSavedAfterLogin', 'true');
-                            }
-                        } catch (saveErr) {
-                            console.error('Failed to batch-save onboarding answers:', saveErr);
-                        } finally {
-                            sessionStorage.removeItem('pendingOnboardingAnswers');
-                        }
-                    }
-                    // Keep returnToSymptomAssessment so SymptomAssessment can
-                    // detect the return on mount and show the "Continue" dialog
-                    sessionStorage.setItem('returnToSymptomAssessment', 'true');
-                    navigate('/symptom-assessment', { replace: true });
-                    return;
-                }
-
-                // ── Regular-user: normal login (direct sign-in or ProtectedRoute redirect) ──
-                sessionStorage.removeItem('pendingOnboardingAnswers');
-                // Show assessment insight popup on every login if user has been assessed
-                sessionStorage.setItem('assessmentPopupPostLogin', 'true');
-                const from = location.state?.from;
-                const targetPath = typeof from === 'string' ? from : from?.pathname;
-                const isProtectedPath = targetPath && !['/signin', '/signup', '/'].includes(targetPath);
-                if (isProtectedPath) {
-                    navigate(targetPath, { replace: true });
-                } else {
-                    navigate('/dashboard', { replace: true });
-                }
-            } else {
-                const errorMsg = res.data.message || 'Login failed.';
-                setErrorMessage(errorMsg);
-                setError(errorMsg);
-                setSuccess('');
-            }
+            await handleAuthSuccess(res.data);
         } catch (err) {
             const errorMsg = err.response?.data?.message || 'Login failed.';
             setErrorMessage(errorMsg);
@@ -376,6 +438,20 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                         </Button>
                     </motion.div>
                 </form>
+
+                {!!googleClientId && (
+                    <>
+                        <Divider sx={{ my: 2 }}>or</Divider>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                            <Box ref={googleButtonContainerRef} />
+                            {googleLoading && (
+                                <Button startIcon={<GoogleIcon />} size="small" disabled>
+                                    Signing in with Google...
+                                </Button>
+                            )}
+                        </Box>
+                    </>
+                )}
 
                 {/* Sign Up Link */}
                 <motion.div variants={itemVariants}>

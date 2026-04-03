@@ -23,6 +23,19 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    authProvider: {
+        type: String,
+        enum: ['local', 'google'],
+        default: 'local',
+    },
+    googleId: {
+        type: String,
+        unique: true,
+        sparse: true,
+    },
+    avatar: {
+        type: String,
+    },
     phone_number: {
         type: String,
     },
@@ -40,12 +53,12 @@ const userSchema = new mongoose.Schema({
     },
     date_of_birth: {
         type: Date,
-        required: true,  // Required for Age calculation in ML model
+        required: false,  // Required by assessment flow; may be missing for social sign-in until completed
     },
     gender: {
         type: String,
         enum: ['Male', 'Female', 'male', 'female'],
-        required: true,  // Required for Gender feature in ML model
+        required: false,  // Required by assessment flow; may be missing for social sign-in until completed
     },
     isActivated: {
         type: Boolean,

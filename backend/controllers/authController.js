@@ -1,6 +1,7 @@
 import { User } from '../models/User.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import { OAuth2Client } from 'google-auth-library';
 import { Role } from '../models/Role.js';
 import { 
     generateAccessToken, 
@@ -14,6 +15,19 @@ import { createAuditLog } from '../middlewares/auditMiddleware.js';
 const normalizeEmail = (email) => {
     if (!email || typeof email !== 'string') return email;
     return email.trim().toLowerCase();
+};
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+const getRefreshCookieOptions = () => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const crossSiteCookies = process.env.AUTH_COOKIE_CROSS_SITE === 'true' || isProduction;
+    return {
+        httpOnly: true,
+        secure: crossSiteCookies,
+        sameSite: crossSiteCookies ? 'none' : 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+    };
 };
 
 // Helper: Generate and store tokens
@@ -150,12 +164,7 @@ export const register = async (req, res) => {
 
         const { accessToken, refreshToken } = tokens;
 
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-        });
+        res.cookie('refreshToken', refreshToken, getRefreshCookieOptions());
 
         return res.status(201).json({
             success: true,
@@ -255,12 +264,7 @@ export const login = async (req, res) => {
         const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id, user.email);
         
         // Set refresh token as HTTP-only cookie
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-        });
+        res.cookie('refreshToken', refreshToken, getRefreshCookieOptions());
         
         // Log successful login to audit trail
         try {
@@ -347,12 +351,7 @@ export const refreshAccessToken = async (req, res) => {
         const { accessToken: newAccessToken, refreshToken: newRefreshToken } = await generateAccessAndRefreshTokens(user._id, user.email);
 
         // Set new refresh token as HTTP-only cookie
-        res.cookie('refreshToken', newRefreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-        });
+        res.cookie('refreshToken', newRefreshToken, getRefreshCookieOptions());
 
         return res.status(200).json({
             success: true,
@@ -441,6 +440,8 @@ export const getCurrentUser = async (req, res) => {
                     last_assessment_at: user.last_assessment_at,
                     date_of_birth: user.date_of_birth || null,
                     gender: user.gender || null,
+                    authProvider: user.authProvider || 'local',
+                    profileCompletionRequired: !user.date_of_birth || !user.gender,
                     createdAt: user.createdAt,
                     updatedAt: user.updatedAt,
                 }
@@ -579,5 +580,148 @@ export const resendActivationLink = async (req, res) => {
     } catch (error) {
         console.error('Resend activation link error:', error);
         return res.status(500).json({ message: 'Error resending activation link.' });
+    }
+};
+
+// Google OAuth (ID token) controller
+export const googleLogin = async (req, res) => {
+    try {
+        const { idToken } = req.body;
+
+        if (!process.env.GOOGLE_CLIENT_ID) {
+            return res.status(500).json({
+                success: false,
+                message: 'Google OAuth is not configured on server.',
+            });
+        }
+
+        if (!idToken || typeof idToken !== 'string') {
+            return res.status(400).json({
+                success: false,
+                message: 'Google idToken is required.',
+            });
+        }
+
+        const ticket = await googleClient.verifyIdToken({
+            idToken,
+            audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
+
+        const googleSub = payload?.sub;
+        const email = normalizeEmail(payload?.email);
+        const fullName = payload?.name || 'Google User';
+        const avatar = payload?.picture || null;
+        const emailVerified = payload?.email_verified === true;
+
+        if (!googleSub || !email) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid Google token payload.',
+            });
+        }
+
+        if (!emailVerified) {
+            return res.status(401).json({
+                success: false,
+                message: 'Google email is not verified.',
+            });
+        }
+
+        let user = await User.findOne({ googleId: googleSub });
+
+        // Edge case: existing local account with same email should be linked
+        if (!user) {
+            user = await User.findOne({ email });
+            if (user) {
+                user.googleId = googleSub;
+                user.authProvider = 'google';
+                if (avatar) user.avatar = avatar;
+                if (!user.isActivated) user.isActivated = true;
+                await user.save();
+            }
+        }
+
+        // First time Google login
+        if (!user) {
+            const randomPassword = crypto.randomBytes(32).toString('hex');
+            const hashedPassword = await bcrypt.hash(randomPassword, 10);
+            user = new User({
+                fullName,
+                email,
+                password: hashedPassword,
+                isActivated: true,
+                authProvider: 'google',
+                googleId: googleSub,
+                avatar,
+            });
+            await user.save();
+
+            try {
+                const { assignDefaultUserRole } = await import('../utils/roleUtils.js');
+                await assignDefaultUserRole(user._id);
+            } catch (roleError) {
+                console.error('Error assigning default role for Google user:', roleError);
+            }
+        }
+
+        // Keep profile current from Google while preserving custom profile edits
+        let needsSave = false;
+        if (!user.fullName && fullName) {
+            user.fullName = fullName;
+            needsSave = true;
+        }
+        if (avatar && user.avatar !== avatar) {
+            user.avatar = avatar;
+            needsSave = true;
+        }
+        if (needsSave) {
+            await user.save();
+        }
+
+        let roles = [];
+        try {
+            const { UsersRoles } = await import('../models/User_Role.js');
+            const userRoles = await UsersRoles.find({ user_id: user._id }).populate('role_id');
+            roles = userRoles.map(ur => ur.role_id?.role_name).filter(Boolean);
+        } catch (roleErr) {
+            console.error('Error fetching user roles during Google login:', roleErr);
+        }
+
+        const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id, user.email);
+        res.cookie('refreshToken', refreshToken, getRefreshCookieOptions());
+
+        return res.status(200).json({
+            success: true,
+            message: 'Google login successful.',
+            data: {
+                user: {
+                    id: user._id,
+                    fullName: user.fullName,
+                    email: user.email,
+                    phone_number: user.phone_number,
+                    country: user.country,
+                    country_code: user.country_code,
+                    roles,
+                    authProvider: user.authProvider || 'local',
+                    profileCompletionRequired: !user.date_of_birth || !user.gender,
+                    diabetes_diagnosed: user.diabetes_diagnosed,
+                    onboardingCompleted: user.onboardingCompleted,
+                    last_assessment_risk_level: user.last_assessment_risk_level,
+                    last_assessment_probability: user.last_assessment_probability,
+                    last_assessment_at: user.last_assessment_at,
+                    createdAt: user.createdAt,
+                    updatedAt: user.updatedAt,
+                },
+                accessToken,
+                refreshToken,
+            },
+        });
+    } catch (err) {
+        console.error('Google login error:', err);
+        return res.status(401).json({
+            success: false,
+            message: 'Google authentication failed.',
+        });
     }
 };

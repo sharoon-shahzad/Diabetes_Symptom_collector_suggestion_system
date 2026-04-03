@@ -9,7 +9,8 @@ import {
   getCurrentUser, 
   refreshAccessToken, 
   resendActivationLink, 
-  changePassword 
+  changePassword,
+  googleLogin
 } from '../controllers/authController.js';
 import { verifyAccessTokenMiddleware } from '../middlewares/authMiddleware.js';
 import { authLimiter, refreshTokenLimiter } from '../middlewares/rateLimitMiddleware.js';
@@ -22,6 +23,8 @@ router.post('/register', authLimiter, register);
 router.get('/activate/:token', activateAccount);
 // Login route (rate limited)
 router.post('/login', authLimiter, login);
+// Google login route (rate limited)
+router.post('/google', authLimiter, googleLogin);
 // Resend activation link route (rate limited)
 router.post('/resend-activation', authLimiter, resendActivationLink);
 // Change password route (protected)
