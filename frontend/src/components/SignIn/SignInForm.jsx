@@ -125,14 +125,20 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
     useEffect(() => {
         if (!googleClientId || !googleButtonContainerRef.current) return undefined;
 
+        const googleInitKey = '__diavise_google_initialized_client_id__';
         const setupGoogle = () => {
             if (!window.google?.accounts?.id) return;
-            window.google.accounts.id.initialize({
-                client_id: googleClientId,
-                callback: (response) => {
-                    handleGoogleLogin(response?.credential);
-                },
-            });
+            // React StrictMode mounts effects twice in development.
+            // Initialize GIS once per client ID to avoid duplicate init warnings.
+            if (window[googleInitKey] !== googleClientId) {
+                window.google.accounts.id.initialize({
+                    client_id: googleClientId,
+                    callback: (response) => {
+                        handleGoogleLogin(response?.credential);
+                    },
+                });
+                window[googleInitKey] = googleClientId;
+            }
             googleButtonContainerRef.current.innerHTML = '';
             window.google.accounts.id.renderButton(googleButtonContainerRef.current, {
                 type: 'standard',
