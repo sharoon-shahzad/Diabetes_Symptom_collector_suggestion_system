@@ -4,6 +4,17 @@
     "appVersionSource": "local"
   },
   "build": {
+    "development": {
+      "developmentClient": true,
+      "credentialsSource": "remote",
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://zeeshanasghar02-diavise-backend.hf.space"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
     "preview": {
       "credentialsSource": "remote",
       "distribution": "internal",

@@ -84,7 +84,7 @@ const PERMISSIONS: Array<{
 class GoogleFitService {
   private initialized = false;
   private readonly permissionTimeoutMs = 12000;
-  private readonly useNativePermissionDialog = true;
+  private readonly useNativePermissionDialog = false;
 
   private getAppPackageId(): string {
     if (Platform.OS !== 'android') {
@@ -154,6 +154,7 @@ class GoogleFitService {
       // Some release APK/device combinations can crash in the native permission contract.
       // We use Health Connect's app-managed permission screen as a stable fallback path.
       if (!this.useNativePermissionDialog) {
+        this.openSettings();
         return false;
       }
 

@@ -43,6 +43,8 @@ export default function GoogleFitScreen() {
       return;
     }
 
+    googleFit.openSettings();
+
     Alert.alert(
       'Finish setup in Health Connect',
       'In Health Connect, grant permissions for this app, ensure Google Fit is connected as a data source, then return and tap Refresh.',

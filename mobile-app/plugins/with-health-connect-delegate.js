@@ -33,21 +33,32 @@ function withHealthConnectDelegate(config) {
         'import dev.matinzd.healthconnect.permissions.HealthConnectPermissionDelegate',
       ]);
 
-      const onCreateBlock = [
-        '  override fun onCreate(savedInstanceState: Bundle?) {',
-        '    super.onCreate(savedInstanceState)',
-        '    HealthConnectPermissionDelegate.setPermissionDelegate(this)',
-        '  }',
-      ].join('\n');
-
-      if (!next.includes('override fun onCreate(savedInstanceState: Bundle?)')) {
-        if (next.includes('override fun createReactActivityDelegate')) {
+      // Check if setPermissionDelegate call already exists
+      if (!next.includes('HealthConnectPermissionDelegate.setPermissionDelegate(this)')) {
+        // If onCreate exists, inject into it; otherwise create one
+        if (next.includes('override fun onCreate(savedInstanceState: Bundle?)')) {
+          // Inject the delegate call after super.onCreate(null)
           next = next.replace(
-            '  override fun createReactActivityDelegate(): ReactActivityDelegate =',
-            `${onCreateBlock}\n\n  override fun createReactActivityDelegate(): ReactActivityDelegate =`,
+            /(\s+super\.onCreate\([^)]*\))/,
+            '$1\n    HealthConnectPermissionDelegate.setPermissionDelegate(this)',
           );
         } else {
-          next = next.replace(/}\s*$/, `\n\n${onCreateBlock}\n}\n`);
+          // Create onCreate block if it doesn't exist
+          const onCreateBlock = [
+            '  override fun onCreate(savedInstanceState: Bundle?) {',
+            '    super.onCreate(savedInstanceState)',
+            '    HealthConnectPermissionDelegate.setPermissionDelegate(this)',
+            '  }',
+          ].join('\n');
+
+          if (next.includes('override fun createReactActivityDelegate')) {
+            next = next.replace(
+              '  override fun createReactActivityDelegate(): ReactActivityDelegate =',
+              `${onCreateBlock}\n\n  override fun createReactActivityDelegate(): ReactActivityDelegate =`,
+            );
+          } else {
+            next = next.replace(/}\s*$/, `\n\n${onCreateBlock}\n}\n`);
+          }
         }
       }
 

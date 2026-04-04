@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Diavise",
-    "slug": "diabetes-health-mobile",
+    "slug": "diavise",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -54,9 +54,8 @@
         "expo-build-properties",
         {
           "android": {
-            "compileSdkVersion": 35,
-            "targetSdkVersion": 35,
-            "buildToolsVersion": "35.0.0",
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
             "minSdkVersion": 26
           },
           "ios": {
@@ -70,9 +69,9 @@
         {
           "isSdkExtensionEnabled": true
         }
-      ]
-      ,
-      "./plugins/with-health-connect-delegate"
+      ],
+      "./plugins/with-health-connect-delegate",
+      "./plugins/with-health-connect-queries"
     ],
     "experiments": {
       "typedRoutes": true
@@ -82,9 +81,9 @@
         "origin": false
       },
       "eas": {
-        "projectId": "ea9ae500-fe64-4472-bcad-819e603f594f"
+        "projectId": "81ced150-a953-41a9-a697-ddee681a72c4"
       }
     },
-    "owner": "zeeshan_x_02"
+    "owner": "zeeshanx02s-organization"
   }
 }

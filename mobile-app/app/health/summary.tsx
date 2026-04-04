@@ -350,6 +350,8 @@ export default function SummaryDetailScreen() {
       return;
     }
 
+    googleFit.openSettings();
+
     Alert.alert(
       'Finish setup in Health Connect',
       'Grant permissions for this app and confirm Google Fit is connected in Health Connect, then come back and pull to refresh.',
