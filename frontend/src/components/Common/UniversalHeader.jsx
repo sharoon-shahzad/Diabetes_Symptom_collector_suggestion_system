@@ -276,7 +276,11 @@ export default function UniversalHeader() {
               {user ? (
                 <>
                   <IconButton onClick={handleAvatarClick} size="large">
-                    <Avatar sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}>
+                    <Avatar
+                      src={user.avatar || undefined}
+                      alt={user.fullName || 'User'}
+                      sx={{ bgcolor: 'primary.main', width: 40, height: 40 }}
+                    >
                       {user.fullName?.[0] || <AccountCircleIcon />}
                     </Avatar>
                   </IconButton>
