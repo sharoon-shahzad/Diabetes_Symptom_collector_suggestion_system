@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -19,20 +19,12 @@ import {
   Divider,
   Link,
   alpha,
-  AppBar,
-  Toolbar,
-  Drawer,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemText,
   Collapse,
   Skeleton,
   Fade,
   Slide,
 } from '@mui/material';
 import {
-  HealthAndSafety,
   Assessment,
   TrendingUp,
   Security,
@@ -51,33 +43,71 @@ import {
   Analytics,
   Psychology,
   LocalHospital,
-  Timeline,
-  Article as ArticleIcon,
-  Menu as MenuIcon,
-  Close as CloseIcon,
   ExpandMore,
   ExpandLess,
+  Favorite,
 } from '@mui/icons-material';
-import { motion, useAnimation } from 'framer-motion';
-import { useInView } from 'react-intersection-observer';
-import ThemeToggle from '../components/Common/ThemeToggle';
+import { motion } from 'framer-motion';
+import LandingAboutCareSection from '../components/Common/LandingAboutCareSection';
+import LandingHowItWorksPipeline from '../components/Common/LandingHowItWorksPipeline';
+import LandingKnowledgeCtaSection from '../components/Common/LandingKnowledgeCtaSection';
 import BlogSection from '../components/Common/BlogSection';
 import ArticleModal from '../components/Common/ArticleModal';
 import TestimonialsSection from '../components/Common/TestimonialsSection';
 import { useSettings } from '../context/SettingsContext';
 
+const MotionDiv = motion.div;
+
+function footerLinkSx(theme, tc) {
+  return {
+    fontSize: '0.9375rem',
+    fontWeight: 500,
+    color: theme.palette.text.secondary,
+    transition: 'color 0.2s ease',
+    '&:hover': {
+      color: tc.cyan || theme.palette.info.main,
+    },
+  };
+}
+
+function FooterContactRow(props) {
+  const { icon: IconGlyph, children } = props;
+  const theme = useTheme();
+  const tc = theme.palette.brandTelecare || {};
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+      <Box
+        sx={{
+          width: 36,
+          height: 36,
+          borderRadius: 2,
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: alpha(tc.cyan || theme.palette.info.main, 0.1),
+          color: tc.cyan || theme.palette.info.main,
+        }}
+      >
+        <IconGlyph sx={{ fontSize: 18 }} />
+      </Box>
+      <Box sx={{ pt: 0.35, minWidth: 0 }}>{children}</Box>
+    </Box>
+  );
+}
+
 const LandingPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('lg'));
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
-  const [ref, inView] = useInView({ threshold: 0.1 });
-  const controls = useAnimation();
-  const [scrolled, setScrolled] = useState(false);
+  const displayFont =
+    theme.typography.marketingHeadline?.fontFamily || theme.typography.fontFamily;
+  const tc = theme.palette.brandTelecare || {};
   const [articleModal, setArticleModal] = useState({ open: false, article: null });
   const { siteTitle, contactEmail, siteDescription } = useSettings();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const heroBrandWords = (siteTitle || 'Diabetes TeleCare').trim().split(/\s+/).filter(Boolean);
   const [footerExpanded, setFooterExpanded] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -98,20 +128,14 @@ const LandingPage = () => {
   }, []);
 
   useEffect(() => {
-    if (inView) {
-      controls.start('visible');
-    }
-  }, [controls, inView]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      const isScrolled = window.scrollY > 100;
-      setScrolled(isScrolled);
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+    if (location.pathname !== '/') return;
+    const h = location.hash;
+    if (!h) return;
+    const t = window.setTimeout(() => {
+      document.querySelector(h)?.scrollIntoView({ behavior: 'smooth' });
+    }, 50);
+    return () => window.clearTimeout(t);
+  }, [location.pathname, location.hash]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -167,13 +191,6 @@ const LandingPage = () => {
     },
   ];
 
-  const stats = [
-    { number: '80%', label: 'Accuracy Rate', icon: <TrendingUp /> },
-    { number: '10K+', label: 'Users Helped', icon: <HealthAndSafety /> },
-    { number: '50+', label: 'Symptoms Tracked', icon: <Assessment /> },
-    { number: '24/7', label: 'Available Support', icon: <Support /> },
-  ];
-
   const handleArticleClick = (article) => {
     setArticleModal({ open: true, article });
   };
@@ -182,32 +199,8 @@ const LandingPage = () => {
     setArticleModal({ open: false, article: null });
   };
 
-  const toggleMobileMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
-  };
-
   const handleFooterToggle = (section) => {
     setFooterExpanded(prev => ({ ...prev, [section]: !prev[section] }));
-  };
-
-  const navLinks = [
-    { label: 'Home', href: '#home', isRoute: false },
-    { label: 'About', href: '#about', isRoute: false },
-    { label: 'Blogs & Articles', href: '#blogs-articles', isRoute: false },
-    { label: 'Forum', href: '/feedback', isRoute: true },
-    { label: 'Contact', href: '#contact', isRoute: false },
-  ];
-
-  const handleNavClick = (link) => {
-    if (link.isRoute) {
-      navigate(link.href);
-    } else {
-      const element = document.querySelector(link.href);
-      if (element) {
-        element.scrollIntoView({ behavior: 'smooth' });
-      }
-    }
-    setMobileMenuOpen(false);
   };
 
   return (
@@ -219,1062 +212,264 @@ const LandingPage = () => {
         overflow: 'hidden',
       }}
     >
-      {/* Responsive Floating Navbar */}
+      {/* Hero — full-width split: copy | visual (option 1, minimal) */}
       <Box
+        id="home"
+        component="section"
         sx={{
-          position: 'fixed',
-          top: { xs: 10, md: 20 },
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 1000,
-          width: { xs: 'calc(100% - 20px)', sm: 'calc(100% - 40px)', md: 'auto' },
-          maxWidth: { xs: '100%', md: '90vw', lg: '1200px' },
+          width: '100%',
+          pt: { xs: 2, md: 3 },
+          pb: 0,
+          position: 'relative',
+          overflow: 'hidden',
         }}
       >
-        <motion.div
-          initial={{ y: -100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
-        >
-          <Paper
-            elevation={12}
+        <MotionDiv initial="hidden" animate="visible" variants={containerVariants}>
+          <Box
             sx={{
-              background: alpha(theme.palette.background.paper, 0.98),
-              backdropFilter: 'blur(25px)',
-              borderRadius: { xs: '20px', md: '30px' },
-              border: `1px solid ${alpha(theme.palette.primary.main, 0.15)}`,
-              boxShadow: `0 12px 40px ${alpha(theme.palette.primary.main, 0.12)}`,
-              px: { xs: 2, sm: 3, md: 4 },
-              py: { xs: 1, md: 1.5 },
+              display: 'flex',
+              flexDirection: { xs: 'column', md: 'row' },
+              alignItems: 'stretch',
+              width: '100%',
+              minHeight: { xs: 'auto', md: 'min(88vh, 800px)' },
             }}
           >
+            {/* Copy column */}
             <Box
               sx={{
+                flex: { xs: '1 1 auto', md: '1 1 50%' },
+                maxWidth: { md: '50%' },
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: { xs: 1, md: 3 },
-                height: '100%',
+                justifyContent: 'center',
+                bgcolor: theme.palette.mode === 'light' ? '#FAFAF8' : theme.palette.background.default,
+                borderRight: { md: `1px solid ${theme.palette.divider}` },
+                py: { xs: 5, sm: 6, md: 8 },
+                px: { xs: 3, sm: 4, md: 5, lg: 6 },
               }}
             >
-              {/* Logo */}
-              <motion.div
-                whileHover={{ scale: 1.1, rotate: 360 }}
-                transition={{ duration: 0.3 }}
-              >
+              <MotionDiv variants={itemVariants} style={{ width: '100%' }}>
                 <Box
                   sx={{
-                    width: { xs: 36, md: 45 },
-                    height: { xs: 36, md: 45 },
-                    borderRadius: '50%',
-                    background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.3)}`,
-                    cursor: 'pointer',
+                    width: '100%',
+                    maxWidth: 640,
+                    mx: 'auto',
+                    textAlign: 'center',
                   }}
-                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                 >
-                  <HealthAndSafety sx={{ fontSize: { xs: 18, md: 22 }, color: 'white' }} />
-                </Box>
-              </motion.div>
-
-              {/* Desktop Navigation Links */}
-              <Box sx={{ display: { xs: 'none', lg: 'flex' }, alignItems: 'center', gap: 1, flex: 1, justifyContent: 'center' }}>
-                {navLinks.map((link) => (
-                  <motion.div
-                    key={link.label}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Button
-                      variant="text"
-                      sx={{
-                        color: theme.palette.text.primary,
-                        fontWeight: 600,
-                        textTransform: 'none',
-                        borderRadius: '20px',
-                        px: 2.5,
-                        py: 0,
-                        minWidth: '60px',
-                        fontSize: '0.95rem',
-                        height: '36px',
-                        minHeight: '36px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        lineHeight: 1,
-                        whiteSpace: 'nowrap',
-                        '&:hover': {
-                          background: alpha(theme.palette.primary.main, 0.08),
-                          color: theme.palette.primary.main,
-                        },
-                      }}
-                      onClick={() => handleNavClick(link)}
-                    >
-                      {link.label}
-                    </Button>
-                  </motion.div>
-                ))}
-              </Box>
-
-              {/* Right Side Actions */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1, md: 2 } }}>
-                {/* Desktop Divider */}
-                <Divider orientation="vertical" flexItem sx={{ mx: 1, height: '30px', display: { xs: 'none', lg: 'block' } }} />
-
-                {/* Theme Toggle */}
-                <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
-                  <ThemeToggle />
-                </motion.div>
-
-                {/* Desktop Auth Buttons */}
-                <Box sx={{ display: { xs: 'none', sm: 'flex' }, gap: 1 }}>
-                  {isAuthenticated ? (
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button
-                        variant="contained"
-                        size="small"
-                        onClick={() => navigate('/dashboard')}
-                        startIcon={<ArrowForward sx={{ fontSize: { xs: 14, md: 16 } }} />}
-                        sx={{
-                          borderRadius: '20px',
-                          textTransform: 'none',
-                          fontWeight: 600,
-                          px: { xs: 1.5, md: 2.5 },
-                          py: 0,
-                          fontSize: { xs: '0.8rem', md: '0.9rem' },
-                          height: { xs: '32px', md: '36px' },
-                          minHeight: { xs: '32px', md: '36px' },
-                          minWidth: { xs: '90px', md: '120px' },
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          lineHeight: 1,
-                          whiteSpace: 'nowrap',
-                          background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                          boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.3)}`,
-                          '&:hover': {
-                            background: `linear-gradient(135deg, ${theme.palette.primary.dark}, ${theme.palette.secondary.dark})`,
-                            boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.4)}`,
-                          },
-                        }}
-                      >
-                        Dashboard
-                      </Button>
-                    </motion.div>
+                  {isLoading ? (
+                    <>
+                      <Skeleton variant="text" width="90%" height={56} sx={{ mb: 1, mx: 'auto' }} />
+                      <Skeleton variant="text" width="75%" height={56} sx={{ mb: 2, mx: 'auto' }} />
+                      <Skeleton variant="text" width="100%" height={88} sx={{ mb: 3, mx: 'auto' }} />
+                      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center">
+                        <Skeleton variant="rounded" width={200} height={48} sx={{ borderRadius: 2 }} />
+                        <Skeleton variant="rounded" width={160} height={48} sx={{ borderRadius: 2 }} />
+                      </Stack>
+                    </>
                   ) : (
                     <>
-                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={() => navigate('/signin')}
+                      <Typography
+                        component="h1"
+                        sx={{
+                          fontFamily: displayFont,
+                          fontWeight: 800,
+                          color: 'text.primary',
+                          fontSize: { xs: '2.35rem', sm: '2.85rem', md: '3.35rem', lg: '3.65rem' },
+                          lineHeight: 1.1,
+                          letterSpacing: '-0.03em',
+                          mb: { xs: 2.25, md: 2.75 },
+                        }}
+                      >
+                        Clear answers for your{' '}
+                        <Box
+                          component="span"
                           sx={{
-                            borderRadius: '20px',
-                            textTransform: 'none',
-                            fontWeight: 600,
-                            px: { xs: 1.5, md: 2.5 },
-                            py: 0,
-                            fontSize: { xs: '0.8rem', md: '0.9rem' },
-                            height: { xs: '32px', md: '36px' },
-                            minHeight: { xs: '32px', md: '36px' },
-                            minWidth: { xs: '60px', md: '80px' },
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            lineHeight: 1,
-                            whiteSpace: 'nowrap',
-                            borderColor: alpha(theme.palette.primary.main, 0.3),
-                            '&:hover': {
-                              borderColor: theme.palette.primary.main,
-                              background: alpha(theme.palette.primary.main, 0.05),
-                            },
+                            color: tc.lime || theme.palette.success.main,
+                            display: { xs: 'inline', sm: 'inline' },
                           }}
                         >
-                          Sign In
-                        </Button>
-                      </motion.div>
-
-                      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                          diabetes journey
+                        </Box>
+                      </Typography>
+                      <Typography
+                        sx={{
+                          fontFamily: theme.typography.fontFamily,
+                          fontWeight: 400,
+                          color: 'text.secondary',
+                          fontSize: { xs: '1.125rem', sm: '1.1875rem', md: '1.25rem' },
+                          lineHeight: 1.65,
+                          mb: { xs: 3, md: 3.5 },
+                          maxWidth: 580,
+                          mx: 'auto',
+                        }}
+                      >
+                        Log symptoms, complete your assessment, and unlock personalized diet, exercise, and lifestyle
+                        guidance—so every step matches how you actually live with diabetes.
+                      </Typography>
+                      <Stack
+                        direction={{ xs: 'column', sm: 'row' }}
+                        spacing={2}
+                        justifyContent="center"
+                        sx={{ width: '100%' }}
+                      >
                         <Button
                           variant="contained"
-                          size="small"
-                          onClick={() => navigate('/onboarding')}
-                          startIcon={<ArrowForward sx={{ fontSize: { xs: 14, md: 16 } }} />}
+                          size="large"
+                          onClick={() => navigate(isAuthenticated ? '/dashboard' : '/onboarding')}
+                          startIcon={<ArrowForward />}
+                          fullWidth={isSmallScreen}
                           sx={{
-                            borderRadius: '20px',
-                            textTransform: 'none',
+                            fontFamily: theme.typography.fontFamily,
+                            py: 1.4,
+                            px: 3,
+                            fontSize: { xs: '0.9375rem', md: '1rem' },
                             fontWeight: 600,
-                            px: { xs: 1.5, md: 2.5 },
-                            py: 0,
-                            fontSize: { xs: '0.8rem', md: '0.9rem' },
-                            height: { xs: '32px', md: '36px' },
-                            minHeight: { xs: '32px', md: '36px' },
-                            minWidth: { xs: '90px', md: '120px' },
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            lineHeight: 1,
-                            whiteSpace: 'nowrap',
-                            background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                            boxShadow: `0 4px 16px ${alpha(theme.palette.primary.main, 0.3)}`,
+                            textTransform: 'none',
+                            borderRadius: 2,
+                            color: tc.onGradient || '#fff',
+                            background:
+                              tc.navPillGradient ||
+                              `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                            boxShadow: 'none',
                             '&:hover': {
-                              background: `linear-gradient(135deg, ${theme.palette.primary.dark}, ${theme.palette.secondary.dark})`,
-                              boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.4)}`,
+                              boxShadow: `0 8px 24px ${alpha(tc.cyan || theme.palette.primary.main, 0.28)}`,
                             },
                           }}
                         >
-                          Get Started
+                          {isAuthenticated ? 'Go to Dashboard' : 'Start assessment'}
                         </Button>
-                      </motion.div>
+                        <Button
+                          variant="outlined"
+                          size="large"
+                          startIcon={<PlayArrow />}
+                          fullWidth={isSmallScreen}
+                          sx={{
+                            fontFamily: theme.typography.fontFamily,
+                            py: 1.4,
+                            px: 3,
+                            fontSize: { xs: '0.9375rem', md: '1rem' },
+                            fontWeight: 600,
+                            textTransform: 'none',
+                            borderRadius: 2,
+                            borderWidth: 1.5,
+                            borderColor: alpha(tc.cyan || theme.palette.info.main, 0.55),
+                            color: tc.cyan || theme.palette.info.main,
+                            '&:hover': {
+                              borderWidth: 1.5,
+                              bgcolor: alpha(tc.cyan || theme.palette.info.main, 0.06),
+                            },
+                          }}
+                        >
+                          Watch demo
+                        </Button>
+                      </Stack>
                     </>
                   )}
                 </Box>
-
-                {/* Mobile Menu Button */}
-                <IconButton
-                  onClick={toggleMobileMenu}
-                  sx={{
-                    display: { xs: 'flex', lg: 'none' },
-                    color: theme.palette.primary.main,
-                    ml: { xs: 0.5, sm: 1 },
-                  }}
-                >
-                  {mobileMenuOpen ? <CloseIcon /> : <MenuIcon />}
-                </IconButton>
-              </Box>
-            </Box>
-          </Paper>
-        </motion.div>
-      </Box>
-
-      {/* Mobile Drawer Menu */}
-      <Drawer
-        anchor="top"
-        open={mobileMenuOpen}
-        onClose={toggleMobileMenu}
-        sx={{
-          display: { xs: 'block', lg: 'none' },
-          '& .MuiDrawer-paper': {
-            mt: { xs: 7, md: 10 },
-            borderRadius: '0 0 20px 20px',
-            background: alpha(theme.palette.background.paper, 0.98),
-            backdropFilter: 'blur(25px)',
-          },
-        }}
-      >
-        <Box sx={{ p: 2 }}>
-          <List>
-            {navLinks.map((link) => (
-              <ListItem key={link.label} disablePadding>
-                <ListItemButton
-                  onClick={() => handleNavClick(link)}
-                  sx={{
-                    borderRadius: 2,
-                    mb: 1,
-                    '&:hover': {
-                      background: alpha(theme.palette.primary.main, 0.08),
-                    },
-                  }}
-                >
-                  <ListItemText
-                    primary={link.label}
-                    primaryTypographyProps={{
-                      fontWeight: 600,
-                      color: theme.palette.text.primary,
-                    }}
-                  />
-                </ListItemButton>
-              </ListItem>
-            ))}
-          </List>
-          
-          <Divider sx={{ my: 2 }} />
-          
-          {/* Mobile Auth Buttons */}
-          <Stack spacing={2} sx={{ display: { xs: 'flex', sm: 'none' } }}>
-            {isAuthenticated ? (
-              <Button
-                variant="contained"
-                fullWidth
-                onClick={() => {
-                  navigate('/dashboard');
-                  setMobileMenuOpen(false);
-                }}
-                startIcon={<ArrowForward />}
-                sx={{
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  py: 1.5,
-                  background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                }}
-              >
-                Dashboard
-              </Button>
-            ) : (
-              <>
-                <Button
-                  variant="outlined"
-                  fullWidth
-                  onClick={() => {
-                    navigate('/signin');
-                    setMobileMenuOpen(false);
-                  }}
-                  sx={{
-                    borderRadius: 2,
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    py: 1.5,
-                  }}
-                >
-                  Sign In
-                </Button>
-                <Button
-                  variant="contained"
-                  fullWidth
-                  onClick={() => {
-                    navigate('/onboarding');
-                    setMobileMenuOpen(false);
-                  }}
-                  startIcon={<ArrowForward />}
-                  sx={{
-                    borderRadius: 2,
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    py: 1.5,
-                    background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                  }}
-                >
-                  Get Started
-                </Button>
-              </>
-            )}
-          </Stack>
-        </Box>
-      </Drawer>
-
-      {/* Enhanced Responsive Hero Section */}
-      <Box id="home" sx={{ pt: { xs: 8, md: 12 }, pb: { xs: 4, md: 8 }, position: 'relative', overflow: 'hidden' }}>
-        <Container maxWidth="lg">
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={containerVariants}
-          >
-            {/* Hero Content with Responsive Split Layout */}
-            <Box sx={{ 
-              display: 'flex', 
-              flexDirection: { xs: 'column-reverse', md: 'row' },
-              height: { xs: 'auto', md: '75vh' }, 
-              overflow: 'hidden',
-              minHeight: { xs: 'auto', md: '75vh' },
-              borderRadius: { xs: 3, sm: 4 },
-              border: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-              boxShadow: `0 8px 32px ${alpha(theme.palette.primary.main, 0.1)}`,
-            }}>
-              {/* Left Side - Text Content */}
-              <Box
-                sx={{
-                  flex: 1,
-                  height: { xs: 'auto', md: '100%' },
-                  minHeight: { xs: 'auto', md: '100%' },
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: theme.palette.background.paper,
-                  p: { xs: 3, sm: 4, md: 6, lg: 8 },
-                }}
-              >
-                <motion.div variants={itemVariants} style={{ width: '100%' }}>
-                  <Box sx={{ 
-                    textAlign: { xs: 'center', md: 'left' },
-                    maxWidth: { xs: '100%', md: '90%' },
-                    mx: { xs: 'auto', md: 0 },
-                  }}>
-                    {isLoading ? (
-                      <>
-                        <Skeleton variant="rectangular" width="100%" height={60} sx={{ mb: 2, borderRadius: 2 }} />
-                        <Skeleton variant="rectangular" width="80%" height={40} sx={{ mb: 3, borderRadius: 2, mx: { xs: 'auto', md: 0 } }} />
-                        <Skeleton variant="rectangular" width="100%" height={80} sx={{ mb: 4, borderRadius: 2 }} />
-                        <Box sx={{ display: 'flex', gap: 2, justifyContent: { xs: 'center', md: 'flex-start' } }}>
-                          <Skeleton variant="rectangular" width={180} height={56} sx={{ borderRadius: 3 }} />
-                          <Skeleton variant="rectangular" width={180} height={56} sx={{ borderRadius: 3 }} />
-                        </Box>
-                      </>
-                    ) : (
-                      <>
-                        <Typography
-                          variant="h1"
-                          fontWeight={800}
-                          color="text.primary"
-                          gutterBottom
-                          sx={{
-                            fontSize: { xs: '1.75rem', sm: '2.25rem', md: '2.8rem', lg: '3.2rem' },
-                            lineHeight: 1.15,
-                            mb: { xs: 2, md: 3 },
-                            letterSpacing: '-0.02em',
-                          }}
-                        >
-                          Smart Diabetes
-                          <br />
-                          <Box 
-                            component="span" 
-                            sx={{
-                              background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                              backgroundClip: 'text',
-                              WebkitBackgroundClip: 'text',
-                              WebkitTextFillColor: 'transparent',
-                            }}
-                          >
-                            Risk Assessment
-                          </Box>
-                        </Typography>
-                        <Typography
-                          variant="h6"
-                          color="text.secondary"
-                          paragraph
-                          sx={{ 
-                            mb: { xs: 3, md: 4 }, 
-                            fontSize: { xs: '0.95rem', sm: '1.05rem', md: '1.15rem' }, 
-                            lineHeight: 1.6,
-                            maxWidth: { xs: '100%', sm: 480, md: 520 },
-                            mx: { xs: 'auto', md: 0 },
-                            fontWeight: 400,
-                          }}
-                        >
-                          Harness the power of AI to assess your diabetes risk through comprehensive symptom analysis and get personalized health recommendations.
-                        </Typography>
-                        <Stack 
-                          direction={{ xs: 'column', sm: 'row' }} 
-                          spacing={{ xs: 2, sm: 2, md: 3 }}
-                          justifyContent={{ xs: 'center', md: 'flex-start' }}
-                          sx={{ width: { xs: '100%', sm: 'auto' } }}
-                        >
-                          <motion.div 
-                            whileHover={{ scale: 1.05 }} 
-                            whileTap={{ scale: 0.95 }}
-                            style={{ width: isSmallScreen ? '100%' : 'auto' }}
-                          >
-                            <Button
-                              variant="contained"
-                              size="large"
-                              onClick={() => navigate(isAuthenticated ? '/dashboard' : '/onboarding')}
-                              startIcon={<ArrowForward />}
-                              fullWidth={isSmallScreen}
-                              sx={{
-                                py: { xs: 1.5, md: 1.75 },
-                                px: { xs: 3, md: 4 },
-                                fontSize: { xs: '0.95rem', md: '1.05rem' },
-                                borderRadius: 3,
-                                fontWeight: 600,
-                                background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                                boxShadow: `0 8px 32px ${alpha(theme.palette.primary.main, 0.3)}`,
-                                '&:hover': {
-                                  background: `linear-gradient(135deg, ${theme.palette.primary.dark}, ${theme.palette.secondary.dark})`,
-                                  boxShadow: `0 12px 40px ${alpha(theme.palette.primary.main, 0.4)}`,
-                                  transform: 'translateY(-2px)',
-                                },
-                                transition: 'all 0.3s ease',
-                              }}
-                            >
-                              {isAuthenticated ? 'Go to Dashboard' : 'Start Assessment'}
-                            </Button>
-                          </motion.div>
-                          <motion.div 
-                            whileHover={{ scale: 1.05 }} 
-                            whileTap={{ scale: 0.95 }}
-                            style={{ width: isSmallScreen ? '100%' : 'auto' }}
-                          >
-                            <Button
-                              variant="outlined"
-                              size="large"
-                              startIcon={<PlayArrow />}
-                              fullWidth={isSmallScreen}
-                              sx={{
-                                py: { xs: 1.5, md: 1.75 },
-                                px: { xs: 3, md: 4 },
-                                fontSize: { xs: '0.95rem', md: '1.05rem' },
-                                borderRadius: 3,
-                                fontWeight: 600,
-                                borderWidth: 2,
-                                borderColor: theme.palette.primary.main,
-                                color: theme.palette.primary.main,
-                                '&:hover': {
-                                  borderWidth: 2,
-                                  background: alpha(theme.palette.primary.main, 0.1),
-                                  transform: 'translateY(-2px)',
-                                },
-                                transition: 'all 0.3s ease',
-                              }}
-                            >
-                              Watch Demo
-                            </Button>
-                          </motion.div>
-                        </Stack>
-                      </>
-                    )}
-                  </Box>
-                </motion.div>
-              </Box>
-              
-              {/* Right Side - Hero Image */}
-              <Box
-                sx={{
-                  flex: 1,
-                  height: { xs: '350px', sm: '450px', md: '100%' },
-                  minHeight: { xs: '300px', sm: '400px', md: '100%' },
-                  position: 'relative',
-                  width: '100%',
-                  overflow: 'hidden',
-                  backgroundImage: `url('/images/Doc.jpg')`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: { xs: 'center top', md: 'center' },
-                  backgroundRepeat: 'no-repeat',
-                  '&::before': {
-                    content: '""',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: `linear-gradient(${isMobile ? '180deg' : '135deg'}, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.secondary.main, 0.1)} 100%)`,
-                    zIndex: 1,
-                  },
-                  '&::after': {
-                    content: '"🏥"',
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    fontSize: { xs: '3rem', md: '4rem' },
-                    opacity: 0,
-                    zIndex: 2,
-                    transition: 'opacity 0.3s ease',
-                  },
-                  '&:hover::after': {
-                    opacity: 0.3,
-                  },
-                }}
-              />
-            </Box>
-          </motion.div>
-        </Container>
-      </Box>
-
-      {/* Enhanced Responsive Stats Section */}
-      <Box sx={{ py: { xs: 4, sm: 5, md: 6 }, background: alpha(theme.palette.primary.main, 0.05) }}>
-        <Container maxWidth="lg">
-          <motion.div
-            ref={ref}
-            initial="hidden"
-            animate={controls}
-            variants={containerVariants}
-          >
-            <Grid container spacing={{ xs: 2, sm: 3, md: 4 }} justifyContent="center">
-              {stats.map((stat, index) => (
-                <Grid size={{ xs: 6, sm: 6, md: 3 }} key={index} sx={{ display: 'flex' }}>
-                  <motion.div 
-                    variants={itemVariants} 
-                    style={{ width: '100%' }}
-                    whileHover={{ scale: 1.05 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <Card
-                      elevation={0}
-                      sx={{
-                        width: '100%',
-                        height: { xs: '200px', sm: '240px', md: '280px' },
-                        minHeight: { xs: '200px', sm: '240px', md: '280px' },
-                        textAlign: 'center',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        background: `linear-gradient(135deg, ${theme.palette.background.paper}, ${alpha(theme.palette.primary.main, 0.02)})`,
-                        border: `2px solid ${alpha(theme.palette.primary.main, 0.1)}`,
-                        borderRadius: { xs: 3, md: 4 },
-                        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        '&:hover': {
-                          transform: 'translateY(-8px)',
-                          boxShadow: `0 20px 40px ${alpha(theme.palette.primary.main, 0.15)}`,
-                          border: `2px solid ${theme.palette.primary.main}`,
-                          '&::before': {
-                            opacity: 1,
-                          },
-                        },
-                        '&::before': {
-                          content: '""',
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)}, ${alpha(theme.palette.secondary.main, 0.05)})`,
-                          opacity: 0,
-                          transition: 'opacity 0.4s ease',
-                          zIndex: 0,
-                        },
-                      }}
-                    >
-                      <CardContent
-                        sx={{
-                          p: { xs: 2, sm: 3, md: 4 },
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          flexGrow: 1,
-                          height: '100%',
-                          position: 'relative',
-                          zIndex: 1,
-                        }}
-                      >
-                        <motion.div
-                          whileHover={{ rotate: 360 }}
-                          transition={{ duration: 0.6 }}
-                        >
-                          <Box 
-                            sx={{ 
-                              color: theme.palette.primary.main, 
-                              mb: { xs: 2, md: 3 },
-                              p: { xs: 1.5, md: 2 },
-                              borderRadius: '50%',
-                              background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)}, ${alpha(theme.palette.secondary.main, 0.1)})`,
-                              border: `2px solid ${alpha(theme.palette.primary.main, 0.2)}`,
-                              width: { xs: 48, sm: 56, md: 60 },
-                              height: { xs: 48, sm: 56, md: 60 },
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
-                            {React.cloneElement(stat.icon, { sx: { fontSize: { xs: 24, sm: 28, md: 32 } } })}
-                          </Box>
-                        </motion.div>
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          transition={{ duration: 0.5, delay: index * 0.1 }}
-                        >
-                          <Typography 
-                            variant="h2" 
-                            fontWeight={800} 
-                            sx={{ 
-                              mb: { xs: 1, md: 2 },
-                              fontSize: { xs: '1.75rem', sm: '2rem', md: '2.5rem' },
-                              background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                              backgroundClip: 'text',
-                              WebkitBackgroundClip: 'text',
-                              WebkitTextFillColor: 'transparent',
-                            }}
-                          >
-                            {stat.number}
-                          </Typography>
-                        </motion.div>
-                        <Typography 
-                          variant="h6" 
-                          color="text.secondary"
-                          sx={{ 
-                            fontWeight: 600,
-                            fontSize: { xs: '0.85rem', sm: '0.95rem', md: '1.1rem' },
-                            lineHeight: 1.3,
-                          }}
-                        >
-                          {stat.label}
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                </Grid>
-              ))}
-            </Grid>
-          </motion.div>
-        </Container>
-      </Box>
-
-      {/* Enhanced Responsive Assessment Process Section */}
-      <Box id="about" sx={{ py: { xs: 6, md: 8, lg: 10 }, background: theme.palette.background.paper }}>
-        <Container maxWidth="lg">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={containerVariants}
-          >
-            <Box sx={{ textAlign: 'center', mb: { xs: 4, md: 6, lg: 8 } }}>
-              <motion.div variants={itemVariants}>
-                <Typography 
-                  variant="h3" 
-                  fontWeight={700} 
-                  color="text.primary" 
-                  gutterBottom
-                  sx={{ fontSize: { xs: '1.75rem', sm: '2.25rem', md: '2.75rem' } }}
-                >
-                  How {siteTitle || 'DiaVise'} Works
-                </Typography>
-                <Typography 
-                  variant="h6" 
-                  color="text.secondary" 
-                  sx={{ 
-                    maxWidth: 600, 
-                    mx: 'auto',
-                    fontSize: { xs: '0.95rem', sm: '1.05rem', md: '1.15rem' },
-                    px: { xs: 2, sm: 0 },
-                  }}
-                >
-                  Our comprehensive 4-step process ensures accurate diabetes risk assessment through advanced AI technology
-                </Typography>
-              </motion.div>
+              </MotionDiv>
             </Box>
 
-            {/* Responsive Process Flow with Horizontal Scroll on Mobile */}
+            {/* Visual column — heart + Diabetes Care wordmark (no photo) */}
             <Box
               sx={{
+                flex: { xs: '1 1 auto', md: '1 1 50%' },
+                maxWidth: { md: '50%' },
+                minHeight: { xs: 280, sm: 340, md: 'min(88vh, 800px)' },
                 display: 'flex',
-                alignItems: 'stretch',
-                justifyContent: { xs: 'flex-start', lg: 'center' },
-                gap: { xs: 3, md: 4 },
-                maxWidth: 1400,
-                mx: 'auto',
-                mb: { xs: 6, md: 8, lg: 10 },
-                overflowX: { xs: 'auto', lg: 'visible' },
-                overflowY: 'visible',
-                px: { xs: 2, sm: 3, lg: 0 },
-                pb: { xs: 2, lg: 0 },
-                '&::-webkit-scrollbar': {
-                  height: 8,
-                },
-                '&::-webkit-scrollbar-track': {
-                  background: alpha(theme.palette.primary.main, 0.05),
-                  borderRadius: 4,
-                },
-                '&::-webkit-scrollbar-thumb': {
-                  background: alpha(theme.palette.primary.main, 0.3),
-                  borderRadius: 4,
-                  '&:hover': {
-                    background: alpha(theme.palette.primary.main, 0.5),
-                  },
-                },
-                scrollbarWidth: 'thin',
-                scrollbarColor: `${alpha(theme.palette.primary.main, 0.3)} ${alpha(theme.palette.primary.main, 0.05)}`,
+                alignItems: 'center',
+                justifyContent: 'center',
+                px: { xs: 3, md: 4 },
+                py: { xs: 4, md: 6 },
+                background:
+                  theme.palette.mode === 'light'
+                    ? `linear-gradient(160deg, ${alpha(tc.cyan || theme.palette.info.main, 0.08)} 0%, ${alpha(tc.lime || theme.palette.success.main, 0.12)} 55%, ${alpha(theme.palette.background.paper, 0.95)} 100%)`
+                    : `linear-gradient(160deg, ${alpha(tc.cyan || theme.palette.info.main, 0.12)} 0%, ${alpha(tc.lime || theme.palette.success.main, 0.08)} 50%, ${theme.palette.background.paper} 100%)`,
               }}
             >
-              {[
-                { 
-                  step: '1', 
-                  title: 'Input Symptoms', 
-                  description: 'Enter your health data and symptoms through our comprehensive questionnaire',
-                  icon: <Assessment sx={{ fontSize: { xs: 36, md: 48 } }} />,
-                  color: theme.palette.primary.main,
-                  bgGradient: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)}, ${alpha(theme.palette.primary.main, 0.05)})`
-                },
-                { 
-                  step: '2', 
-                  title: 'AI Analysis', 
-                  description: 'Advanced machine learning algorithms process and analyze your data',
-                  icon: <Analytics sx={{ fontSize: { xs: 36, md: 48 } }} />,
-                  color: theme.palette.success.main,
-                  bgGradient: `linear-gradient(135deg, ${alpha(theme.palette.success.main, 0.1)}, ${alpha(theme.palette.success.main, 0.05)})`
-                },
-                { 
-                  step: '3', 
-                  title: 'Risk Assessment', 
-                  description: 'Comprehensive diabetes risk evaluation with confidence scoring',
-                  icon: <Psychology sx={{ fontSize: { xs: 36, md: 48 } }} />,
-                  color: theme.palette.warning.main,
-                  bgGradient: `linear-gradient(135deg, ${alpha(theme.palette.warning.main, 0.1)}, ${alpha(theme.palette.warning.main, 0.05)})`
-                },
-                { 
-                  step: '4', 
-                  title: 'Get Results', 
-                  description: 'Personalized recommendations and actionable health insights',
-                  icon: <TrendingUp sx={{ fontSize: { xs: 36, md: 48 } }} />,
-                  color: theme.palette.info.main,
-                  bgGradient: `linear-gradient(135deg, ${alpha(theme.palette.info.main, 0.1)}, ${alpha(theme.palette.info.main, 0.05)})`
-                },
-              ].map((item, index) => (
-                <motion.div
-                  key={index}
-                  variants={itemVariants}
-                  whileHover={{ scale: 1.05, rotateY: 3 }}
-                  transition={{ duration: 0.3, ease: 'easeOut' }}
-                  style={{ 
-                    perspective: '1000px',
-                    minWidth: isTablet ? (isSmallScreen ? '260px' : '300px') : 'auto',
-                    flex: isTablet ? '0 0 auto' : '1',
+              <Stack alignItems="center" spacing={{ xs: 3, md: 3.5 }} sx={{ textAlign: 'center', maxWidth: 440 }}>
+                <Box
+                  sx={{
+                    width: { xs: 140, sm: 152, md: 176 },
+                    height: { xs: 140, sm: 152, md: 176 },
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: `linear-gradient(135deg, ${tc.cyan || theme.palette.info.main} 0%, ${tc.lime || theme.palette.success.main} 100%)`,
+                    boxShadow: `0 20px 48px ${alpha(tc.cyan || theme.palette.primary.main, 0.3)}`,
                   }}
                 >
-                  <Paper
-                    elevation={0}
+                  <Favorite
                     sx={{
-                      p: { xs: 3, md: 4 },
-                      textAlign: 'center',
-                      borderRadius: { xs: 4, md: 6 },
-                      background: item.bgGradient,
-                      border: `3px solid ${alpha(item.color, 0.2)}`,
-                      transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                      width: '100%',
-                      minHeight: { xs: 340, sm: 360, md: 400 },
-                      maxHeight: { xs: 340, sm: 360, md: 400 },
-                      display: 'flex',
-                      flexDirection: 'column',
-                      position: 'relative',
-                      overflow: 'hidden',
-                      '&:hover': {
-                        boxShadow: `0 25px 50px ${alpha(item.color, 0.2)}`,
-                        border: `3px solid ${item.color}`,
-                        transform: 'translateY(-12px)',
-                        '&::before': {
-                          opacity: 1,
-                        },
-                      },
-                      '&::before': {
-                        content: '""',
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        background: `radial-gradient(circle at center, ${alpha(item.color, 0.1)}, transparent)`,
-                        opacity: 0,
-                        transition: 'opacity 0.4s ease',
-                        zIndex: 0,
-                      },
+                      fontSize: { xs: 72, sm: 80, md: 96 },
+                      color: tc.onGradient || '#FFFFFF',
                     }}
-                  >
-                    <Box sx={{ 
-                      position: 'relative', 
-                      zIndex: 1, 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      alignItems: 'center', 
-                      justifyContent: 'space-between',
-                      height: '100%',
-                      flex: 1,
-                    }}>
-                      <motion.div
-                        whileHover={{ rotate: 360, scale: 1.1 }}
-                        transition={{ duration: 0.6 }}
-                      >
-                        <Box
-                          sx={{
-                            width: { xs: 64, md: 80 },
-                            height: { xs: 64, md: 80 },
-                            borderRadius: '50%',
-                            background: `linear-gradient(135deg, ${item.color}, ${alpha(item.color, 0.8)})`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'white',
-                            fontWeight: 700,
-                            fontSize: { xs: '1.5rem', md: '1.8rem' },
-                            mb: { xs: 2, md: 3 },
-                            mx: 'auto',
-                            boxShadow: `0 8px 24px ${alpha(item.color, 0.4)}`,
-                            border: `3px solid ${alpha(item.color, 0.2)}`,
-                          }}
-                        >
-                          {item.step}
-                        </Box>
-                      </motion.div>
-                      
-                      <motion.div
-                        whileHover={{ scale: 1.1 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <Box sx={{ color: item.color, mb: { xs: 2, md: 3 } }}>
-                          {item.icon}
-                        </Box>
-                      </motion.div>
-                      
-                      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                        <Typography 
-                          variant="h5" 
-                          fontWeight={700} 
-                          color="text.primary" 
-                          gutterBottom
-                          sx={{ fontSize: { xs: '1.1rem', md: '1.35rem' } }}
-                        >
-                          {item.title}
-                        </Typography>
-                        <Typography 
-                          variant="body2" 
-                          color="text.secondary" 
-                          sx={{ 
-                            lineHeight: 1.6, 
-                            fontSize: { xs: '0.85rem', sm: '0.95rem', md: '1rem' } 
-                          }}
-                        >
-                          {item.description}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </Paper>
-                </motion.div>
-              ))}
-            </Box>
-
-            {/* Responsive Technology Stack */}
-            <Box sx={{ textAlign: 'center' }}>
-              <motion.div variants={itemVariants}>
-                <Typography 
-                  variant="h4" 
-                  fontWeight={700} 
-                  color="text.primary" 
-                  gutterBottom
-                  sx={{ fontSize: { xs: '1.5rem', sm: '1.85rem', md: '2.125rem' } }}
-                >
-                  Powered by Advanced Technology
-                </Typography>
-                <Typography 
-                  variant="h6" 
-                  color="text.secondary" 
-                  sx={{ 
-                    mb: { xs: 3, md: 4 }, 
-                    maxWidth: 600, 
-                    mx: 'auto',
-                    fontSize: { xs: '0.9rem', sm: '1rem', md: '1.1rem' },
-                    px: { xs: 2, sm: 0 },
+                  />
+                </Box>
+                <Typography
+                  component="p"
+                  sx={{
+                    fontFamily: displayFont,
+                    fontWeight: 800,
+                    fontSize: { xs: '2.125rem', sm: '2.5rem', md: '2.875rem' },
+                    lineHeight: 1.12,
+                    letterSpacing: '-0.02em',
                   }}
                 >
-                  Our platform leverages cutting-edge AI and medical technology to deliver accurate assessments
+                  {heroBrandWords.length >= 2 ? (
+                    <>
+                      <Box component="span" sx={{ color: tc.cyan || theme.palette.info.main }}>
+                        {heroBrandWords.slice(0, -1).join(' ')}{' '}
+                      </Box>
+                      <Box component="span" sx={{ color: tc.lime || theme.palette.success.main }}>
+                        {heroBrandWords[heroBrandWords.length - 1]}
+                      </Box>
+                    </>
+                  ) : (
+                    <Box component="span" sx={{ color: tc.cyan || theme.palette.info.main }}>
+                      {heroBrandWords[0] || 'Diabetes Care'}
+                    </Box>
+                  )}
                 </Typography>
-              </motion.div>
-              
-              <Grid container spacing={{ xs: 3, sm: 4, md: 6 }} justifyContent="center" sx={{ maxWidth: 1000, mx: 'auto' }}>
-                {[
-                  {
-                    icon: <Psychology sx={{ fontSize: { xs: 32, md: 40 }, color: theme.palette.primary.main }} />,
-                    title: 'Machine Learning',
-                    description: 'XGBoost algorithms trained on medical datasets',
-                    color: theme.palette.primary.main,
-                  },
-                  {
-                    icon: <Analytics sx={{ fontSize: { xs: 32, md: 40 }, color: theme.palette.success.main }} />,
-                    title: 'Data Analytics',
-                    description: 'Real-time processing and analysis',
-                    color: theme.palette.success.main,
-                  },
-                  {
-                    icon: <Security sx={{ fontSize: { xs: 32, md: 40 }, color: theme.palette.warning.main }} />,
-                    title: 'Security',
-                    description: 'End-to-end encryption and HIPAA compliance',
-                    color: theme.palette.warning.main,
-                  },
-                  {
-                    icon: <Timeline sx={{ fontSize: { xs: 32, md: 40 }, color: theme.palette.info.main }} />,
-                    title: 'Monitoring',
-                    description: 'Continuous health tracking and updates',
-                    color: theme.palette.info.main,
-                  },
-                ].map((tech, index) => (
-                  <Grid size={{ xs: 12, sm: 6 }} key={index}>
-                    <motion.div 
-                      variants={itemVariants}
-                      whileHover={{ scale: 1.05, rotateY: 3 }}
-                      transition={{ duration: 0.3 }}
-                      style={{ perspective: '1000px' }}
-                    >
-                      <Paper
-                        elevation={0}
-                        sx={{
-                          p: { xs: 3, md: 4 },
-                          textAlign: 'center',
-                          borderRadius: { xs: 3, md: 4 },
-                          background: `linear-gradient(135deg, ${alpha(tech.color, 0.05)}, ${alpha(tech.color, 0.02)})`,
-                          border: `2px solid ${alpha(tech.color, 0.1)}`,
-                          transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                          position: 'relative',
-                          overflow: 'hidden',
-                          '&:hover': {
-                            boxShadow: `0 15px 35px ${alpha(tech.color, 0.15)}`,
-                            border: `2px solid ${tech.color}`,
-                            transform: 'translateY(-6px)',
-                            '&::before': {
-                              opacity: 1,
-                            },
-                          },
-                          '&::before': {
-                            content: '""',
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            background: `radial-gradient(circle at center, ${alpha(tech.color, 0.08)}, transparent)`,
-                            opacity: 0,
-                            transition: 'opacity 0.4s ease',
-                            zIndex: 0,
-                          },
-                        }}
-                      >
-                        <Box sx={{ position: 'relative', zIndex: 1 }}>
-                          <motion.div
-                            whileHover={{ rotate: 360, scale: 1.2 }}
-                            transition={{ duration: 0.6 }}
-                          >
-                            <Box 
-                              sx={{ 
-                                mb: { xs: 2, md: 3 },
-                                p: { xs: 1.5, md: 2 },
-                                borderRadius: '50%',
-                                background: `linear-gradient(135deg, ${alpha(tech.color, 0.1)}, ${alpha(tech.color, 0.05)})`,
-                                border: `2px solid ${alpha(tech.color, 0.2)}`,
-                                width: { xs: 64, md: 80 },
-                                height: { xs: 64, md: 80 },
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                mx: 'auto',
-                              }}
-                            >
-                              {tech.icon}
-                            </Box>
-                          </motion.div>
-                          <Typography 
-                            variant="h5" 
-                            fontWeight={700} 
-                            gutterBottom
-                            sx={{ fontSize: { xs: '1.1rem', md: '1.35rem' } }}
-                          >
-                            {tech.title}
-                          </Typography>
-                          <Typography 
-                            variant="body1" 
-                            color="text.secondary" 
-                            sx={{ 
-                              lineHeight: 1.6,
-                              fontSize: { xs: '0.9rem', md: '1rem' },
-                            }}
-                          >
-                            {tech.description}
-                          </Typography>
-                        </Box>
-                      </Paper>
-                    </motion.div>
-                  </Grid>
-                ))}
-              </Grid>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{
+                    fontFamily: theme.typography.fontFamily,
+                    fontSize: { xs: '1.0625rem', sm: '1.125rem', md: '1.1875rem' },
+                    lineHeight: 1.55,
+                    maxWidth: 340,
+                  }}
+                >
+                  Your one-stop hub for assessment, plans, and support.
+                </Typography>
+              </Stack>
             </Box>
-          </motion.div>
-        </Container>
+          </Box>
+        </MotionDiv>
       </Box>
 
+      <LandingAboutCareSection siteTitle={siteTitle || 'Diabetes TeleCare'} />
+
+      <LandingHowItWorksPipeline siteTitle={siteTitle} />
+
       {/* Responsive Features Section */}
-      <Box sx={{ py: { xs: 6, md: 8 }, background: alpha(theme.palette.primary.main, 0.05) }}>
+      <Box
+        sx={{
+          py: { xs: 6, md: 8 },
+          bgcolor: theme.palette.mode === 'light' ? '#FAFAF8' : theme.palette.background.default,
+        }}
+      >
         <Container maxWidth="lg">
-          <motion.div
+          <MotionDiv
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
             variants={containerVariants}
           >
             <Box textAlign="center" mb={{ xs: 4, md: 6 }}>
-              <motion.div variants={itemVariants}>
+              <MotionDiv variants={itemVariants}>
                 <Typography 
                   variant="h3" 
                   fontWeight={700} 
@@ -1296,12 +491,12 @@ const LandingPage = () => {
                 >
                   Everything you need for accurate diabetes risk assessment and health management
                 </Typography>
-              </motion.div>
+              </MotionDiv>
             </Box>
             <Grid container spacing={{ xs: 2, sm: 3, md: 4 }} justifyContent="center">
               {features.map((feature, index) => (
                 <Grid size={{ xs: 12, sm: 6, lg: 4 }} key={index} sx={{ display: 'flex' }}>
-                  <motion.div variants={itemVariants} style={{ width: '100%' }}>
+                  <MotionDiv variants={itemVariants} style={{ width: '100%' }}>
                     <Card
                       sx={{
                         height: '100%',
@@ -1328,7 +523,7 @@ const LandingPage = () => {
                           flexGrow: 1,
                         }}
                       >
-                        <motion.div
+                        <MotionDiv
                           whileHover={{ rotate: 360, scale: 1.15 }}
                           transition={{ duration: 0.6 }}
                         >
@@ -1352,7 +547,7 @@ const LandingPage = () => {
                               } 
                             })}
                           </Box>
-                        </motion.div>
+                        </MotionDiv>
                         <Typography 
                           variant="h6" 
                           fontWeight={600} 
@@ -1379,13 +574,15 @@ const LandingPage = () => {
                         </Typography>
                       </CardContent>
                     </Card>
-                  </motion.div>
+                  </MotionDiv>
                 </Grid>
               ))}
             </Grid>
-          </motion.div>
+          </MotionDiv>
         </Container>
       </Box>
+
+      <LandingKnowledgeCtaSection />
 
       {/* Testimonials Section */}
       <TestimonialsSection />
@@ -1394,56 +591,89 @@ const LandingPage = () => {
       <BlogSection
         title="Health & Wellness Articles"
         subtitle="Discover expert insights, tips, and latest research on diabetes management and healthy living"
-        showFilters={true}
+        showFilters={false}
         limit={3}
         featuredFirst={true}
         onArticleClick={handleArticleClick}
       />
 
-      {/* Responsive CTA Section */}
-      <Box sx={{ py: { xs: 6, md: 8 }, background: alpha(theme.palette.primary.main, 0.05) }}>
-        <Container maxWidth="md">
-          <motion.div
+      {/* Pre-footer CTA — 80% width, centered; flat card + neutral shadow (matches testimonials / features) */}
+      <Box
+        sx={{
+          py: { xs: 6, md: 8 },
+          px: { xs: 2, sm: 3 },
+          display: 'flex',
+          justifyContent: 'center',
+          bgcolor: theme.palette.mode === 'light' ? '#E0F2FE' : theme.palette.background.default,
+        }}
+      >
+        <Box
+          sx={{
+            width: { xs: '100%', sm: '90%', md: '80%' },
+            maxWidth: 900,
+            mx: 'auto',
+          }}
+        >
+          <MotionDiv
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
             variants={containerVariants}
           >
             <Paper
+              elevation={0}
               sx={{
-                p: { xs: 4, sm: 5, md: 6 },
+                p: { xs: 3.5, sm: 5, md: 6 },
                 textAlign: 'center',
-                background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                color: 'white',
-                borderRadius: { xs: 2, md: 3 },
+                borderRadius: 3,
+                border: `1px solid ${theme.palette.divider}`,
+                bgcolor: theme.palette.background.paper,
+                boxShadow:
+                  theme.palette.mode === 'light'
+                    ? `0 1px 2px ${alpha(theme.palette.common.black, 0.04)}, 0 12px 32px ${alpha(theme.palette.common.black, 0.06)}`
+                    : `0 1px 2px ${alpha(theme.palette.common.black, 0.2)}, 0 12px 32px ${alpha(theme.palette.common.black, 0.28)}`,
               }}
             >
-              <motion.div variants={itemVariants}>
-                <Typography 
-                  variant="h3" 
-                  fontWeight={700} 
-                  gutterBottom
-                  sx={{ fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' } }}
-                >
-                  Ready to Take Control of Your Health?
-                </Typography>
-                <Typography 
-                  variant="h6" 
-                  paragraph 
-                  sx={{ 
-                    opacity: 0.9,
-                    fontSize: { xs: '0.95rem', sm: '1.05rem', md: '1.15rem' },
-                    mb: { xs: 3, md: 4 },
-                    px: { xs: 0, sm: 2, md: 0 },
+              <MotionDiv variants={itemVariants}>
+                <Typography
+                  component="h2"
+                  sx={{
+                    fontFamily: displayFont,
+                    fontWeight: 800,
+                    color: 'text.primary',
+                    fontSize: { xs: '1.5rem', sm: '1.85rem', md: '2.25rem' },
+                    lineHeight: 1.2,
+                    letterSpacing: '-0.02em',
+                    mb: 1.5,
                   }}
                 >
-                  Join thousands of users who have already discovered their diabetes risk and received personalized recommendations.
+                  Ready to take control of{' '}
+                  <Box component="span" sx={{ color: tc.lime || theme.palette.success.main }}>
+                    your health
+                  </Box>
+                  ?
                 </Typography>
-                <Stack 
-                  direction={{ xs: 'column', sm: 'row' }} 
-                  spacing={2} 
+                <Typography
+                  variant="body1"
+                  sx={{
+                    color: 'text.secondary',
+                    fontSize: { xs: '0.9375rem', sm: '1.05rem', md: '1.1rem' },
+                    lineHeight: 1.65,
+                    maxWidth: 560,
+                    mx: 'auto',
+                    mb: { xs: 3, md: 3.5 },
+                    px: { xs: 0, sm: 1 },
+                  }}
+                >
+                  Join thousands of users who have already discovered their diabetes risk and received personalized
+                  recommendations.
+                </Typography>
+                <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
+                  spacing={2}
                   justifyContent="center"
-                  sx={{ width: { xs: '100%', sm: 'auto' } }}
+                  alignItems="center"
+                  sx={{ width: '100%' }}
                 >
                   <Button
                     variant="contained"
@@ -1451,278 +681,490 @@ const LandingPage = () => {
                     onClick={() => navigate(isAuthenticated ? '/dashboard' : '/onboarding')}
                     fullWidth={isSmallScreen}
                     sx={{
-                      background: 'white',
-                      color: theme.palette.primary.main,
-                      py: { xs: 1.5, md: 1.75 },
+                      textTransform: 'none',
+                      fontWeight: 700,
+                      py: { xs: 1.5, md: 1.65 },
                       px: { xs: 3, md: 4 },
-                      fontSize: { xs: '0.95rem', md: '1.1rem' },
-                      fontWeight: 600,
+                      fontSize: { xs: '0.95rem', md: '1.05rem' },
+                      borderRadius: 2,
+                      color: tc.onGradient || '#FFFFFF',
+                      background:
+                        tc.navPillGradient ||
+                        `linear-gradient(90deg, ${tc.navPillBlue || theme.palette.primary.main} 0%, ${tc.cyan || theme.palette.info.main} 100%)`,
+                      boxShadow: 'none',
                       '&:hover': {
-                        background: alpha('#ffffff', 0.9),
+                        background:
+                          tc.navPillGradient ||
+                          `linear-gradient(90deg, ${tc.navPillBlue || theme.palette.primary.main} 0%, ${tc.cyan || theme.palette.info.main} 100%)`,
+                        filter: 'brightness(1.04)',
+                        boxShadow: 'none',
                       },
                     }}
                   >
-                    {isAuthenticated ? 'Go to Dashboard' : 'Start Your Assessment'}
+                    {isAuthenticated ? 'Go to Dashboard' : 'Start your assessment'}
                   </Button>
                   <Button
                     variant="outlined"
                     size="large"
                     fullWidth={isSmallScreen}
+                    onClick={() => {
+                      if (location.pathname === '/') {
+                        document.querySelector('#about')?.scrollIntoView({ behavior: 'smooth' });
+                      } else {
+                        navigate({ pathname: '/', hash: 'about' });
+                      }
+                    }}
                     sx={{
-                      borderColor: 'white',
-                      color: 'white',
-                      py: { xs: 1.5, md: 1.75 },
+                      textTransform: 'none',
+                      fontWeight: 700,
+                      py: { xs: 1.5, md: 1.65 },
                       px: { xs: 3, md: 4 },
-                      fontSize: { xs: '0.95rem', md: '1.1rem' },
-                      fontWeight: 600,
+                      fontSize: { xs: '0.95rem', md: '1.05rem' },
+                      borderRadius: 2,
+                      borderWidth: 2,
+                      borderColor: tc.cyan || theme.palette.info.main,
+                      color: tc.cyan || theme.palette.info.main,
                       '&:hover': {
-                        borderColor: 'white',
-                        background: alpha('#ffffff', 0.1),
+                        borderWidth: 2,
+                        borderColor: tc.cyan || theme.palette.info.main,
+                        bgcolor: alpha(tc.cyan || theme.palette.info.main, 0.08),
                       },
                     }}
                   >
-                    Learn More
+                    Learn more
                   </Button>
                 </Stack>
-              </motion.div>
+              </MotionDiv>
             </Paper>
-          </motion.div>
-        </Container>
+          </MotionDiv>
+        </Box>
       </Box>
 
-      {/* Responsive Collapsible Footer */}
+      {/* Footer — TeleCare marketing UI (gradient accent, brand mark, spaced columns) */}
       <Box
         id="contact"
+        component="footer"
         sx={{
-          py: { xs: 4, md: 6 },
-          background: theme.palette.background.paper,
-          borderTop: `1px solid ${theme.palette.divider}`,
+          position: 'relative',
+          scrollMarginTop: { xs: '96px', md: '112px' },
         }}
       >
-        <Container maxWidth="lg">
-          <Grid container spacing={{ xs: 3, md: 4 }}>
-            {/* Logo and Description - Always Visible */}
-            <Grid size={{ xs: 12, md: 4 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                <HealthAndSafety sx={{ fontSize: { xs: 28, md: 32 }, color: theme.palette.primary.main }} />
-                <Typography variant="h5" fontWeight={700} sx={{ fontSize: { xs: '1.25rem', md: '1.5rem' } }}>
-                  {siteTitle || 'DiaVise'}
-                </Typography>
-              </Box>
-              <Typography 
-                variant="body2" 
-                color="text.secondary" 
-                paragraph
-                sx={{ fontSize: { xs: '0.85rem', md: '0.875rem' } }}
-              >
-                {siteDescription || 'Advanced AI-powered diabetes risk assessment platform helping individuals take control of their health through comprehensive symptom analysis.'}
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                <IconButton size="small" color="inherit" sx={{ '&:hover': { color: theme.palette.primary.main } }}>
-                  <GitHub />
-                </IconButton>
-                <IconButton size="small" color="inherit" sx={{ '&:hover': { color: theme.palette.primary.main } }}>
-                  <LinkedIn />
-                </IconButton>
-                <IconButton size="small" color="inherit" sx={{ '&:hover': { color: theme.palette.primary.main } }}>
-                  <Twitter />
-                </IconButton>
-              </Box>
-            </Grid>
-
-            {/* Product Links - Collapsible on Mobile */}
-            <Grid size={{ xs: 12, md: 2 }}>
-              {isMobile ? (
-                <Box>
-                  <Button
-                    fullWidth
-                    onClick={() => handleFooterToggle('product')}
-                    endIcon={footerExpanded.product ? <ExpandLess /> : <ExpandMore />}
+        <Box
+          aria-hidden
+          sx={{
+            height: 4,
+            background:
+              tc.topBarGradient ||
+              `linear-gradient(90deg, ${tc.cyan || theme.palette.info.main} 0%, ${tc.lime || theme.palette.success.main} 100%)`,
+          }}
+        />
+        <Box
+          sx={{
+            py: { xs: 5, md: 7 },
+            px: 0,
+            background:
+              theme.palette.mode === 'light'
+                ? `linear-gradient(180deg, ${alpha(tc.cyan || theme.palette.info.main, 0.06)} 0%, ${alpha('#FAFAF8', 0.97)} 28%, ${theme.palette.background.paper} 100%)`
+                : `linear-gradient(180deg, ${alpha(tc.cyan || theme.palette.info.main, 0.08)} 0%, ${theme.palette.background.paper} 45%, ${theme.palette.background.default} 100%)`,
+            borderTop: `1px solid ${alpha(theme.palette.divider, theme.palette.mode === 'light' ? 1 : 0.8)}`,
+          }}
+        >
+          <Container maxWidth="lg">
+            <Grid container spacing={{ xs: 4, md: 5 }} columns={{ xs: 12, md: 12 }}>
+              <Grid size={{ xs: 12, md: 4 }}>
+                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 2.5 }}>
+                  <Box
                     sx={{
-                      justifyContent: 'space-between',
-                      textTransform: 'none',
-                      fontWeight: 600,
-                      py: 1.5,
-                      color: theme.palette.text.primary,
+                      width: { xs: 48, sm: 52 },
+                      height: { xs: 48, sm: 52 },
+                      borderRadius: 2,
+                      background: `linear-gradient(135deg, ${tc.cyan || theme.palette.info.main} 0%, ${tc.lime || theme.palette.success.main} 100%)`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: tc.onGradient || '#FFFFFF',
+                      fontWeight: 800,
+                      fontSize: { xs: '1.15rem', sm: '1.2rem' },
+                      boxShadow: `0 4px 16px ${alpha(tc.cyan || theme.palette.primary.main, 0.28)}`,
+                      flexShrink: 0,
                     }}
                   >
-                    Product
-                  </Button>
-                  <Collapse in={footerExpanded.product}>
-                    <Stack spacing={1} sx={{ pl: 2, py: 1 }}>
-                      <Link href="#" color="text.secondary" underline="hover" sx={{ fontSize: '0.875rem' }}>
+                    D
+                  </Box>
+                  <Box sx={{ lineHeight: 1.12, pt: 0.25 }}>
+                    {heroBrandWords.length >= 2 ? (
+                      <>
+                        <Typography
+                          component="span"
+                          sx={{
+                            fontFamily: displayFont,
+                            fontWeight: 800,
+                            fontSize: { xs: '1.2rem', sm: '1.3rem' },
+                            color: tc.cyan || theme.palette.info.main,
+                            letterSpacing: '-0.02em',
+                            display: 'block',
+                          }}
+                        >
+                          {heroBrandWords.slice(0, -1).join(' ')}
+                        </Typography>
+                        <Typography
+                          component="span"
+                          sx={{
+                            fontFamily: displayFont,
+                            fontWeight: 800,
+                            fontSize: { xs: '1.05rem', sm: '1.15rem' },
+                            color: tc.lime || theme.palette.success.main,
+                            letterSpacing: '-0.02em',
+                            display: 'block',
+                          }}
+                        >
+                          {heroBrandWords[heroBrandWords.length - 1]}
+                        </Typography>
+                      </>
+                    ) : (
+                      <Typography
+                        sx={{
+                          fontFamily: displayFont,
+                          fontWeight: 800,
+                          fontSize: '1.25rem',
+                          color: tc.cyan || theme.palette.info.main,
+                        }}
+                      >
+                        {heroBrandWords[0] || 'Diabetes Care'}
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{
+                    fontSize: { xs: '0.9375rem', md: '1rem' },
+                    lineHeight: 1.75,
+                    maxWidth: 400,
+                    mb: 2.5,
+                  }}
+                >
+                  {siteDescription ||
+                    'Advanced AI-powered diabetes risk assessment platform helping individuals take control of their health through comprehensive symptom analysis.'}
+                </Typography>
+                <Stack direction="row" spacing={1}>
+                  {[
+                    { Icon: GitHub, href: 'https://github.com' },
+                    { Icon: LinkedIn, href: 'https://linkedin.com' },
+                    { Icon: Twitter, href: 'https://twitter.com' },
+                  ].map((social) => (
+                    <IconButton
+                      key={social.href}
+                      component="a"
+                      href={social.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      size="small"
+                      aria-label="Social link"
+                      sx={{
+                        border: `1px solid ${theme.palette.divider}`,
+                        borderRadius: 2,
+                        color: 'text.secondary',
+                        transition: 'all 0.2s ease',
+                        '&:hover': {
+                          color: tc.cyan || theme.palette.info.main,
+                          borderColor: alpha(tc.cyan || theme.palette.info.main, 0.45),
+                          bgcolor: alpha(tc.cyan || theme.palette.info.main, 0.06),
+                          transform: 'translateY(-2px)',
+                        },
+                      }}
+                    >
+                      {React.createElement(social.Icon, { sx: { fontSize: 20 } })}
+                    </IconButton>
+                  ))}
+                </Stack>
+              </Grid>
+
+              <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+                {isMobile ? (
+                  <Box>
+                    <Button
+                      fullWidth
+                      onClick={() => handleFooterToggle('product')}
+                      endIcon={footerExpanded.product ? <ExpandLess /> : <ExpandMore />}
+                      sx={{
+                        justifyContent: 'space-between',
+                        textTransform: 'none',
+                        fontFamily: displayFont,
+                        fontWeight: 700,
+                        fontSize: '0.8125rem',
+                        letterSpacing: '0.06em',
+                        py: 1.5,
+                        px: 2,
+                        borderRadius: 2,
+                        color: 'text.primary',
+                        border: `1px solid ${theme.palette.divider}`,
+                        '&:hover': {
+                          borderColor: alpha(tc.cyan || theme.palette.info.main, 0.35),
+                          bgcolor: alpha(tc.cyan || theme.palette.info.main, 0.04),
+                        },
+                      }}
+                    >
+                      Product
+                    </Button>
+                    <Collapse in={footerExpanded.product}>
+                      <Stack spacing={1.25} sx={{ pl: 1.5, pr: 1, py: 2 }}>
+                        <Link href="#about" underline="none" sx={footerLinkSx(theme, tc)}>
+                          Features
+                        </Link>
+                        <Link href="/symptom-assessment" underline="none" sx={footerLinkSx(theme, tc)}>
+                          Assessment
+                        </Link>
+                        <Link href="#" underline="none" sx={footerLinkSx(theme, tc)}>
+                          Analytics
+                        </Link>
+                        <Link href="#" underline="none" sx={footerLinkSx(theme, tc)}>
+                          API
+                        </Link>
+                      </Stack>
+                    </Collapse>
+                  </Box>
+                ) : (
+                  <>
+                    <Typography
+                      sx={{
+                        fontFamily: displayFont,
+                        fontWeight: 800,
+                        fontSize: '0.8125rem',
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        color: 'text.primary',
+                        mb: 2,
+                        pb: 1,
+                        borderBottom: `2px solid ${alpha(tc.cyan || theme.palette.info.main, 0.4)}`,
+                        width: 'fit-content',
+                      }}
+                    >
+                      Product
+                    </Typography>
+                    <Stack spacing={1.35}>
+                      <Link href="#about" underline="none" sx={footerLinkSx(theme, tc)}>
                         Features
                       </Link>
-                      <Link href="#" color="text.secondary" underline="hover" sx={{ fontSize: '0.875rem' }}>
+                      <Link href="/symptom-assessment" underline="none" sx={footerLinkSx(theme, tc)}>
                         Assessment
                       </Link>
-                      <Link href="#" color="text.secondary" underline="hover" sx={{ fontSize: '0.875rem' }}>
+                      <Link href="#" underline="none" sx={footerLinkSx(theme, tc)}>
                         Analytics
                       </Link>
-                      <Link href="#" color="text.secondary" underline="hover" sx={{ fontSize: '0.875rem' }}>
+                      <Link href="#" underline="none" sx={footerLinkSx(theme, tc)}>
                         API
                       </Link>
                     </Stack>
-                  </Collapse>
-                </Box>
-              ) : (
-                <>
-                  <Typography variant="h6" fontWeight={600} gutterBottom sx={{ fontSize: '1.1rem' }}>
-                    Product
-                  </Typography>
-                  <Stack spacing={1}>
-                    <Link href="#" color="text.secondary" underline="hover" sx={{ fontSize: '0.875rem' }}>
-                      Features
-                    </Link>
-                    <Link href="#" color="text.secondary" underline="hover" sx={{ fontSize: '0.875rem' }}>
-                      Assessment
-                    </Link>
-                    <Link href="#" color="text.secondary" underline="hover" sx={{ fontSize: '0.875rem' }}>
-                      Analytics
-                    </Link>
-                    <Link href="#" color="text.secondary" underline="hover" sx={{ fontSize: '0.875rem' }}>
-                      API
-                    </Link>
-                  </Stack>
-                </>
-              )}
-            </Grid>
+                  </>
+                )}
+              </Grid>
 
-            {/* Support Links - Collapsible on Mobile */}
-            <Grid size={{ xs: 12, md: 2 }}>
-              {isMobile ? (
-                <Box>
-                  <Button
-                    fullWidth
-                    onClick={() => handleFooterToggle('support')}
-                    endIcon={footerExpanded.support ? <ExpandLess /> : <ExpandMore />}
-                    sx={{
-                      justifyContent: 'space-between',
-                      textTransform: 'none',
-                      fontWeight: 600,
-                      py: 1.5,
-                      color: theme.palette.text.primary,
-                    }}
-                  >
-                    Support
-                  </Button>
-                  <Collapse in={footerExpanded.support}>
-                    <Stack spacing={1} sx={{ pl: 2, py: 1 }}>
-                      <Link href="#" color="text.secondary" underline="hover" sx={{ fontSize: '0.875rem' }}>
+              <Grid size={{ xs: 12, sm: 6, md: 2 }}>
+                {isMobile ? (
+                  <Box>
+                    <Button
+                      fullWidth
+                      onClick={() => handleFooterToggle('support')}
+                      endIcon={footerExpanded.support ? <ExpandLess /> : <ExpandMore />}
+                      sx={{
+                        justifyContent: 'space-between',
+                        textTransform: 'none',
+                        fontFamily: displayFont,
+                        fontWeight: 700,
+                        fontSize: '0.8125rem',
+                        letterSpacing: '0.06em',
+                        py: 1.5,
+                        px: 2,
+                        borderRadius: 2,
+                        color: 'text.primary',
+                        border: `1px solid ${theme.palette.divider}`,
+                        '&:hover': {
+                          borderColor: alpha(tc.cyan || theme.palette.info.main, 0.35),
+                          bgcolor: alpha(tc.cyan || theme.palette.info.main, 0.04),
+                        },
+                      }}
+                    >
+                      Support
+                    </Button>
+                    <Collapse in={footerExpanded.support}>
+                      <Stack spacing={1.25} sx={{ pl: 1.5, pr: 1, py: 2 }}>
+                        <Link href="#" underline="none" sx={footerLinkSx(theme, tc)}>
+                          Help Center
+                        </Link>
+                        <Link href="#" underline="none" sx={footerLinkSx(theme, tc)}>
+                          Documentation
+                        </Link>
+                        <Link href="#contact" underline="none" sx={footerLinkSx(theme, tc)}>
+                          Contact us
+                        </Link>
+                        <Link href="#" underline="none" sx={footerLinkSx(theme, tc)}>
+                          Privacy Policy
+                        </Link>
+                      </Stack>
+                    </Collapse>
+                  </Box>
+                ) : (
+                  <>
+                    <Typography
+                      sx={{
+                        fontFamily: displayFont,
+                        fontWeight: 800,
+                        fontSize: '0.8125rem',
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        color: 'text.primary',
+                        mb: 2,
+                        pb: 1,
+                        borderBottom: `2px solid ${alpha(tc.cyan || theme.palette.info.main, 0.4)}`,
+                        width: 'fit-content',
+                      }}
+                    >
+                      Support
+                    </Typography>
+                    <Stack spacing={1.35}>
+                      <Link href="#" underline="none" sx={footerLinkSx(theme, tc)}>
                         Help Center
                       </Link>
-                      <Link href="#" color="text.secondary" underline="hover" sx={{ fontSize: '0.875rem' }}>
+                      <Link href="#" underline="none" sx={footerLinkSx(theme, tc)}>
                         Documentation
                       </Link>
-                      <Link href="#" color="text.secondary" underline="hover" sx={{ fontSize: '0.875rem' }}>
-                        Contact Us
+                      <Link href="#contact" underline="none" sx={footerLinkSx(theme, tc)}>
+                        Contact us
                       </Link>
-                      <Link href="#" color="text.secondary" underline="hover" sx={{ fontSize: '0.875rem' }}>
+                      <Link href="#" underline="none" sx={footerLinkSx(theme, tc)}>
                         Privacy Policy
                       </Link>
                     </Stack>
-                  </Collapse>
-                </Box>
-              ) : (
-                <>
-                  <Typography variant="h6" fontWeight={600} gutterBottom sx={{ fontSize: '1.1rem' }}>
-                    Support
-                  </Typography>
-                  <Stack spacing={1}>
-                    <Link href="#" color="text.secondary" underline="hover" sx={{ fontSize: '0.875rem' }}>
-                      Help Center
-                    </Link>
-                    <Link href="#" color="text.secondary" underline="hover" sx={{ fontSize: '0.875rem' }}>
-                      Documentation
-                    </Link>
-                    <Link href="#" color="text.secondary" underline="hover" sx={{ fontSize: '0.875rem' }}>
-                      Contact Us
-                    </Link>
-                    <Link href="#" color="text.secondary" underline="hover" sx={{ fontSize: '0.875rem' }}>
-                      Privacy Policy
-                    </Link>
-                  </Stack>
-                </>
-              )}
-            </Grid>
+                  </>
+                )}
+              </Grid>
 
-            {/* Contact Info - Collapsible on Mobile */}
-            <Grid size={{ xs: 12, md: 4 }}>
-              {isMobile ? (
-                <Box>
-                  <Button
-                    fullWidth
-                    onClick={() => handleFooterToggle('contact')}
-                    endIcon={footerExpanded.contact ? <ExpandLess /> : <ExpandMore />}
-                    sx={{
-                      justifyContent: 'space-between',
-                      textTransform: 'none',
-                      fontWeight: 600,
-                      py: 1.5,
-                      color: theme.palette.text.primary,
-                    }}
-                  >
-                    Contact Info
-                  </Button>
-                  <Collapse in={footerExpanded.contact}>
-                    <Stack spacing={1} sx={{ pl: 2, py: 1 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Email sx={{ fontSize: 16, color: theme.palette.text.secondary }} />
-                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
-                          {contactEmail || 'support@diavise.com'}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Phone sx={{ fontSize: 16, color: theme.palette.text.secondary }} />
-                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+              <Grid size={{ xs: 12, md: 4 }}>
+                {isMobile ? (
+                  <Box>
+                    <Button
+                      fullWidth
+                      onClick={() => handleFooterToggle('contact')}
+                      endIcon={footerExpanded.contact ? <ExpandLess /> : <ExpandMore />}
+                      sx={{
+                        justifyContent: 'space-between',
+                        textTransform: 'none',
+                        fontFamily: displayFont,
+                        fontWeight: 700,
+                        fontSize: '0.8125rem',
+                        letterSpacing: '0.06em',
+                        py: 1.5,
+                        px: 2,
+                        borderRadius: 2,
+                        color: 'text.primary',
+                        border: `1px solid ${theme.palette.divider}`,
+                        '&:hover': {
+                          borderColor: alpha(tc.cyan || theme.palette.info.main, 0.35),
+                          bgcolor: alpha(tc.cyan || theme.palette.info.main, 0.04),
+                        },
+                      }}
+                    >
+                      Contact
+                    </Button>
+                    <Collapse in={footerExpanded.contact}>
+                      <Stack spacing={1.75} sx={{ pl: 0.5, py: 2 }}>
+                        <FooterContactRow icon={Email}>
+                          <Link
+                            href={`mailto:${contactEmail || 'support@diabetescare.com'}`}
+                            underline="none"
+                            sx={footerLinkSx(theme, tc)}
+                          >
+                            {contactEmail || 'support@diabetescare.com'}
+                          </Link>
+                        </FooterContactRow>
+                        <FooterContactRow icon={Phone}>
+                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.9375rem' }}>
+                            +92 300 1234567
+                          </Typography>
+                        </FooterContactRow>
+                        <FooterContactRow icon={LocationOn}>
+                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.9375rem' }}>
+                            Islamabad, Pakistan
+                          </Typography>
+                        </FooterContactRow>
+                      </Stack>
+                    </Collapse>
+                  </Box>
+                ) : (
+                  <>
+                    <Typography
+                      sx={{
+                        fontFamily: displayFont,
+                        fontWeight: 800,
+                        fontSize: '0.8125rem',
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        color: 'text.primary',
+                        mb: 2,
+                        pb: 1,
+                        borderBottom: `2px solid ${alpha(tc.cyan || theme.palette.info.main, 0.4)}`,
+                        width: 'fit-content',
+                      }}
+                    >
+                      Contact
+                    </Typography>
+                    <Stack spacing={1.75}>
+                      <FooterContactRow icon={Email}>
+                        <Link
+                          href={`mailto:${contactEmail || 'support@diabetescare.com'}`}
+                          underline="none"
+                          sx={footerLinkSx(theme, tc)}
+                        >
+                          {contactEmail || 'support@diabetescare.com'}
+                        </Link>
+                      </FooterContactRow>
+                      <FooterContactRow icon={Phone}>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.9375rem' }}>
                           +92 300 1234567
                         </Typography>
-                      </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <LocationOn sx={{ fontSize: 16, color: theme.palette.text.secondary }} />
-                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
+                      </FooterContactRow>
+                      <FooterContactRow icon={LocationOn}>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.9375rem' }}>
                           Islamabad, Pakistan
                         </Typography>
-                      </Box>
+                      </FooterContactRow>
                     </Stack>
-                  </Collapse>
-                </Box>
-              ) : (
-                <>
-                  <Typography variant="h6" fontWeight={600} gutterBottom sx={{ fontSize: '1.1rem' }}>
-                    Contact Info
-                  </Typography>
-                  <Stack spacing={1}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Email sx={{ fontSize: 16, color: theme.palette.text.secondary }} />
-                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
-                        {contactEmail || 'support@diavise.com'}
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Phone sx={{ fontSize: 16, color: theme.palette.text.secondary }} />
-                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
-                        +92 300 1234567
-                      </Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <LocationOn sx={{ fontSize: 16, color: theme.palette.text.secondary }} />
-                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
-                        Islamabad, Pakistan
-                      </Typography>
-                    </Box>
-                  </Stack>
-                </>
-              )}
+                  </>
+                )}
+              </Grid>
             </Grid>
-          </Grid>
-          <Divider sx={{ my: { xs: 3, md: 4 } }} />
-          <Box sx={{ textAlign: 'center' }}>
-            <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
-              © {new Date().getFullYear()} {siteTitle || 'DiaVise'}. All rights reserved. | Built for better health outcomes.
-            </Typography>
-          </Box>
-        </Container>
+
+            <Divider
+              sx={{
+                my: { xs: 4, md: 5 },
+                borderColor: alpha(theme.palette.divider, 0.85),
+              }}
+            />
+            <Box
+              sx={{
+                textAlign: 'center',
+                px: { xs: 1, sm: 0 },
+              }}
+            >
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{
+                  fontSize: { xs: '0.8125rem', md: '0.875rem' },
+                  lineHeight: 1.65,
+                }}
+              >
+                © {new Date().getFullYear()} {siteTitle || 'DiabetesCare'}. All rights reserved.
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  {' '}
+                  · Built for better health outcomes
+                </Box>
+              </Typography>
+            </Box>
+          </Container>
+        </Box>
       </Box>
 
       {/* Article Modal */}

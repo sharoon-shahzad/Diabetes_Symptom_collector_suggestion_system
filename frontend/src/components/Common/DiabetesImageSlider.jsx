@@ -67,6 +67,8 @@ export default function DiabetesImageSlider() {
   }, []);
 
   const currentItem = sliderItems[currentIndex];
+  const IconSlide =
+    currentItem.type === 'icon' ? currentItem.content.Icon : null;
 
   return (
     <Box
@@ -112,7 +114,7 @@ export default function DiabetesImageSlider() {
                 objectFit: 'cover',
               }}
             />
-          ) : (
+          ) : IconSlide ? (
             <Box
               sx={{
                 display: 'flex',
@@ -123,7 +125,7 @@ export default function DiabetesImageSlider() {
                 p: 4,
               }}
             >
-              <currentItem.content.Icon
+              <IconSlide
                 sx={{
                   fontSize: 200,
                   color: `${currentItem.content.color}.main`,
@@ -131,7 +133,7 @@ export default function DiabetesImageSlider() {
                 }}
               />
             </Box>
-          )}
+          ) : null}
         </motion.div>
       </AnimatePresence>
 

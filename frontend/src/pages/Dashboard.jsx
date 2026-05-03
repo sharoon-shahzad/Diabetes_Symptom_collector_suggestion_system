@@ -28,6 +28,7 @@ import DietPlanDashboard from './DietPlanDashboard';
 import ExercisePlanDashboard from './ExercisePlanDashboard';
 import LifestyleTipsDashboard from './LifestyleTipsDashboard';
 import ChatAssistant from './ChatAssistant';
+import { STICKY_HEADER_OFFSET_PX } from '../components/Common/UniversalHeader';
 import SidebarNavigation from '../layout/SidebarNavigation';
 import MobileDrawer from '../layout/MobileDrawer';
 import GoalDialog from '../components/modals/GoalDialog';
@@ -240,7 +241,7 @@ function Dashboard() {
           xs: '100%', 
           md: `calc(100% - ${sidebarOpen ? drawerWidth : miniDrawerWidth}px)` 
         },
-        pt: { xs: 7, md: 0 },
+        pt: { xs: 0, md: 0 },
       }}>
         {/* Mobile Menu Button - Enhanced */}
         <IconButton
@@ -248,7 +249,7 @@ function Dashboard() {
           sx={{
             display: { xs: 'flex', md: 'none' },
             position: 'fixed',
-            top: { xs: 12, sm: 16 },
+            top: { xs: STICKY_HEADER_OFFSET_PX.xs, sm: STICKY_HEADER_OFFSET_PX.sm },
             left: { xs: 12, sm: 16 },
             zIndex: 1200,
             bgcolor: 'background.paper',

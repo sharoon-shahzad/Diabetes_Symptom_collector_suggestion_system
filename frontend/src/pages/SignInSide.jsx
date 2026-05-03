@@ -80,7 +80,9 @@ export default function SignInSide() {
                     { icon: SecurityIcon, label: 'Secure', color: 'success' },
                     { icon: AccessibilityIcon, label: 'Accessible', color: 'info' },
                     { icon: FavoriteIcon, label: 'Diabetic Partner', color: 'error' },
-                  ].map((badge, index) => (
+                  ].map((badge, index) => {
+                    const BadgeIcon = badge.icon;
+                    return (
                     <motion.div
                       key={badge.label}
                       initial={{ opacity: 0, y: 10 }}
@@ -105,7 +107,7 @@ export default function SignInSide() {
                         }}
                       >
                         <CardContent sx={{ p: '8px !important', display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <badge.icon
+                          <BadgeIcon
                             sx={{
                               fontSize: 18,
                               color: `${badge.color}.main`,
@@ -124,7 +126,8 @@ export default function SignInSide() {
                         </CardContent>
                       </Card>
                     </motion.div>
-                  ))}
+                    );
+                  })}
                 </Box>
               </Box>
             </motion.div>

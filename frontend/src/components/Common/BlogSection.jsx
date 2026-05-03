@@ -48,6 +48,9 @@ const BlogSection = ({
   onArticleClick
 }) => {
   const theme = useTheme();
+  const tc = theme.palette.brandTelecare || {};
+  const displayFont =
+    theme.typography.marketingHeadline?.fontFamily || theme.typography.fontFamily;
   const navigate = useNavigate();
   const { formatDate } = useDateFormat();
   const [content, setContent] = useState([]);
@@ -174,13 +177,16 @@ const BlogSection = ({
 
   if (loading && content.length === 0) {
     return (
-      <Box 
-        sx={{ 
-          py: 8, 
-          display: 'flex', 
-          justifyContent: 'center', 
+      <Box
+        sx={{
+          py: 10,
+          mt: { xs: 4, md: 6 },
+          mb: { xs: 4, md: 6 },
+          display: 'flex',
+          justifyContent: 'center',
           alignItems: 'center',
-          minHeight: 400 
+          minHeight: 400,
+          bgcolor: theme.palette.background.paper,
         }}
       >
         <CircularProgress size={60} />
@@ -189,37 +195,62 @@ const BlogSection = ({
   }
 
   return (
-    <Box 
+    <Box
       id="blogs-articles"
-      sx={{ 
-        py: 8, 
-        background: theme.palette.background.paper,
+      component="section"
+      sx={{
+        scrollMarginTop: { xs: '96px', md: '112px' },
+        py: { xs: 9, sm: 10, md: 11, lg: 12 },
+        mt: { xs: 4, md: 6 },
+        mb: { xs: 4, md: 6 },
+        bgcolor: theme.palette.background.paper,
         position: 'relative',
         overflow: 'hidden',
       }}
     >
-      <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
+      <Container
+        maxWidth="lg"
+        sx={{
+          position: 'relative',
+          zIndex: 1,
+          px: { xs: 2.5, sm: 3, md: 4 },
+        }}
+      >
         <motion.div
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
           variants={containerVariants}
         >
-          {/* Section Header */}
-          <Box sx={{ textAlign: 'center', mb: 6 }}>
+          {/* Section Header — matches landing marketing type (Poppins display + Inter body) */}
+          <Box sx={{ textAlign: 'center', mb: { xs: 5, md: 6 } }}>
             <motion.div variants={itemVariants}>
-              <Typography 
-                variant="h3" 
-                fontWeight={700} 
-                color="text.primary"
-                gutterBottom
+              <Typography
+                component="h2"
+                sx={{
+                  fontFamily: displayFont,
+                  fontWeight: 800,
+                  color: 'text.primary',
+                  fontSize: { xs: '1.75rem', sm: '2.25rem', md: '2.75rem' },
+                  letterSpacing: '-0.02em',
+                  lineHeight: 1.2,
+                  mb: 1.5,
+                }}
               >
                 {title}
               </Typography>
-              <Typography 
-                variant="h6" 
-                color="text.secondary" 
-                sx={{ maxWidth: 600, mx: 'auto', lineHeight: 1.6 }}
+              <Typography
+                component="p"
+                sx={{
+                  fontFamily: theme.typography.fontFamily,
+                  fontWeight: 400,
+                  color: 'text.secondary',
+                  fontSize: { xs: '1rem', md: '1.1rem' },
+                  lineHeight: 1.65,
+                  maxWidth: 640,
+                  mx: 'auto',
+                  px: { xs: 1, sm: 0 },
+                }}
               >
                 {subtitle}
               </Typography>
@@ -231,12 +262,18 @@ const BlogSection = ({
             <motion.div variants={itemVariants}>
               <Box
                 sx={{
-                  p: 3,
-                  mb: 4,
-                  background: alpha(theme.palette.primary.main, 0.05),
+                  p: { xs: 2.5, md: 3 },
+                  mb: { xs: 4, md: 5 },
                   borderRadius: 3,
-                  border: `1px solid ${theme.palette.divider}`,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                  background:
+                    theme.palette.mode === 'light'
+                      ? alpha(tc.cyan || theme.palette.info.main, 0.06)
+                      : alpha(tc.cyan || theme.palette.info.main, 0.1),
+                  border: `1px solid ${alpha(tc.cyan || theme.palette.divider, 0.18)}`,
+                  boxShadow:
+                    theme.palette.mode === 'light'
+                      ? '0 2px 14px rgba(15, 23, 42, 0.06)'
+                      : '0 2px 14px rgba(0, 0, 0, 0.2)',
                 }}
               >
                 <Grid container spacing={2} alignItems="center">
@@ -281,7 +318,11 @@ const BlogSection = ({
                   <Grid item xs={12} md={3}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <TrendingUpIcon color="action" />
-                      <Typography variant="body2" color="textSecondary">
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ fontFamily: theme.typography.fontFamily, fontWeight: 500 }}
+                      >
                         {pagination.total} articles found
                       </Typography>
                     </Box>
@@ -309,17 +350,19 @@ const BlogSection = ({
             </motion.div>
           ) : (
             <>
-              <Box sx={{ 
-                display: 'grid',
-                gridTemplateColumns: {
-                  xs: '1fr',
-                  sm: 'repeat(2, 1fr)',
-                  md: 'repeat(3, 1fr)',
-                  lg: 'repeat(3, 1fr)'
-                },
-                gap: 3,
-                width: '100%'
-              }}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, 1fr)',
+                    md: 'repeat(3, 1fr)',
+                    lg: 'repeat(3, 1fr)',
+                  },
+                  gap: { xs: 2.5, md: 3.5 },
+                  width: '100%',
+                }}
+              >
                 {displayArticles.map((article, index) => (
                   <Box
                     key={article._id}
@@ -341,25 +384,29 @@ const BlogSection = ({
               {/* View All Articles Button */}
               {pagination.total > 3 && (
                 <motion.div variants={itemVariants}>
-                  <Box sx={{ display: 'flex', justifyContent: 'center', mt: 6 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'center', mt: { xs: 5, md: 7 } }}>
                     <Button
                       variant="contained"
                       size="large"
                       onClick={handleViewAllArticles}
                       endIcon={<ArrowForwardIcon />}
                       sx={{
-                        borderRadius: 3,
+                        fontFamily: theme.typography.fontFamily,
+                        borderRadius: 2,
                         textTransform: 'none',
-                        fontWeight: 700,
-                        px: 5,
-                        py: 1.8,
-                        fontSize: '1.05rem',
-                        background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                        boxShadow: `0 8px 25px ${alpha(theme.palette.primary.main, 0.35)}`,
-                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                        fontWeight: 600,
+                        fontSize: { xs: '1rem', md: '1.0625rem' },
+                        px: { xs: 4, sm: 5 },
+                        py: 1.5,
+                        color: tc.onGradient || '#FFFFFF',
+                        background:
+                          tc.navPillGradient ||
+                          `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                        boxShadow: `0 8px 24px ${alpha(tc.cyan || theme.palette.primary.main, 0.32)}`,
+                        transition: 'box-shadow 0.22s ease, transform 0.22s ease',
                         '&:hover': {
-                          transform: 'translateY(-3px)',
-                          boxShadow: `0 12px 35px ${alpha(theme.palette.primary.main, 0.45)}`,
+                          transform: 'translateY(-2px)',
+                          boxShadow: `0 12px 32px ${alpha(tc.cyan || theme.palette.primary.main, 0.4)}`,
                         },
                       }}
                     >
