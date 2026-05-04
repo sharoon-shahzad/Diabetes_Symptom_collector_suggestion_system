@@ -65,6 +65,15 @@ export default function TestimonialsSection() {
     loadTestimonials();
   }, []);
 
+  useEffect(() => {
+    // Re-fetch when user returns to tab so recent feedback appears without hard reload.
+    const handleFocus = () => {
+      loadTestimonials();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
+
   const startInfiniteScroll = useCallback(() => {
     const container = scrollContainerRef.current;
     if (!container || testimonials.length === 0) return;
@@ -128,13 +137,14 @@ export default function TestimonialsSection() {
       while (hasMore) {
         const data = await fetchAllFeedback(page, 50);
         const feedback = data.feedback || [];
-
-        const filtered = feedback.filter((fb) => fb.rating > 4.5);
-        allTestimonials = [...allTestimonials, ...filtered];
+        allTestimonials = [...allTestimonials, ...feedback];
 
         hasMore = page < (data.pagination?.pages || 1);
         page++;
       }
+
+      // Show freshest entries first so newly submitted feedback appears sooner.
+      allTestimonials.sort((a, b) => new Date(b.submitted_on || 0) - new Date(a.submitted_on || 0));
 
       const MIN_TESTIMONIALS_FOR_SMOOTH_SCROLL = 4;
 

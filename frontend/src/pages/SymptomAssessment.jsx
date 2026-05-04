@@ -1,23 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useOnboarding } from '../contexts/OnboardingContext';
 import {
   Box,
   Container,
   Typography,
   Button,
   Paper,
-  Stepper,
-  Step,
-  StepLabel,
-  Card,
-  CardContent,
-  Grid,
   Chip,
   LinearProgress,
   Fade,
-  Grow,
-  IconButton,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -29,21 +20,21 @@ import {
 } from '@mui/material';
 import {
   CheckCircle,
-  RadioButtonUnchecked,
   ArrowForward,
   ArrowBack,
-  Close,
   Assessment as AssessmentIcon,
-  Assignment,
   Login,
   Visibility,
 } from '@mui/icons-material';
 import axiosInstance from '../utils/axiosInstance';
 import { getCurrentUser } from '../utils/auth';
 import QuestionList from '../components/Onboarding/QuestionList';
+import AuthBackground from '../components/Common/AuthBackground';
+import { useTheme } from '../contexts/useThemeContext';
 
 const SymptomAssessment = () => {
   const navigate = useNavigate();
+  const { isDarkMode } = useTheme();
   const [activeStep, setActiveStep] = useState(0);
   const [symptoms, setSymptoms] = useState([]);
   const [currentSymptomIndex, setCurrentSymptomIndex] = useState(0);
@@ -363,137 +354,173 @@ const SymptomAssessment = () => {
     return completedSymptoms.has(symptomId);
   };
 
-  const steps = ['Answer Questions', 'Complete'];
+  const steps = ['Questions', 'Wrap up'];
 
   const currentSymptom = symptoms[currentSymptomIndex];
 
   const getProgressPercentage = () => {
     if (!symptoms.length) return 0;
     if (activeStep === 1) return 100;
-    return ((currentSymptomIndex) / symptoms.length) * 100;
+    return ((currentSymptomIndex + 1) / symptoms.length) * 100;
   };
 
+  const pageBg = isDarkMode
+    ? 'linear-gradient(160deg, #0b1220 0%, #12182a 42%, #0a0f18 100%)'
+    : 'linear-gradient(165deg, #ffffff 0%, #f8fafc 38%, #f0f9ff 100%)';
+
   return (
-    <Box 
-      minHeight="100vh" 
+    <Box
+      component="main"
+      minHeight="100vh"
       sx={{
-        background: (theme) => theme.palette.background.gradient || theme.palette.background.default,
+        background: pageBg,
         position: 'relative',
+        overflow: 'hidden',
       }}
     >
-      <Container maxWidth="lg" sx={{ py: 6, position: 'relative', zIndex: 1 }}>
+      <AuthBackground />
+      <Container maxWidth="lg" sx={{ py: { xs: 3, md: 5 }, position: 'relative', zIndex: 1 }}>
         {/* Header */}
-        <Fade in timeout={800}>
-          <Box textAlign="center" mb={5}>
-            <Box 
-              sx={{ 
+        <Fade in timeout={500}>
+          <Box textAlign="center" mb={{ xs: 3, md: 4 }}>
+            <Box
+              sx={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: 100,
-                height: 100,
-                borderRadius: 4,
-                background: (theme) => `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.1)} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
-                border: (theme) => `2px solid ${alpha(theme.palette.primary.main, 0.2)}`,
-                mb: 3,
-              }}
-            >
-              <AssessmentIcon sx={{ fontSize: 56, color: 'primary.main' }} />
-            </Box>
-            <Typography 
-              variant="h3" 
-              fontWeight={700} 
-              sx={{ 
+                width: { xs: 72, md: 80 },
+                height: { xs: 72, md: 80 },
+                borderRadius: 3,
                 mb: 2,
-                fontSize: { xs: '2rem', md: '2.5rem' },
+                color: '#22D3EE',
+                border: '1px solid rgba(34,211,238,0.35)',
+                background: 'linear-gradient(145deg, rgba(34,211,238,0.12), rgba(163,230,53,0.1))',
               }}
             >
-              Diabetes Symptom Assessment
+              <AssessmentIcon sx={{ fontSize: { xs: 40, md: 44 } }} />
+            </Box>
+            <Typography
+              variant="h3"
+              fontWeight={800}
+              sx={{
+                mb: 1.5,
+                fontSize: { xs: '1.65rem', md: '2rem' },
+                letterSpacing: '-0.03em',
+                color: 'text.primary',
+              }}
+            >
+              Calm symptom check-in
             </Typography>
-            <Typography 
-              variant="h6" 
+            <Typography
+              variant="body1"
               color="text.secondary"
-              sx={{ 
-                maxWidth: 700,
+              sx={{
+                maxWidth: 560,
                 mx: 'auto',
-                lineHeight: 1.7,
-                fontSize: { xs: '1rem', md: '1.1rem' },
+                lineHeight: 1.75,
+                fontSize: { xs: '0.95rem', md: '1.02rem' },
                 fontWeight: 400,
               }}
             >
-              Complete a professional health assessment to understand your diabetes risk
+              A few clear questions at a time. Pause anytime—your answers stay on this step until you move on. Nothing here replaces care from your clinician.
             </Typography>
           </Box>
         </Fade>
 
         {/* Main Assessment Card */}
-        <Grow in timeout={1000}>
+        <Fade in timeout={600}>
           <Paper
             elevation={0}
             sx={{
-              p: { xs: 3, md: 5 },
-              borderRadius: 4,
-              background: (theme) => alpha(theme.palette.background.paper, 0.95),
-              backdropFilter: 'blur(20px)',
-              border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              boxShadow: (theme) => theme.shadows[8],
-              minHeight: 600,
+              p: { xs: 2.5, md: 4 },
+              borderRadius: 2.25,
+              background: (theme) => alpha(theme.palette.background.paper, isDarkMode ? 0.55 : 0.82),
+              backdropFilter: 'blur(20px) saturate(160%)',
+              border: `1px solid ${alpha('#22D3EE', isDarkMode ? 0.14 : 0.12)}`,
+              boxShadow: isDarkMode ? `0 24px 48px ${alpha('#000', 0.35)}` : `0 20px 40px ${alpha('#0f172a', 0.06)}`,
+              minHeight: { xs: 'auto', md: 560 },
             }}
           >
-            {/* Progress Bar */}
-            <Box sx={{ mb: 4 }}>
-              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography variant="body2" fontWeight={600} color="text.secondary">
-                  Overall Progress
+            {/* Progress */}
+            <Box sx={{ mb: 3 }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.25} flexWrap="wrap" gap={1}>
+                <Typography variant="body2" fontWeight={600} color="text.secondary" sx={{ letterSpacing: '0.02em' }}>
+                  {activeStep === 0
+                    ? `Topic ${currentSymptomIndex + 1} of ${symptoms.length}`
+                    : 'Finished'}
                 </Typography>
-                <Chip 
+                <Chip
                   label={`${Math.round(getProgressPercentage())}%`}
                   size="small"
-                  sx={{ 
+                  sx={{
                     fontWeight: 700,
-                    bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
-                    color: 'primary.main',
+                    borderRadius: 2,
+                    bgcolor: alpha('#22D3EE', isDarkMode ? 0.14 : 0.1),
+                    color: isDarkMode ? '#67E8F9' : '#0e7490',
+                    border: `1px solid ${alpha('#22D3EE', 0.25)}`,
                   }}
                 />
               </Box>
-              <LinearProgress 
-                variant="determinate" 
-                value={getProgressPercentage()} 
-                sx={{ 
-                  height: 8, 
-                  borderRadius: 4,
-                  bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
+              <LinearProgress
+                variant="determinate"
+                value={getProgressPercentage()}
+                sx={{
+                  height: 6,
+                  borderRadius: 99,
+                  bgcolor: alpha('#22D3EE', isDarkMode ? 0.12 : 0.1),
                   '& .MuiLinearProgress-bar': {
-                    borderRadius: 4,
-                    bgcolor: 'primary.main',
-                  }
-                }} 
+                    borderRadius: 99,
+                    background: 'linear-gradient(90deg, #0EA5E9 0%, #22D3EE 40%, #84CC16 100%)',
+                  },
+                }}
               />
             </Box>
 
-            {/* Stepper */}
-            <Stepper activeStep={activeStep} alternativeLabel sx={{ mb: 5 }}>
+            {/* Lightweight journey hint (less clinical than a heavy stepper) */}
+            <Stack direction="row" spacing={1} justifyContent="center" alignItems="center" sx={{ mb: 3 }} flexWrap="wrap">
               {steps.map((label, index) => (
-                <Step key={label} completed={index < activeStep}>
-                  <StepLabel
-                    StepIconProps={{
-                      sx: {
-                        '&.Mui-completed': {
-                          color: 'success.main',
-                        },
-                        '&.Mui-active': {
-                          color: 'primary.main',
-                        },
-                      },
-                    }}
-                  >
-                    <Typography variant="body2" fontWeight={600}>
-                      {label}
+                <React.Fragment key={label}>
+                  {index > 0 && (
+                    <Typography variant="caption" color="text.disabled" sx={{ px: 0.5 }}>
+                      →
                     </Typography>
-                  </StepLabel>
-                </Step>
+                  )}
+                  <Chip
+                    label={label}
+                    size="small"
+                    variant={index === activeStep ? 'filled' : 'outlined'}
+                    sx={{
+                      fontWeight: index === activeStep ? 700 : 500,
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      ...(index === activeStep && {
+                        background: 'linear-gradient(135deg, #0EA5E9 0%, #22D3EE 50%, #65A30D 100%)',
+                        color: '#fff',
+                        border: 'none',
+                      }),
+                    }}
+                  />
+                </React.Fragment>
               ))}
-            </Stepper>
+            </Stack>
+
+            <Alert
+              severity="info"
+              icon={false}
+              sx={{
+                mb: 3,
+                borderRadius: 2,
+                py: 1.25,
+                bgcolor: alpha('#22D3EE', isDarkMode ? 0.08 : 0.06),
+                color: 'text.secondary',
+                border: `1px solid ${alpha('#22D3EE', 0.15)}`,
+                '& .MuiAlert-message': { width: '100%' },
+              }}
+            >
+              <Typography variant="body2" sx={{ lineHeight: 1.65 }}>
+                <strong style={{ color: 'inherit', fontWeight: 700 }}>Take your time.</strong> Answer in your own words where it helps. You can use Back to change a previous topic before finishing.
+              </Typography>
+            </Alert>
 
             {/* Step Content */}
             <Box sx={{ minHeight: 400 }}>
@@ -501,44 +528,60 @@ const SymptomAssessment = () => {
               {activeStep === 0 && currentSymptom && (
                 <Fade in timeout={500} key={currentSymptomIndex}>
                   <Box>
-                    <Box textAlign="center" mb={4}>
-                      <Chip 
-                        label={`Symptom ${currentSymptomIndex + 1} of ${symptoms.length}`}
-                        sx={{ 
-                          mb: 2,
-                          bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
-                          color: 'primary.main',
-                          fontWeight: 700,
-                          fontSize: '0.875rem',
+                    <Box textAlign="center" mb={3}>
+                      <Chip
+                        label={`Topic ${currentSymptomIndex + 1} of ${symptoms.length}`}
+                        sx={{
+                          mb: 1.5,
+                          fontWeight: 600,
+                          fontSize: '0.8125rem',
                           px: 1,
+                          borderRadius: 2,
+                          bgcolor: alpha('#22D3EE', isDarkMode ? 0.12 : 0.1),
+                          color: isDarkMode ? '#67E8F9' : '#0e7490',
+                          border: `1px solid ${alpha('#22D3EE', 0.22)}`,
                         }}
                       />
                       <Typography
                         variant="overline"
                         sx={{
                           display: 'block',
-                          textTransform: 'uppercase',
-                          letterSpacing: 1.5,
+                          letterSpacing: '0.12em',
                           color: 'text.secondary',
-                          fontWeight: 600,
-                          mb: 1,
+                          fontWeight: 700,
+                          mb: 0.75,
                         }}
                       >
-                        {currentSymptom._diseaseName || 'Diabetes'}
+                        {currentSymptom._diseaseName || 'Diabetes care'}
                       </Typography>
                       <Typography
-                        variant="h4"
-                        fontWeight={700}
+                        variant="h5"
+                        fontWeight={800}
                         gutterBottom
                         sx={{
-                          mb: 2,
-                          fontSize: { xs: '1.75rem', md: '2.125rem' },
+                          mb: 0.5,
+                          fontSize: { xs: '1.35rem', md: '1.6rem' },
+                          letterSpacing: '-0.02em',
+                          color: 'text.primary',
                         }}
                       >
                         {currentSymptom.name}
                       </Typography>
+                      {currentSymptom.description ? (
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ maxWidth: 520, mx: 'auto', lineHeight: 1.65, whiteSpace: 'pre-line' }}
+                        >
+                          {currentSymptom.description}
+                        </Typography>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 520, mx: 'auto', lineHeight: 1.65 }}>
+                          Use the help button under the questions if you want more context on this topic.
+                        </Typography>
+                      )}
                     </Box>
-                    <Divider sx={{ mb: 4, mx: 'auto', maxWidth: 600 }} />
+                    <Divider sx={{ mb: 3, opacity: 0.6 }} />
                     <QuestionList 
                       ref={questionListRef}
                       symptomId={currentSymptom._id} 
@@ -573,11 +616,11 @@ const SymptomAssessment = () => {
                     >
                       <CheckCircle sx={{ fontSize: 80, color: 'success.main' }} />
                     </Box>
-                    <Typography variant="h4" fontWeight={700} gutterBottom sx={{ mb: 2, fontSize: { xs: '1.75rem', md: '2.125rem' } }}>
-                      Assessment Complete! 🎉
+                    <Typography variant="h5" fontWeight={800} gutterBottom sx={{ mb: 2, letterSpacing: '-0.02em' }}>
+                      You&apos;re all set for this step
                     </Typography>
-                    <Typography variant="body1" color="text.secondary" sx={{ mb: 4, maxWidth: 600, mx: 'auto', lineHeight: 1.8 }}>
-                      You've successfully completed your diabetes symptom assessment. View your detailed risk analysis and personalized recommendations.
+                    <Typography variant="body1" color="text.secondary" sx={{ mb: 4, maxWidth: 520, mx: 'auto', lineHeight: 1.8 }}>
+                      Thanks for taking the time. When you&apos;re ready, open your summary to see how we&apos;ve organized what you shared—not a diagnosis, just a clearer picture you can discuss with your care team.
                     </Typography>
                     <Button
                       variant="contained"
@@ -585,20 +628,22 @@ const SymptomAssessment = () => {
                       endIcon={<Visibility />}
                       onClick={handleViewAssessment}
                       sx={{
-                        px: 6,
-                        py: 2,
-                        fontSize: '1.1rem',
+                        px: 5,
+                        py: 1.75,
+                        fontSize: '1rem',
                         fontWeight: 700,
-                        borderRadius: 3,
-                        boxShadow: (theme) => `0 12px 40px ${alpha(theme.palette.primary.main, 0.3)}`,
+                        borderRadius: 2.25,
+                        textTransform: 'none',
+                        background: 'linear-gradient(135deg, #0EA5E9 0%, #22D3EE 42%, #65A30D 108%)',
+                        color: '#fff',
+                        boxShadow: `0 10px 28px ${alpha('#22D3EE', 0.35)}`,
                         '&:hover': {
-                          boxShadow: (theme) => `0 16px 50px ${alpha(theme.palette.primary.main, 0.4)}`,
-                          transform: 'translateY(-2px)',
+                          background: 'linear-gradient(135deg, #0284C7 0%, #06B6D4 45%, #84CC16 100%)',
+                          boxShadow: `0 14px 36px ${alpha('#22D3EE', 0.42)}`,
                         },
-                        transition: 'all 0.3s ease',
                       }}
                     >
-                      View Your Assessment
+                      View summary
                     </Button>
                   </Box>
                 </Fade>
@@ -607,17 +652,27 @@ const SymptomAssessment = () => {
 
             {/* Navigation Buttons */}
             {activeStep === 0 && (
-              <Box display="flex" justifyContent="space-between" mt={5} pt={4} sx={{ borderTop: (theme) => `1px solid ${theme.palette.divider}` }}>
+              <Box
+                display="flex"
+                justifyContent="space-between"
+                alignItems="center"
+                flexWrap="wrap"
+                gap={2}
+                mt={4}
+                pt={3}
+                sx={{ borderTop: (theme) => `1px solid ${alpha(theme.palette.divider, 0.5)}` }}
+              >
                 <Button
                   variant="outlined"
                   startIcon={<ArrowBack />}
                   onClick={handleBack}
                   disabled={currentSymptomIndex === 0}
                   sx={{
-                    px: 4,
-                    py: 1.5,
+                    px: 3,
+                    py: 1.25,
                     fontWeight: 600,
-                    borderRadius: 3,
+                    borderRadius: 2.25,
+                    textTransform: 'none',
                   }}
                 >
                   Back
@@ -628,22 +683,30 @@ const SymptomAssessment = () => {
                   onClick={handleNext}
                   disabled={!symptoms.length || !canProceed}
                   sx={{
-                    px: 4,
-                    py: 1.5,
+                    px: 3,
+                    py: 1.25,
                     fontWeight: 700,
-                    borderRadius: 3,
-                    boxShadow: (theme) => `0 8px 24px ${alpha(theme.palette.primary.main, 0.3)}`,
+                    borderRadius: 2.25,
+                    textTransform: 'none',
+                    background: 'linear-gradient(135deg, #0EA5E9 0%, #22D3EE 42%, #65A30D 108%)',
+                    color: '#fff',
+                    boxShadow: `0 8px 22px ${alpha('#22D3EE', 0.32)}`,
                     '&:hover': {
-                      boxShadow: (theme) => `0 12px 32px ${alpha(theme.palette.primary.main, 0.4)}`,
+                      background: 'linear-gradient(135deg, #0284C7 0%, #06B6D4 45%, #84CC16 100%)',
+                      boxShadow: `0 12px 30px ${alpha('#22D3EE', 0.4)}`,
+                    },
+                    '&.Mui-disabled': {
+                      background: alpha('#94a3b8', 0.35),
+                      color: alpha('#fff', 0.8),
                     },
                   }}
                 >
-                  {currentSymptomIndex === symptoms.length - 1 ? 'Finish' : 'Next Symptom'}
+                  {currentSymptomIndex === symptoms.length - 1 ? 'Finish check-in' : 'Next topic'}
                 </Button>
               </Box>
             )}
           </Paper>
-        </Grow>
+        </Fade>
       </Container>
 
       {/* Login Dialog */}

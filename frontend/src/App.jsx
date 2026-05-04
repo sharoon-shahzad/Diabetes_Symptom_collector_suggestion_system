@@ -41,7 +41,7 @@ const AppContent = () => {
   const { isDarkMode } = useTheme();
   
   // Pages where we don't want the universal header (landing `/` uses the same sticky header as the app)
-  const noHeaderPages = ['/signin', '/signup', '/forgotpassword', '/reset-password'];
+  const noHeaderPages = ['/signin', '/signup', '/forgotpassword', '/reset-password', '/dashboard'];
   const shouldShowHeader = !noHeaderPages.includes(location.pathname) && 
                           !location.pathname.startsWith('/activate/') &&
                           !location.pathname.startsWith('/reset-password/') &&

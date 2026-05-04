@@ -1,14 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Container,
   Typography,
   Button,
-  Paper,
-  Stepper,
-  Step,
-  StepLabel,
   Grid,
   Card,
   CardContent,
@@ -16,14 +12,13 @@ import {
   Fade,
   Zoom,
   Stack,
-  useTheme,
   useMediaQuery,
-  LinearProgress,
-  IconButton,
   Tooltip,
   Slide,
   Skeleton,
 } from '@mui/material';
+import AuthBackground from '../components/Common/AuthBackground';
+import { useTheme } from '../contexts/useThemeContext';
 import {
   ArrowForward,
   ArrowBack,
@@ -44,13 +39,27 @@ import {
   Dashboard as DashboardIcon,
 } from '@mui/icons-material';
 
+/** Brand accents aligned with auth (cyan / sky / lime) */
+const ACCENT = {
+  welcome: '#22D3EE',
+  features: '#38BDF8',
+  benefits: '#A3E635',
+};
+
+/** Vertical pipeline: full-height rail in sidebar with inset from top/bottom */
+const PIPE = {
+  linePx: 4,
+  /** Inset from the stretchable rail area (below “Your path”, above step footer) */
+  railInsetTop: 8,
+  railInsetBottom: 8,
+};
+
 const Onboarding = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const theme = useTheme();
+  const { theme, isDarkMode } = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('lg'));
   const [activeStep, setActiveStep] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [direction, setDirection] = useState('left');
@@ -93,49 +102,56 @@ const Onboarding = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  const steps = [
-    {
-      label: 'Welcome',
-      title: 'Welcome to Your Health Journey',
-      subtitle: 'Your AI-Powered Diabetes Management Companion',
-      description: 'Take control of your health with intelligent symptom assessment, personalized recommendations, and comprehensive diabetes management tools.',
-      icon: <HealthAndSafety sx={{ fontSize: { xs: 60, sm: 70, md: 80 } }} />,
-      color: theme.palette.primary.main,
-      features: [
-        { icon: <Assessment sx={{ fontSize: { xs: 32, sm: 36, md: 40 } }} />, text: 'Advanced AI Assessment', desc: 'ML-powered symptom analysis' },
-        { icon: <Timeline sx={{ fontSize: { xs: 32, sm: 36, md: 40 } }} />, text: 'Progress Tracking', desc: 'Monitor your health journey' },
-        { icon: <Psychology sx={{ fontSize: { xs: 32, sm: 36, md: 40 } }} />, text: 'Smart Insights', desc: 'Personalized recommendations' },
-      ],
-    },
-    {
-      label: 'Features',
-      title: 'Comprehensive Health Management',
-      subtitle: 'Everything You Need in One Place',
-      description: 'Access a complete suite of tools designed to help you manage diabetes effectively and improve your quality of life.',
-      icon: <LocalHospital sx={{ fontSize: { xs: 60, sm: 70, md: 80 } }} />,
-      color: theme.palette.secondary.main,
-      features: [
-        { icon: <Restaurant sx={{ fontSize: { xs: 32, sm: 36, md: 40 } }} />, text: 'Diet Plans', desc: 'Personalized meal recommendations' },
-        { icon: <FitnessCenter sx={{ fontSize: { xs: 32, sm: 36, md: 40 } }} />, text: 'Exercise Programs', desc: 'Tailored workout routines' },
-        { icon: <TrendingUp sx={{ fontSize: { xs: 32, sm: 36, md: 40 } }} />, text: 'Lifestyle Tips', desc: 'Daily health guidance' },
-      ],
-    },
-    {
-      label: 'Benefits',
-      title: 'Why Choose Our Platform?',
-      subtitle: 'Built with Your Health in Mind',
-      description: 'Experience the difference with our advanced features, secure platform, and dedicated support for your diabetes management journey.',
-      icon: <EmojiEvents sx={{ fontSize: { xs: 60, sm: 70, md: 80 } }} />,
-      color: theme.palette.success.main,
-      features: [
-        { icon: <Security sx={{ fontSize: { xs: 32, sm: 36, md: 40 } }} />, text: 'Secure & Private', desc: 'Your data is encrypted and protected' },
-        { icon: <Speed sx={{ fontSize: { xs: 32, sm: 36, md: 40 } }} />, text: 'Instant Results', desc: 'Get immediate health insights' },
-        { icon: <CheckCircle sx={{ fontSize: { xs: 32, sm: 36, md: 40 } }} />, text: 'Evidence-Based', desc: 'Backed by medical research' },
-      ],
-    },
-  ];
+  const steps = useMemo(
+    () => [
+      {
+        label: 'Welcome',
+        title: 'Welcome to Your Health Journey',
+        subtitle: 'Your AI-powered diabetes companion',
+        description:
+          'Guided symptom checks, tailored suggestions, and tools that fit how you live—so you stay in control, one step at a time.',
+        icon: <HealthAndSafety sx={{ fontSize: { xs: 56, sm: 64, md: 72 } }} />,
+        color: ACCENT.welcome,
+        features: [
+          { icon: <Assessment sx={{ fontSize: { xs: 28, sm: 32, md: 36 } }} />, text: 'Smart assessment', desc: 'Structured questions that adapt to your answers' },
+          { icon: <Timeline sx={{ fontSize: { xs: 28, sm: 32, md: 36 } }} />, text: 'Clear progress', desc: 'See where you are in your check-in' },
+          { icon: <Psychology sx={{ fontSize: { xs: 28, sm: 32, md: 36 } }} />, text: 'Actionable insight', desc: 'Suggestions you can use between visits' },
+        ],
+      },
+      {
+        label: 'Features',
+        title: 'Everything in one calm place',
+        subtitle: 'Built for daily diabetes care',
+        description:
+          'Meal ideas, movement prompts, and lifestyle tips sit alongside your assessments—no tab-hopping, no noise.',
+        icon: <LocalHospital sx={{ fontSize: { xs: 56, sm: 64, md: 72 } }} />,
+        color: ACCENT.features,
+        features: [
+          { icon: <Restaurant sx={{ fontSize: { xs: 28, sm: 32, md: 36 } }} />, text: 'Nutrition support', desc: 'Practical meal patterns, not rigid rules' },
+          { icon: <FitnessCenter sx={{ fontSize: { xs: 28, sm: 32, md: 36 } }} />, text: 'Movement you can keep', desc: 'Short routines that respect your energy' },
+          { icon: <TrendingUp sx={{ fontSize: { xs: 28, sm: 32, md: 36 } }} />, text: 'Habit nudges', desc: 'Small wins that stack over time' },
+        ],
+      },
+      {
+        label: 'Benefits',
+        title: 'Designed for trust and speed',
+        subtitle: 'Privacy-first, evidence-aware',
+        description:
+          'Your data stays yours. Clear flows mean less waiting—and answers you can share with your care team when you choose.',
+        icon: <EmojiEvents sx={{ fontSize: { xs: 56, sm: 64, md: 72 } }} />,
+        color: ACCENT.benefits,
+        features: [
+          { icon: <Security sx={{ fontSize: { xs: 28, sm: 32, md: 36 } }} />, text: 'Secure by default', desc: 'Encryption and careful access patterns' },
+          { icon: <Speed sx={{ fontSize: { xs: 28, sm: 32, md: 36 } }} />, text: 'Fast to value', desc: 'Get oriented in minutes, not hours' },
+          { icon: <CheckCircle sx={{ fontSize: { xs: 28, sm: 32, md: 36 } }} />, text: 'Grounded guidance', desc: 'Aligned with established diabetes education' },
+        ],
+      },
+    ],
+    []
+  );
 
   const currentStep = steps[activeStep];
+  const railProgress = steps.length > 1 ? activeStep / (steps.length - 1) : 1;
 
   const handleNext = () => {
     if (activeStep === steps.length - 1) {
@@ -157,231 +173,152 @@ const Onboarding = () => {
     navigate('/diagnosis-question');
   };
 
+  const pageBg = isDarkMode
+    ? 'linear-gradient(160deg, #0b1220 0%, #12182a 42%, #0a0f18 100%)'
+    : 'linear-gradient(165deg, #ffffff 0%, #f8fafc 38%, #f0f9ff 100%)';
+
+  const glass = {
+    background: isDarkMode ? alpha(theme.palette.background.paper, 0.55) : alpha(theme.palette.background.paper, 0.78),
+    backdropFilter: 'blur(20px) saturate(160%)',
+    border: `1px solid ${alpha('#22D3EE', isDarkMode ? 0.14 : 0.12)}`,
+    boxShadow: isDarkMode
+      ? `0 24px 48px ${alpha('#000', 0.35)}`
+      : `0 20px 40px ${alpha('#0f172a', 0.06)}`,
+  };
+
   return (
     <Box
+      component="main"
       sx={{
         minHeight: '100vh',
-        background: theme.palette.background.gradient || theme.palette.background.default,
+        background: pageBg,
         display: 'flex',
         flexDirection: 'column',
-        py: { xs: 2, sm: 3, md: 4, lg: 6 },
+        py: { xs: 2, sm: 2.5, md: 3 },
         position: 'relative',
         overflow: 'hidden',
       }}
     >
-      <Container 
-        maxWidth="lg" 
-        sx={{ 
-          px: { xs: 2, sm: 3, md: 4 }, 
-          position: 'relative', 
+      <AuthBackground />
+
+      <Box
+        sx={{
+          position: 'relative',
+          zIndex: 2,
+          display: 'flex',
+          justifyContent: 'flex-start',
+          pt: { xs: 0, sm: 0.5 },
+          pl: { xs: 2, sm: 3, md: 4 },
+          pr: { xs: 2, sm: 3, md: 4 },
+        }}
+      >
+        <Button
+          onClick={() => navigate('/')}
+          startIcon={<HealthAndSafety sx={{ color: '#22D3EE', fontSize: 22 }} />}
+          sx={{
+            textTransform: 'none',
+            fontWeight: 700,
+            letterSpacing: '-0.02em',
+            borderRadius: 999,
+            px: 2.5,
+            py: 0.85,
+            color: isDarkMode ? '#f1f5f9' : '#0F172A',
+            border: '1px solid rgba(34,211,238,0.38)',
+            background: 'linear-gradient(135deg, rgba(34,211,238,0.14), rgba(163,230,53,0.16))',
+            backdropFilter: 'blur(10px)',
+            '&:hover': {
+              background: 'linear-gradient(135deg, rgba(34,211,238,0.22), rgba(163,230,53,0.22))',
+            },
+          }}
+        >
+          DiabetesCare
+        </Button>
+      </Box>
+
+      <Container
+        maxWidth="lg"
+        sx={{
+          px: { xs: 2, sm: 3, md: 4 },
+          position: 'relative',
           zIndex: 1,
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
+          pt: { xs: 1, sm: 1.5 },
         }}
       >
-        {/* Top Navigation Bar with Back and Skip */}
-        <Box 
-          sx={{ 
-            display: 'flex', 
+        {/* Top actions — aligned with auth chrome */}
+        <Box
+          sx={{
+            display: 'flex',
             flexDirection: { xs: 'column', sm: 'row' },
-            justifyContent: 'space-between',
+            justifyContent: 'flex-end',
             alignItems: { xs: 'stretch', sm: 'center' },
-            gap: { xs: 1.5, sm: 0 },
-            mb: { xs: 2, md: 3 },
-            position: 'relative', 
-            zIndex: 1000,
+            gap: 1.25,
+            mb: { xs: 2, md: 2.5 },
           }}
         >
-          {/* Smart Back Button */}
           <Tooltip title={isAuthenticated() ? 'Back to Dashboard' : 'Back to Home'} arrow>
             <Button
               variant="outlined"
               onClick={handleBackNavigation}
-              startIcon={isAuthenticated() ? <DashboardIcon /> : <Home />}
+              startIcon={isAuthenticated() ? <DashboardIcon sx={{ fontSize: 20 }} /> : <Home sx={{ fontSize: 20 }} />}
               fullWidth={isSmallScreen}
               sx={{
                 textTransform: 'none',
-                fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                fontSize: { xs: '0.8125rem', sm: '0.875rem' },
                 fontWeight: 600,
-                color: theme.palette.text.primary,
-                borderColor: alpha(theme.palette.divider, 0.2),
-                px: { xs: 2, sm: 3 },
-                py: { xs: 0.75, sm: 1 },
+                color: theme.palette.text.secondary,
+                borderColor: alpha(theme.palette.divider, 0.35),
                 borderRadius: 2,
-                backdropFilter: 'blur(10px)',
-                background: alpha(theme.palette.background.paper, 0.8),
+                px: { xs: 2, sm: 2.5 },
+                py: { xs: 0.85, sm: 1 },
+                ...glass,
                 '&:hover': {
-                  bgcolor: alpha(theme.palette.primary.main, 0.08),
-                  borderColor: theme.palette.primary.main,
-                  color: theme.palette.primary.main,
-                  transform: 'translateX(-2px)',
+                  borderColor: alpha('#22D3EE', 0.45),
+                  color: theme.palette.text.primary,
+                  bgcolor: alpha('#22D3EE', isDarkMode ? 0.08 : 0.06),
                 },
-                transition: 'all 0.3s ease',
+                transition: 'color 0.2s ease, border-color 0.2s ease, background 0.2s ease',
               }}
             >
-              <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-                {isAuthenticated() ? 'Dashboard' : 'Home'}
-              </Box>
+              {isAuthenticated() ? 'Dashboard' : 'Home'}
             </Button>
           </Tooltip>
 
-          {/* Skip Tour Button */}
-          <Tooltip title="Skip to Assessment" arrow disableInteractive>
+          <Tooltip title="Skip to assessment" arrow disableInteractive>
             <span style={{ display: isSmallScreen ? 'block' : 'inline-block' }}>
               <Button
                 variant="outlined"
                 onClick={handleSkip}
-                endIcon={<Close sx={{ fontSize: { xs: 16, sm: 18 } }} />}
+                endIcon={<Close sx={{ fontSize: 18 }} />}
                 fullWidth={isSmallScreen}
                 sx={{
                   textTransform: 'none',
-                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                  fontSize: { xs: '0.8125rem', sm: '0.875rem' },
                   fontWeight: 600,
-                  color: theme.palette.primary.main,
-                  borderColor: alpha(theme.palette.primary.main, 0.3),
-                  px: { xs: 2, sm: 3 },
-                  py: { xs: 0.75, sm: 1 },
+                  color: '#0e7490',
+                  borderColor: alpha('#22D3EE', 0.35),
                   borderRadius: 2,
-                  backdropFilter: 'blur(10px)',
-                  background: alpha(theme.palette.background.paper, 0.8),
-                  cursor: 'pointer',
-                  pointerEvents: 'auto',
+                  px: { xs: 2, sm: 2.5 },
+                  py: { xs: 0.85, sm: 1 },
+                  ...glass,
+                  ...(isDarkMode && {
+                    color: '#67E8F9',
+                    borderColor: alpha('#22D3EE', 0.28),
+                  }),
                   '&:hover': {
-                    bgcolor: theme.palette.primary.main,
-                    color: 'white',
-                    borderColor: theme.palette.primary.main,
-                    transform: 'scale(1.02)',
+                    borderColor: alpha('#22D3EE', 0.55),
+                    bgcolor: alpha('#22D3EE', isDarkMode ? 0.12 : 0.08),
                   },
-                  transition: 'all 0.3s ease',
+                  transition: 'border-color 0.2s ease, background 0.2s ease',
                 }}
               >
-                Skip Tour
+                Skip intro
               </Button>
             </span>
           </Tooltip>
         </Box>
-
-        {/* Progress Stepper */}
-        <Slide direction="down" in={!isLoading} timeout={400}>
-          <Paper
-            elevation={0}
-            sx={{
-              p: { xs: 2, sm: 2.5, md: 3 },
-              mb: { xs: 2, sm: 3, md: 4 },
-              background: alpha(theme.palette.background.paper, 0.95),
-              backdropFilter: 'blur(20px)',
-              borderRadius: { xs: 2, md: 2.5 },
-              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              boxShadow: `0 4px 20px ${alpha(theme.palette.common.black, 0.05)}`,
-            }}
-          >
-            {isLoading ? (
-              <Skeleton variant="rectangular" height={80} sx={{ borderRadius: 2 }} />
-            ) : (
-              <>
-                <Stepper 
-                  activeStep={activeStep} 
-                  alternativeLabel={!isSmallScreen}
-                  orientation={isSmallScreen ? 'horizontal' : 'horizontal'}
-                  sx={{
-                    '& .MuiStepConnector-root': {
-                      display: isSmallScreen ? 'none' : 'flex',
-                    },
-                  }}
-                >
-                  {steps.map((step, index) => (
-                    <Step key={step.label}>
-                      <StepLabel
-                        StepIconComponent={() => (
-                          <Zoom in={true} timeout={300 + index * 100}>
-                            <Box
-                              sx={{
-                                width: { xs: 28, sm: 32, md: 36 },
-                                height: { xs: 28, sm: 32, md: 36 },
-                                borderRadius: '50%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                bgcolor:
-                                  index === activeStep
-                                    ? theme.palette.primary.main
-                                    : index < activeStep
-                                    ? theme.palette.success.main
-                                    : alpha(theme.palette.text.primary, 0.08),
-                                color: index <= activeStep ? '#fff' : theme.palette.text.disabled,
-                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                boxShadow: index === activeStep 
-                                  ? `0 0 0 4px ${alpha(theme.palette.primary.main, 0.15)}`
-                                  : 'none',
-                              }}
-                            >
-                              {index < activeStep ? (
-                                <CheckCircle sx={{ fontSize: { xs: 16, sm: 18, md: 20 } }} />
-                              ) : (
-                                <Typography 
-                                  variant="body2" 
-                                  fontWeight={700} 
-                                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem', md: '0.8125rem' } }}
-                                >
-                                  {index + 1}
-                                </Typography>
-                              )}
-                            </Box>
-                          </Zoom>
-                        )}
-                      >
-                        {!isSmallScreen && (
-                          <Typography 
-                            variant="caption" 
-                            fontWeight={index === activeStep ? 600 : 500}
-                            sx={{ 
-                              mt: 1,
-                              fontSize: { xs: '0.7rem', md: '0.75rem' },
-                              color: index === activeStep ? 'text.primary' : 'text.secondary',
-                              transition: 'color 0.2s ease',
-                              display: { xs: 'none', sm: 'block' },
-                            }}
-                          >
-                            {step.label}
-                          </Typography>
-                        )}
-                      </StepLabel>
-                    </Step>
-                  ))}
-                </Stepper>
-
-                {/* Progress Bar */}
-                <Box sx={{ mt: { xs: 2, md: 2.5 } }}>
-                  <LinearProgress
-                    variant="determinate"
-                    value={((activeStep + 1) / steps.length) * 100}
-                    sx={{
-                      height: { xs: 3, md: 4 },
-                      borderRadius: 2,
-                      bgcolor: alpha(theme.palette.primary.main, 0.1),
-                      '& .MuiLinearProgress-bar': {
-                        borderRadius: 2,
-                        bgcolor: theme.palette.primary.main,
-                        transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
-                      },
-                    }}
-                  />
-                  <Box sx={{ display: 'flex', justifyContent: 'center', mt: 1 }}>
-                    <Typography 
-                      variant="caption" 
-                      color="text.secondary" 
-                      fontWeight={600}
-                      sx={{ fontSize: { xs: '0.65rem', md: '0.6875rem' } }}
-                    >
-                      Step {activeStep + 1} of {steps.length} • {Math.round(((activeStep + 1) / steps.length) * 100)}% Complete
-                    </Typography>
-                  </Box>
-                </Box>
-              </>
-            )}
-          </Paper>
-        </Slide>
 
         {/* Main Content with Slide Animation */}
         <Slide 
@@ -393,20 +330,226 @@ const Onboarding = () => {
           unmountOnExit
         >
           <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            {/* Hero Section with Integrated Features */}
+            {/* Hero + vertical pipeline (rail before content) */}
             <Card
               elevation={0}
               sx={{
-                mb: { xs: 2, sm: 3, md: 4 },
-                background: alpha(theme.palette.background.paper, 0.95),
-                backdropFilter: 'blur(20px)',
-                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                borderRadius: { xs: 2, md: 2.5 },
+                mb: { xs: 2, sm: 2.5, md: 3 },
+                borderRadius: { xs: 2, md: 2.25 },
                 overflow: 'hidden',
-                boxShadow: `0 8px 32px ${alpha(theme.palette.common.black, 0.06)}`,
+                ...glass,
               }}
             >
-              <CardContent sx={{ p: { xs: 3, sm: 4, md: 5, lg: 6 } }}>
+              {isLoading ? (
+                <Box sx={{ display: 'flex', flexDirection: 'row', gap: 2, p: 2.5, width: '100%', alignItems: 'stretch' }}>
+                  <Skeleton
+                    variant="rectangular"
+                    sx={{ width: { xs: 76, sm: 200 }, height: { xs: 220, sm: 200 }, borderRadius: 2, flexShrink: 0 }}
+                  />
+                  <Skeleton variant="rectangular" sx={{ flex: 1, minHeight: 220, borderRadius: 2 }} />
+                </Box>
+              ) : (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'row',
+                    alignItems: 'stretch',
+                    width: '100%',
+                  }}
+                >
+                  <Box
+                    component="nav"
+                    aria-label="Intro steps"
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'stretch',
+                      alignSelf: 'stretch',
+                      flexShrink: 0,
+                      width: { xs: 76, sm: 200, md: 228 },
+                      py: { xs: 2, sm: 2.5 },
+                      px: { xs: 1, sm: 2, md: 2.25 },
+                      borderRight: `1px solid ${alpha('#22D3EE', 0.12)}`,
+                      bgcolor: isDarkMode ? alpha('#020617', 0.35) : alpha('#f8fafc', 0.65),
+                      minHeight: 0,
+                    }}
+                  >
+                    <Typography
+                      variant="overline"
+                      sx={{
+                        display: { xs: 'none', sm: 'block' },
+                        letterSpacing: '0.14em',
+                        color: 'text.secondary',
+                        fontWeight: 700,
+                        mb: 1.5,
+                        flexShrink: 0,
+                      }}
+                    >
+                      Your path
+                    </Typography>
+                    {/* Grows with card height so the rail can run much longer than the step stack alone */}
+                    <Box
+                      sx={{
+                        position: 'relative',
+                        flex: 1,
+                        minHeight: { xs: 200, sm: 280 },
+                        width: '100%',
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: PIPE.railInsetTop,
+                          bottom: PIPE.railInsetBottom,
+                          left: { xs: '50%', sm: `${(42 - PIPE.linePx) / 2}px` },
+                          width: PIPE.linePx,
+                          borderRadius: PIPE.linePx / 2,
+                          transform: { xs: 'translateX(-50%)', sm: 'none' },
+                          bgcolor: alpha(theme.palette.text.primary, isDarkMode ? 0.12 : 0.08),
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            position: 'absolute',
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            height: `${Math.max(0, Math.min(1, railProgress)) * 100}%`,
+                            background: 'linear-gradient(180deg, #0EA5E9 0%, #22D3EE 45%, #84CC16 100%)',
+                            borderRadius: PIPE.linePx / 2,
+                            transition: 'height 0.45s cubic-bezier(0.4, 0, 0.2, 1)',
+                          }}
+                        />
+                      </Box>
+
+                      <Box
+                        sx={{
+                          position: 'relative',
+                          zIndex: 1,
+                          width: '100%',
+                          height: '100%',
+                          boxSizing: 'border-box',
+                          pt: `${PIPE.railInsetTop}px`,
+                          pb: `${PIPE.railInsetBottom}px`,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          minHeight: 0,
+                        }}
+                      >
+                        {steps.map((step, index) => (
+                          <Box
+                            key={step.label}
+                            sx={{
+                              flex: 1,
+                              display: 'flex',
+                              flexDirection: 'row',
+                              flexWrap: 'nowrap',
+                              alignItems: 'center',
+                              justifyContent: { xs: 'center', sm: 'flex-start' },
+                              gap: { xs: 0, sm: 1.25 },
+                              width: '100%',
+                              minHeight: 0,
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                width: { xs: 40, sm: 42 },
+                                height: { xs: 40, sm: 42 },
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                              }}
+                            >
+                              <Tooltip title={`${step.label} — click to open`} arrow>
+                                <Box
+                                  role="button"
+                                  tabIndex={0}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                      e.preventDefault();
+                                      setDirection(index > activeStep ? 'left' : 'right');
+                                      setActiveStep(index);
+                                    }
+                                  }}
+                                  onClick={() => {
+                                    setDirection(index > activeStep ? 'left' : 'right');
+                                    setActiveStep(index);
+                                  }}
+                                  sx={{
+                                    position: 'relative',
+                                    zIndex: 1,
+                                    width: { xs: 40, sm: 42 },
+                                    height: { xs: 40, sm: 42 },
+                                    borderRadius: '50%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    bgcolor:
+                                      index === activeStep
+                                        ? step.color
+                                        : index < activeStep
+                                          ? alpha(steps[index].color, 0.92)
+                                          : alpha(theme.palette.text.primary, isDarkMode ? 0.14 : 0.1),
+                                    color: index <= activeStep ? '#fff' : theme.palette.text.disabled,
+                                    boxShadow:
+                                      index === activeStep ? `0 0 0 4px ${alpha(step.color, 0.28)}` : 'none',
+                                    transition: 'box-shadow 0.25s ease, transform 0.2s ease, background 0.2s ease',
+                                    '&:hover': { transform: 'scale(1.05)' },
+                                    '&:focus-visible': {
+                                      outline: `2px solid ${alpha('#22D3EE', 0.8)}`,
+                                      outlineOffset: 2,
+                                    },
+                                  }}
+                                >
+                                  {index < activeStep ? (
+                                    <CheckCircle sx={{ fontSize: { xs: 20, sm: 22 } }} />
+                                  ) : (
+                                    <Typography variant="body2" fontWeight={800} sx={{ fontSize: { xs: '0.78rem', sm: '0.82rem' } }}>
+                                      {index + 1}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              </Tooltip>
+                            </Box>
+
+                            <Box sx={{ flex: 1, minWidth: 0, pt: 0.15, display: { xs: 'none', sm: 'block' } }}>
+                              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.2 }}>
+                                Phase {index + 1}
+                              </Typography>
+                              <Typography
+                                variant="subtitle2"
+                                fontWeight={index === activeStep ? 700 : 600}
+                                color={index === activeStep ? 'text.primary' : 'text.secondary'}
+                                sx={{ lineHeight: 1.35 }}
+                              >
+                                {step.label}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      fontWeight={600}
+                      sx={{
+                        mt: 'auto',
+                        pt: 1.75,
+                        textAlign: { xs: 'center', sm: 'left' },
+                        letterSpacing: '0.02em',
+                        width: '100%',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {activeStep + 1}/{steps.length}
+                    </Typography>
+                  </Box>
+
+                  <CardContent sx={{ flex: 1, minWidth: 0, p: { xs: 2.5, sm: 3.5, md: 4.5 } }}>
                 <Stack spacing={{ xs: 3, md: 4 }} alignItems="center">
                   {/* Header Section */}
                   <Box sx={{ textAlign: 'center', width: '100%' }}>
@@ -414,17 +557,18 @@ const Onboarding = () => {
                     <Zoom in={true} timeout={600}>
                       <Box
                         sx={{
-                          p: { xs: 2, md: 2.5 },
-                          borderRadius: { xs: 2.5, md: 3 },
-                          background: `linear-gradient(135deg, ${alpha(currentStep.color, 0.1)}, ${alpha(currentStep.color, 0.05)})`,
+                          p: { xs: 1.75, md: 2.25 },
+                          borderRadius: 3,
+                          background: `linear-gradient(145deg, ${alpha(currentStep.color, 0.18)}, ${alpha(currentStep.color, 0.04)})`,
                           color: currentStep.color,
                           display: 'inline-flex',
-                          border: `2px solid ${alpha(currentStep.color, 0.2)}`,
-                          transition: 'all 0.3s ease',
-                          mb: { xs: 2, md: 2.5 },
+                          border: `1px solid ${alpha(currentStep.color, 0.35)}`,
+                          transition: 'transform 0.35s ease, box-shadow 0.35s ease',
+                          mb: { xs: 2, md: 2.25 },
+                          boxShadow: `0 12px 32px ${alpha(currentStep.color, 0.12)}`,
                           '&:hover': {
-                            transform: 'scale(1.05) rotate(5deg)',
-                            boxShadow: `0 8px 24px ${alpha(currentStep.color, 0.2)}`,
+                            transform: 'translateY(-2px)',
+                            boxShadow: `0 16px 40px ${alpha(currentStep.color, 0.2)}`,
                           },
                         }}
                       >
@@ -439,11 +583,11 @@ const Onboarding = () => {
                           variant="h3"
                           fontWeight={800}
                           sx={{
-                            fontSize: { xs: '1.5rem', sm: '1.85rem', md: '2.125rem', lg: '2.5rem' },
+                            fontSize: { xs: '1.45rem', sm: '1.75rem', md: '2rem', lg: '2.2rem' },
                             color: 'text.primary',
-                            letterSpacing: '-0.02em',
-                            mb: { xs: 1.5, md: 2 },
-                            lineHeight: 1.2,
+                            letterSpacing: '-0.03em',
+                            mb: { xs: 1.25, md: 1.75 },
+                            lineHeight: 1.18,
                           }}
                         >
                           {currentStep.title}
@@ -510,94 +654,68 @@ const Onboarding = () => {
                               elevation={0}
                               sx={{
                                 width: '100%',
-                                height: 240,
-                                minHeight: 240,
-                                maxHeight: 240,
+                                minHeight: { xs: 'auto', sm: 200 },
                                 display: 'flex',
                                 flexDirection: 'column',
-                                background: alpha(theme.palette.background.paper, 0.6),
-                                backdropFilter: 'blur(10px)',
-                                border: `1px solid ${alpha(theme.palette.divider, 0.08)}`,
-                                borderRadius: { xs: 2, md: 2.5 },
+                                background: isDarkMode
+                                  ? alpha(theme.palette.background.default, 0.35)
+                                  : alpha('#fff', 0.55),
+                                backdropFilter: 'blur(12px)',
+                                border: `1px solid ${alpha(currentStep.color, isDarkMode ? 0.12 : 0.14)}`,
+                                borderRadius: 2.25,
                                 overflow: 'hidden',
-                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                transition: 'border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease',
                                 '&:hover': {
-                                  transform: 'translateY(-8px) scale(1.02)',
-                                  borderColor: alpha(currentStep.color, 0.3),
-                                  boxShadow: `0 12px 32px ${alpha(theme.palette.common.black, 0.1)}`,
-                                  background: alpha(theme.palette.background.paper, 0.8),
+                                  transform: 'translateY(-4px)',
+                                  borderColor: alpha(currentStep.color, 0.35),
+                                  boxShadow: `0 16px 36px ${alpha(currentStep.color, 0.12)}`,
                                   '& .feature-icon': {
-                                    transform: 'scale(1.1) rotate(5deg)',
-                                    bgcolor: alpha(currentStep.color, 0.15),
+                                    bgcolor: alpha(currentStep.color, 0.16),
                                   },
                                 },
                               }}
                             >
                               <CardContent
                                 sx={{
-                                  p: 3,
-                                  height: '100%',
+                                  p: { xs: 2.25, sm: 2.5 },
                                   display: 'flex',
                                   flexDirection: 'column',
                                   justifyContent: 'flex-start',
-                                  '&:last-child': { pb: 3 },
-                                  overflow: 'hidden',
+                                  '&:last-child': { pb: { xs: 2.25, sm: 2.5 } },
                                 }}
                               >
-                                <Stack spacing={2} sx={{ height: '100%', overflow: 'hidden' }}>
-                                  {/* Icon */}
+                                <Stack spacing={1.75}>
                                   <Box
                                     className="feature-icon"
                                     sx={{
-                                      width: 64,
-                                      height: 64,
-                                      borderRadius: 2.5,
+                                      width: 52,
+                                      height: 52,
+                                      borderRadius: 2,
                                       display: 'flex',
                                       alignItems: 'center',
                                       justifyContent: 'center',
-                                      bgcolor: alpha(currentStep.color, 0.1),
+                                      bgcolor: alpha(currentStep.color, 0.12),
                                       color: currentStep.color,
-                                      transition: 'all 0.3s ease',
+                                      transition: 'background 0.25s ease',
                                       flexShrink: 0,
                                     }}
                                   >
                                     {feature.icon}
                                   </Box>
-                                  
-                                  {/* Text Content */}
-                                  <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                                    <Typography 
-                                      variant="h6" 
-                                      fontWeight={700} 
-                                      sx={{ 
-                                        fontSize: '1.0625rem',
-                                        mb: 0.75,
+                                  <Box>
+                                    <Typography
+                                      variant="subtitle1"
+                                      fontWeight={700}
+                                      sx={{
+                                        fontSize: '1rem',
+                                        mb: 0.5,
                                         color: 'text.primary',
-                                        lineHeight: 1.3,
-                                        height: '2.6em',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        display: '-webkit-box',
-                                        WebkitLineClamp: 2,
-                                        WebkitBoxOrient: 'vertical',
+                                        lineHeight: 1.35,
                                       }}
                                     >
                                       {feature.text}
                                     </Typography>
-                                    <Typography 
-                                      variant="body2" 
-                                      color="text.secondary" 
-                                      sx={{ 
-                                        lineHeight: 1.6,
-                                        fontSize: '0.875rem',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        display: '-webkit-box',
-                                        WebkitLineClamp: 3,
-                                        WebkitBoxOrient: 'vertical',
-                                        flex: 1,
-                                      }}
-                                    >
+                                    <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.65, fontSize: '0.875rem' }}>
                                       {feature.desc}
                                     </Typography>
                                   </Box>
@@ -610,7 +728,9 @@ const Onboarding = () => {
                     </Grid>
                   </Box>
                 </Stack>
-              </CardContent>
+                  </CardContent>
+                </Box>
+              )}
             </Card>
 
             {/* Responsive Navigation Buttons */}
@@ -620,8 +740,8 @@ const Onboarding = () => {
                 flexDirection: { xs: 'column-reverse', sm: 'row' },
                 justifyContent: 'space-between',
                 alignItems: 'stretch',
-                mt: { xs: 3, md: 4 },
-                gap: { xs: 2, sm: 2 },
+                mt: { xs: 2.5, md: 3 },
+                gap: { xs: 1.75, sm: 2 },
               }}
             >
               {/* Back Button */}
@@ -637,20 +757,19 @@ const Onboarding = () => {
                       minWidth: { xs: '100%', sm: 120 },
                       px: { xs: 3, sm: 3, md: 3.5 },
                       py: { xs: 1.5, sm: 1.25, md: 1.5 },
-                      borderRadius: { xs: 2, md: 2.5 },
+                      borderRadius: 2.25,
                       textTransform: 'none',
                       fontSize: { xs: '1rem', sm: '0.9375rem' },
                       fontWeight: 600,
                       visibility: activeStep === 0 ? 'hidden' : 'visible',
                       color: 'text.secondary',
-                      border: `2px solid ${alpha(theme.palette.divider, 0.1)}`,
-                      backdropFilter: 'blur(10px)',
-                      background: alpha(theme.palette.background.paper, 0.8),
+                      border: `1px solid ${alpha(theme.palette.divider, 0.35)}`,
+                      backdropFilter: 'blur(12px)',
+                      background: isDarkMode ? alpha(theme.palette.background.paper, 0.45) : alpha(theme.palette.background.paper, 0.85),
                       '&:hover': {
-                        bgcolor: alpha(theme.palette.text.primary, 0.05),
+                        bgcolor: alpha(theme.palette.text.primary, 0.06),
                         color: 'text.primary',
-                        borderColor: alpha(theme.palette.text.primary, 0.2),
-                        transform: 'translateX(-4px)',
+                        borderColor: alpha('#22D3EE', 0.35),
                       },
                       '&:disabled': {
                         opacity: 0,
@@ -677,21 +796,21 @@ const Onboarding = () => {
                     px: { xs: 4, sm: 4, md: 5 },
                     fontSize: { xs: '1rem', sm: '0.9375rem', md: '1rem' },
                     fontWeight: 700,
-                    borderRadius: { xs: 2, md: 2.5 },
+                    borderRadius: 2.25,
                     textTransform: 'none',
                     whiteSpace: 'nowrap',
-                    background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                    background: 'linear-gradient(135deg, #0EA5E9 0%, #22D3EE 42%, #65A30D 108%)',
                     color: '#fff',
-                    boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.3)}`,
+                    boxShadow: `0 10px 28px ${alpha('#22D3EE', 0.35)}`,
                     '&:hover': {
-                      background: `linear-gradient(135deg, ${theme.palette.primary.dark}, ${theme.palette.secondary.dark})`,
-                      boxShadow: `0 12px 32px ${alpha(theme.palette.primary.main, 0.4)}`,
-                      transform: 'translateY(-2px) scale(1.02)',
+                      background: 'linear-gradient(135deg, #0284C7 0%, #06B6D4 45%, #84CC16 100%)',
+                      boxShadow: `0 14px 36px ${alpha('#22D3EE', 0.42)}`,
+                      transform: 'translateY(-2px)',
                     },
                     '&:active': {
-                      transform: 'translateY(0) scale(0.98)',
+                      transform: 'translateY(0)',
                     },
-                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transition: 'transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease',
                   }}
                 >
                   {activeStep === steps.length - 1 ? 'Get Started' : 'Continue'}
@@ -699,86 +818,9 @@ const Onboarding = () => {
               </Box>
             </Box>
 
-            {/* Mobile Quick Navigation Dots */}
-            {isSmallScreen && (
-              <Box
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  gap: 1,
-                  mt: 3,
-                }}
-              >
-                {steps.map((_, index) => (
-                  <Box
-                    key={index}
-                    onClick={() => {
-                      setDirection(index > activeStep ? 'left' : 'right');
-                      setActiveStep(index);
-                    }}
-                    sx={{
-                      width: index === activeStep ? 24 : 8,
-                      height: 8,
-                      borderRadius: 4,
-                      bgcolor: index === activeStep 
-                        ? theme.palette.primary.main 
-                        : alpha(theme.palette.text.primary, 0.2),
-                      transition: 'all 0.3s ease',
-                      cursor: 'pointer',
-                      '&:hover': {
-                        bgcolor: index === activeStep 
-                          ? theme.palette.primary.dark 
-                          : alpha(theme.palette.text.primary, 0.4),
-                      },
-                    }}
-                  />
-                ))}
-              </Box>
-            )}
           </Box>
         </Slide>
       </Container>
-
-      {/* Decorative Background Elements */}
-      <Box
-        sx={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          overflow: 'hidden',
-          zIndex: 0,
-          pointerEvents: 'none',
-        }}
-      >
-        {/* Gradient Orbs */}
-        <Box
-          sx={{
-            position: 'absolute',
-            top: '-10%',
-            right: '-5%',
-            width: { xs: '300px', md: '500px' },
-            height: { xs: '300px', md: '500px' },
-            borderRadius: '50%',
-            background: `radial-gradient(circle, ${alpha(theme.palette.primary.main, 0.15)}, transparent)`,
-            filter: 'blur(60px)',
-          }}
-        />
-        <Box
-          sx={{
-            position: 'absolute',
-            bottom: '-10%',
-            left: '-5%',
-            width: { xs: '300px', md: '500px' },
-            height: { xs: '300px', md: '500px' },
-            borderRadius: '50%',
-            background: `radial-gradient(circle, ${alpha(theme.palette.secondary.main, 0.15)}, transparent)`,
-            filter: 'blur(60px)',
-          }}
-        />
-      </Box>
     </Box>
   );
 };

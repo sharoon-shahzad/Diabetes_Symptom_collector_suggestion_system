@@ -25,6 +25,7 @@ import {
 import { HelpOutline } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../utils/axiosInstance';
+import { useTheme } from '../../contexts/useThemeContext';
 
 const QuestionList = forwardRef(({ symptomId, symptomName, symptomDescription, isLoggedIn, onDataUpdated, onAnswersChange, userAge, userGender }, ref) => {
   const [questions, setQuestions] = useState([]);
@@ -41,6 +42,7 @@ const QuestionList = forwardRef(({ symptomId, symptomName, symptomDescription, i
   const [heightValues, setHeightValues] = useState({}); // Store feet/inches for each height question
   const [helpAnchorEl, setHelpAnchorEl] = useState(null); // For help popover
   const navigate = useNavigate();
+  const { isDarkMode } = useTheme();
 
   // Expose saveAll function to parent
   useImperativeHandle(ref, () => ({
@@ -386,23 +388,40 @@ const QuestionList = forwardRef(({ symptomId, symptomName, symptomDescription, i
     switch (question.question_type) {
       case 'radio':
         return (
-          <Box display="flex" alignItems="center" gap={1}>
-            <RadioGroup
-              row
-              value={value}
-              onChange={(e) => handleInputChange(question._id, e.target.value)}
-            >
-              {(question.options || []).map((option) => (
-                <FormControlLabel 
-                  key={option} 
-                  value={option} 
-                  control={<Radio disabled={isAnswered} />} 
-                  label={option} 
-                  disabled={isAnswered}
-                />
-              ))}
-            </RadioGroup>
-          </Box>
+          <RadioGroup
+            value={value}
+            onChange={(e) => handleInputChange(question._id, e.target.value)}
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'stretch',
+              gap: 0.75,
+              mt: 0.5,
+            }}
+          >
+            {(question.options || []).map((option) => (
+              <FormControlLabel
+                key={option}
+                value={option}
+                control={<Radio disabled={isAnswered} size="small" />}
+                label={option}
+                disabled={isAnswered}
+                sx={{
+                  m: 0,
+                  py: 1,
+                  px: 1.5,
+                  borderRadius: 2,
+                  border: (theme) => `1px solid ${alpha(theme.palette.divider, isDarkMode ? 0.35 : 0.5)}`,
+                  bgcolor: value === option ? alpha('#22D3EE', isDarkMode ? 0.1 : 0.06) : 'transparent',
+                  transition: 'background 0.2s ease, border-color 0.2s ease',
+                  '&:hover': {
+                    borderColor: alpha('#22D3EE', 0.45),
+                    bgcolor: alpha('#22D3EE', isDarkMode ? 0.08 : 0.04),
+                  },
+                }}
+              />
+            ))}
+          </RadioGroup>
         );
         
       case 'checkbox':
@@ -524,12 +543,12 @@ const QuestionList = forwardRef(({ symptomId, symptomName, symptomDescription, i
   if (!questions.length) return <Typography color="success.main" sx={{ my: 2 }}>All questions completed for this symptom!</Typography>;
 
   return (
-    <Stack spacing={3} mt={3}>
-      {/* Help Button for Symptom Description */}
+    <Stack spacing={2.5} mt={1}>
+      {/* Help — optional context, never required to proceed */}
       {symptomDescription && (
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-          <Typography variant="body2" color="text.secondary">
-            Need help understanding these questions?
+        <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1.5}>
+          <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 420, lineHeight: 1.6 }}>
+            Optional: read a plain-language overview of this topic if it helps.
           </Typography>
           <Button
             onClick={handleHelpOpen}
@@ -540,9 +559,11 @@ const QuestionList = forwardRef(({ symptomId, symptomName, symptomDescription, i
               borderRadius: 2,
               textTransform: 'none',
               fontWeight: 600,
+              flexShrink: 0,
+              borderColor: alpha('#22D3EE', 0.35),
             }}
           >
-            Help
+            What is this about?
           </Button>
         </Box>
       )}
@@ -622,32 +643,36 @@ const QuestionList = forwardRef(({ symptomId, symptomName, symptomDescription, i
         </Box>
       </Popover>
 
-      {questions.map((question) => (
+      {questions.map((question, qIndex) => (
         <Paper
           key={question._id}
-          elevation={2}
+          elevation={0}
           sx={{
-            p: 3,
-            borderRadius: 3,
+            p: { xs: 2.25, sm: 2.75 },
+            borderRadius: 2.25,
             position: 'relative',
-            background: (theme) => theme.palette.background.paper,
-            border: (theme) => `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-            transition: 'all 0.3s ease',
+            background: (theme) => alpha(theme.palette.background.paper, isDarkMode ? 0.4 : 0.72),
+            backdropFilter: 'blur(12px)',
+            border: `1px solid ${alpha('#22D3EE', isDarkMode ? 0.12 : 0.14)}`,
+            transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
             '&:hover': {
-              boxShadow: (theme) => theme.shadows[6],
-              border: (theme) => `1px solid ${alpha(theme.palette.primary.main, 0.3)}`,
-              transform: 'translateY(-2px)',
+              borderColor: alpha('#22D3EE', 0.28),
+              boxShadow: `0 8px 24px ${alpha('#0f172a', isDarkMode ? 0.25 : 0.06)}`,
             },
           }}
         >
           <Box position="relative" zIndex={1}>
-            <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+            <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ letterSpacing: '0.06em', display: 'block', mb: 1 }}>
+              Question {qIndex + 1} of {questions.length}
+            </Typography>
+            <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1.5} gap={1}>
               <FormControl fullWidth>
                 <FormLabel
                   sx={{
-                    fontWeight: 600,
-                    fontSize: '1rem',
-                    mb: 2,
+                    fontWeight: 700,
+                    fontSize: '1.05rem',
+                    mb: 1.5,
+                    lineHeight: 1.45,
                     color: 'text.primary',
                   }}
                 >
@@ -677,8 +702,8 @@ const QuestionList = forwardRef(({ symptomId, symptomName, symptomDescription, i
       {/* Save button removed - auto-save handled by Next button in parent */}
       {questions.length > 0 && questions.every((q) => answeredIds.includes(q._id)) && (
         <Box mt={2}>
-          <Alert severity="info" sx={{ borderRadius: 2 }}>
-            You have already answered all questions for this symptom. Click Next to continue.
+          <Alert severity="info" sx={{ borderRadius: 2, border: (t) => `1px solid ${alpha(t.palette.info.main, 0.2)}` }}>
+            You&apos;ve already completed this topic. When you&apos;re ready, use <strong>Next topic</strong> below.
           </Alert>
         </Box>
       )}

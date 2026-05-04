@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Typography, List, ListItem, ListItemText, Chip, alpha } from '@mui/material';
+import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
 // Icons removed in favor of a minimal colored dot for a cleaner look
 
 const ActivityTimeline = ({ items = [] }) => {
@@ -7,15 +8,41 @@ const ActivityTimeline = ({ items = [] }) => {
     return (
       <Box 
         sx={{ 
-          p: 4,
+          p: { xs: 3, sm: 4 },
           textAlign: 'center',
           background: (t) => t.palette.background.paper,
           borderRadius: 3,
           border: (t) => `1px solid ${t.palette.divider}`,
+          minHeight: 170,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
-        <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 500 }}>
-          No recent activity to display.
+        <Box
+          sx={{
+            width: 58,
+            height: 58,
+            borderRadius: '50%',
+            bgcolor: alpha('#A78BFA', 0.15),
+            color: '#8B5CF6',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            mb: 1.25,
+          }}
+        >
+          <AssignmentOutlinedIcon sx={{ fontSize: 28 }} />
+        </Box>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, lineHeight: 1.2, mb: 0.5 }}>
+          No recent activity
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem', lineHeight: 1.55 }}>
+          Your recent activities and updates
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem', lineHeight: 1.55 }}>
+          will appear here.
         </Typography>
       </Box>
     );

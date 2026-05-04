@@ -290,7 +290,9 @@ function Dashboard() {
         }}>
           <Box sx={{ 
             width: '100%', 
-            maxWidth: selectedIndex === 2 
+            maxWidth: currentSection === 'Dashboard'
+              ? '100%'
+              : selectedIndex === 2 
               ? '100%'
               : { 
                   xs: '100%', 

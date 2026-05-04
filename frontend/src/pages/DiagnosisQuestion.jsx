@@ -12,9 +12,7 @@ import {
   Fade,
   Zoom,
   Stack,
-  useTheme,
   useMediaQuery,
-  IconButton,
   Tooltip,
 } from '@mui/material';
 import {
@@ -27,12 +25,13 @@ import {
   PersonalVideo,
   Home,
 } from '@mui/icons-material';
-import { motion } from 'framer-motion';
 import { useOnboarding } from '../contexts/OnboardingContext';
+import AuthBackground from '../components/Common/AuthBackground';
+import { useTheme } from '../contexts/useThemeContext';
 
 const DiagnosisQuestion = () => {
   const navigate = useNavigate();
-  const theme = useTheme();
+  const { theme, isDarkMode } = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const [selectedAnswer, setSelectedAnswer] = useState(null);
@@ -91,19 +90,25 @@ const DiagnosisQuestion = () => {
     }
   };
 
+  const pageBg = isDarkMode
+    ? 'linear-gradient(160deg, #0b1220 0%, #12182a 42%, #0a0f18 100%)'
+    : 'linear-gradient(165deg, #ffffff 0%, #f8fafc 38%, #f0f9ff 100%)';
+
   return (
     <Box
+      component="main"
       sx={{
         minHeight: '100vh',
-        background: theme.palette.background.gradient || theme.palette.background.default,
+        background: pageBg,
         position: 'relative',
         overflow: 'hidden',
         display: 'flex',
         alignItems: 'center',
-        py: { xs: 4, md: 6 },
+        py: { xs: 3, md: 5 },
       }}
     >
-      <Container maxWidth="md">
+      <AuthBackground />
+      <Container maxWidth="md" sx={{ position: 'relative', zIndex: 1 }}>
         {/* Header Actions */}
         <Box
           sx={{
@@ -179,12 +184,14 @@ const DiagnosisQuestion = () => {
           <Paper
             elevation={0}
             sx={{
-              p: { xs: 3, sm: 4, md: 6 },
-              background: alpha(theme.palette.background.paper, 0.95),
-              backdropFilter: 'blur(20px)',
-              borderRadius: { xs: 3, md: 4 },
-              border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-              boxShadow: `0 8px 32px ${alpha(theme.palette.common.black, 0.1)}`,
+              p: { xs: 3, sm: 4, md: 5 },
+              background: alpha(theme.palette.background.paper, isDarkMode ? 0.55 : 0.82),
+              backdropFilter: 'blur(20px) saturate(160%)',
+              borderRadius: { xs: 2, md: 2.25 },
+              border: `1px solid ${alpha('#22D3EE', isDarkMode ? 0.14 : 0.12)}`,
+              boxShadow: isDarkMode
+                ? `0 24px 48px ${alpha('#000', 0.35)}`
+                : `0 20px 40px ${alpha('#0f172a', 0.06)}`,
             }}
           >
             {/* Icon */}
@@ -218,17 +225,15 @@ const DiagnosisQuestion = () => {
               <Typography
                 variant="h3"
                 sx={{
-                  fontSize: { xs: '1.75rem', sm: '2rem', md: '2.5rem' },
+                  fontSize: { xs: '1.6rem', sm: '1.85rem', md: '2.1rem' },
                   fontWeight: 800,
                   textAlign: 'center',
                   mb: 2,
-                  background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
+                  letterSpacing: '-0.03em',
+                  color: 'text.primary',
                 }}
               >
-                Diabetes Diagnosis Status
+                Have you been diagnosed with diabetes?
               </Typography>
             </Fade>
 
@@ -246,8 +251,7 @@ const DiagnosisQuestion = () => {
                   lineHeight: 1.7,
                 }}
               >
-                This helps us personalize your experience and provide you with the most relevant
-                recommendations and management tools.
+                One calm question so we can show the right next steps. You can change your mind later—this only guides what you see in the app.
               </Typography>
             </Fade>
 
@@ -271,10 +275,9 @@ const DiagnosisQuestion = () => {
                     borderRadius: 3,
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      borderColor: theme.palette.primary.main,
-                      background: alpha(theme.palette.primary.main, 0.08),
-                      transform: 'translateY(-4px)',
-                      boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.2)}`,
+                      borderColor: alpha('#22D3EE', 0.55),
+                      background: alpha('#22D3EE', isDarkMode ? 0.08 : 0.05),
+                      boxShadow: `0 6px 20px ${alpha('#22D3EE', 0.12)}`,
                     },
                   }}
                 >
@@ -287,8 +290,8 @@ const DiagnosisQuestion = () => {
                           borderRadius: '50%',
                           background:
                             selectedAnswer === 'yes'
-                              ? `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`
-                              : alpha(theme.palette.primary.main, 0.1),
+                              ? 'linear-gradient(135deg, #0EA5E9 0%, #22D3EE 50%, #65A30D 100%)'
+                              : alpha('#22D3EE', 0.12),
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -352,10 +355,9 @@ const DiagnosisQuestion = () => {
                     borderRadius: 3,
                     transition: 'all 0.3s ease',
                     '&:hover': {
-                      borderColor: theme.palette.primary.main,
-                      background: alpha(theme.palette.primary.main, 0.08),
-                      transform: 'translateY(-4px)',
-                      boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.2)}`,
+                      borderColor: alpha('#22D3EE', 0.55),
+                      background: alpha('#22D3EE', isDarkMode ? 0.08 : 0.05),
+                      boxShadow: `0 6px 20px ${alpha('#22D3EE', 0.12)}`,
                     },
                   }}
                 >
@@ -368,8 +370,8 @@ const DiagnosisQuestion = () => {
                           borderRadius: '50%',
                           background:
                             selectedAnswer === 'no'
-                              ? `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`
-                              : alpha(theme.palette.primary.main, 0.1),
+                              ? 'linear-gradient(135deg, #0EA5E9 0%, #22D3EE 50%, #65A30D 100%)'
+                              : alpha('#22D3EE', 0.12),
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -434,20 +436,15 @@ const DiagnosisQuestion = () => {
                     borderRadius: 2.5,
                     textTransform: 'none',
                     background: selectedAnswer
-                      ? `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`
+                      ? 'linear-gradient(135deg, #0EA5E9 0%, #22D3EE 42%, #65A30D 108%)'
                       : alpha(theme.palette.action.disabled, 0.12),
                     color: selectedAnswer ? '#fff' : theme.palette.action.disabled,
-                    boxShadow: selectedAnswer
-                      ? `0 8px 24px ${alpha(theme.palette.primary.main, 0.3)}`
-                      : 'none',
+                    boxShadow: selectedAnswer ? `0 10px 28px ${alpha('#22D3EE', 0.35)}` : 'none',
                     '&:hover': {
                       background: selectedAnswer
-                        ? `linear-gradient(135deg, ${theme.palette.primary.dark}, ${theme.palette.secondary.dark})`
+                        ? 'linear-gradient(135deg, #0284C7 0%, #06B6D4 45%, #84CC16 100%)'
                         : alpha(theme.palette.action.disabled, 0.12),
-                      boxShadow: selectedAnswer
-                        ? `0 12px 32px ${alpha(theme.palette.primary.main, 0.4)}`
-                        : 'none',
-                      transform: selectedAnswer ? 'translateY(-2px) scale(1.02)' : 'none',
+                      boxShadow: selectedAnswer ? `0 14px 36px ${alpha('#22D3EE', 0.42)}` : 'none',
                     },
                     '&:disabled': {
                       opacity: 0.6,
@@ -462,52 +459,6 @@ const DiagnosisQuestion = () => {
           </Paper>
         </Fade>
       </Container>
-
-      {/* Decorative Background Elements */}
-      <Box
-        sx={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          overflow: 'hidden',
-          zIndex: 0,
-          pointerEvents: 'none',
-        }}
-      >
-        {/* Gradient Orbs */}
-        <Box
-          sx={{
-            position: 'absolute',
-            top: '-10%',
-            right: '-5%',
-            width: { xs: '300px', md: '500px' },
-            height: { xs: '300px', md: '500px' },
-            borderRadius: '50%',
-            background: `radial-gradient(circle, ${alpha(
-              theme.palette.primary.main,
-              0.15
-            )}, transparent)`,
-            filter: 'blur(60px)',
-          }}
-        />
-        <Box
-          sx={{
-            position: 'absolute',
-            bottom: '-10%',
-            left: '-5%',
-            width: { xs: '300px', md: '500px' },
-            height: { xs: '300px', md: '500px' },
-            borderRadius: '50%',
-            background: `radial-gradient(circle, ${alpha(
-              theme.palette.secondary.main,
-              0.15
-            )}, transparent)`,
-            filter: 'blur(60px)',
-          }}
-        />
-      </Box>
     </Box>
   );
 };
