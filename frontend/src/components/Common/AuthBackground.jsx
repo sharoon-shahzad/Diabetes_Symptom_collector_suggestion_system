@@ -30,6 +30,7 @@ const diabeticIcons = [
 export default function AuthBackground() {
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
+  const freshPalette = ['#22D3EE', '#38BDF8', '#60A5FA', '#84CC16', '#A3E635'];
 
   return (
     <Box
@@ -59,15 +60,7 @@ export default function AuthBackground() {
         ];
         const pos = positions[index % positions.length];
 
-        // Use different colors for variety in dark mode
-        const darkModeColors = [
-          theme.palette.primary.main,
-          theme.palette.secondary.main,
-          theme.palette.success.main,
-          theme.palette.info.main,
-          theme.palette.warning.main,
-        ];
-        const darkColor = darkModeColors[index % darkModeColors.length];
+        const freshColor = freshPalette[index % freshPalette.length];
 
         return (
           <Box
@@ -77,8 +70,8 @@ export default function AuthBackground() {
               ...pos,
               fontSize: item.size,
               color: isDark
-                ? alpha(darkColor, 0.15) // Darker/more visible in dark mode
-                : alpha(theme.palette.primary.main, 0.12), // Much more visible in light mode
+                ? alpha(freshColor, 0.2)
+                : alpha(freshColor, 0.18),
               opacity: isDark ? 0.8 : 0.7, // Higher opacity for better visibility
               animation: `float ${15 + index * 2}s ease-in-out infinite`,
               animationDelay: `${index * 0.5}s`,
@@ -105,8 +98,8 @@ export default function AuthBackground() {
           height: 200,
           borderRadius: '50%',
           background: isDark
-            ? `radial-gradient(circle, ${alpha(theme.palette.primary.main, 0.05)} 0%, transparent 70%)`
-            : `radial-gradient(circle, ${alpha(theme.palette.primary.main, 0.02)} 0%, transparent 70%)`,
+            ? `radial-gradient(circle, ${alpha('#22D3EE', 0.07)} 0%, transparent 70%)`
+            : `radial-gradient(circle, ${alpha('#22D3EE', 0.04)} 0%, transparent 70%)`,
           filter: 'blur(40px)',
         }}
       />
@@ -119,8 +112,8 @@ export default function AuthBackground() {
           height: 250,
           borderRadius: '50%',
           background: isDark
-            ? `radial-gradient(circle, ${alpha(theme.palette.secondary.main, 0.05)} 0%, transparent 70%)`
-            : `radial-gradient(circle, ${alpha(theme.palette.secondary.main, 0.02)} 0%, transparent 70%)`,
+            ? `radial-gradient(circle, ${alpha('#60A5FA', 0.07)} 0%, transparent 70%)`
+            : `radial-gradient(circle, ${alpha('#60A5FA', 0.04)} 0%, transparent 70%)`,
           filter: 'blur(50px)',
         }}
       />
@@ -133,8 +126,8 @@ export default function AuthBackground() {
           height: 180,
           borderRadius: '50%',
           background: isDark
-            ? `radial-gradient(circle, ${alpha(theme.palette.success.main, 0.04)} 0%, transparent 70%)`
-            : `radial-gradient(circle, ${alpha(theme.palette.success.main, 0.015)} 0%, transparent 70%)`,
+            ? `radial-gradient(circle, ${alpha('#84CC16', 0.06)} 0%, transparent 70%)`
+            : `radial-gradient(circle, ${alpha('#84CC16', 0.035)} 0%, transparent 70%)`,
           filter: 'blur(35px)',
         }}
       />

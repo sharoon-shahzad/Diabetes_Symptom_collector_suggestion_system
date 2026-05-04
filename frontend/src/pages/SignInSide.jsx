@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Stack, Typography, Box, alpha, Card, CardContent } from '@mui/material';
+import { Stack, Typography, Box, alpha, Card, CardContent, Button } from '@mui/material';
 import { motion } from 'framer-motion';
 import SignInForm from '../components/SignIn/SignInForm';
 import DiabetesImageSlider from '../components/Common/DiabetesImageSlider';
@@ -9,6 +9,7 @@ import { useTheme } from '../contexts/useThemeContext';
 import SecurityIcon from '@mui/icons-material/Security';
 import AccessibilityIcon from '@mui/icons-material/Accessibility';
 import FavoriteIcon from '@mui/icons-material/Favorite';
+import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
 
 export default function SignInSide() {
   const [success, setSuccess] = useState('');
@@ -31,6 +32,37 @@ export default function SignInSide() {
       }}
     >
       <AuthBackground />
+        <Box
+          sx={{
+            position: 'relative',
+            zIndex: 2,
+            display: 'flex',
+            justifyContent: 'flex-start',
+            pt: { xs: 1.5, sm: 2.2 },
+            pl: { xs: 2, sm: 3.5, md: 5 },
+          }}
+        >
+          <Button
+            onClick={() => navigate('/')}
+            startIcon={<HealthAndSafetyIcon sx={{ color: '#22D3EE' }} />}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 700,
+              borderRadius: 999,
+              px: 2.5,
+              py: 0.9,
+              color: '#0F172A',
+              border: '1px solid rgba(34,211,238,0.38)',
+              background: 'linear-gradient(135deg, rgba(34,211,238,0.16), rgba(163,230,53,0.18))',
+              backdropFilter: 'blur(8px)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, rgba(34,211,238,0.22), rgba(163,230,53,0.22))',
+              },
+            }}
+          >
+            DiabetesCare
+          </Button>
+        </Box>
         <Stack
           direction={{ xs: 'column-reverse', md: 'row' }}
           sx={{
