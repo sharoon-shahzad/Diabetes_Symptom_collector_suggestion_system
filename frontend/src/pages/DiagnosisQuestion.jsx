@@ -25,6 +25,7 @@ import {
   PersonalVideo,
   Home,
 } from '@mui/icons-material';
+import axiosInstance from '../utils/axiosInstance';
 import { useOnboarding } from '../contexts/OnboardingContext';
 import AuthBackground from '../components/Common/AuthBackground';
 import { useTheme } from '../contexts/useThemeContext';
@@ -41,14 +42,10 @@ const DiagnosisQuestion = () => {
   useEffect(() => {
     // Set current step to diagnosis only once on mount
     setCurrentStep('diagnosis');
-    
-    // Simulate loading for smooth transitions
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 300);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array - only run once on mount
+
+    // No network work here, so show the step immediately.
+    setIsLoading(false);
+  }, [setCurrentStep]);
 
   // If already answered, pre-select
   useEffect(() => {
@@ -70,20 +67,33 @@ const DiagnosisQuestion = () => {
     setSelectedAnswer(answer);
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!selectedAnswer) return;
 
     // Update diagnosis status in context
     updateDiagnosisStatus(selectedAnswer);
 
     if (selectedAnswer === 'yes') {
-      // If diagnosed, show login/signup prompt to access diagnosed dashboard
-      navigate('/signin', { 
-        state: { 
-          isDiagnosed: true,
-          message: 'Please sign in to access your personalized diabetes management dashboard'
-        } 
-      });
+      sessionStorage.setItem('diagnosisFlowOverride', 'true');
+      const token = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null;
+      if (token) {
+        try {
+          await axiosInstance.post('/personalized-system/diabetes-diagnosis', {
+            diabetes_diagnosed: 'yes',
+          });
+        } catch (error) {
+          console.error('Failed to persist diagnosed status:', error);
+        }
+        navigate('/personalized-suggestions', { replace: true });
+      } else {
+        navigate('/signin', {
+          state: {
+            from: '/personalized-suggestions',
+            isDiagnosed: true,
+            message: 'Please sign in to access your personalized diabetes management dashboard'
+          }
+        });
+      }
     } else {
       // If not diagnosed, continue to symptom assessment
       navigate('/symptom-assessment');

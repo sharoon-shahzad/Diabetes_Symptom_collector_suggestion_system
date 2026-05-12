@@ -21,7 +21,7 @@ import { alpha } from '@mui/material/styles';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import LocalHospitalOutlinedIcon from '@mui/icons-material/LocalHospitalOutlined';
+import SupportAgentRoundedIcon from '@mui/icons-material/SupportAgentRounded';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 
@@ -40,7 +40,8 @@ export default function SidebarNavigation({
   const navigate = useNavigate();
   const labelMap = {
     Dashboard: 'Dashboard',
-    'My Account': 'My Assessments',
+    'My Account': 'My Profile',
+    'My Assessment': 'My Assessment',
     'Check My Risk': 'Check My Risk',
     'My Disease Data': 'My Data',
     'My Feedback': 'Messages',
@@ -204,46 +205,79 @@ export default function SidebarNavigation({
 
       {/* Bottom area */}
       <Box sx={{ px: sidebarOpen ? 0.6 : 0 }}>
-        {sidebarOpen && (
-          <Paper
-            elevation={0}
-            sx={{
-              p: 1.1,
-              borderRadius: 2,
-              background: alpha('#4F46E5', 0.06),
-              border: `1px solid ${alpha('#4F46E5', 0.12)}`,
-              mb: 1.2,
-            }}
-          >
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
-              <Avatar sx={{ width: 32, height: 32, bgcolor: alpha('#4F46E5', 0.15), color: '#4F46E5' }}>
-                <LocalHospitalOutlinedIcon sx={{ fontSize: 17 }} />
-              </Avatar>
-              <Box>
-                <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: '#0F172A', lineHeight: 1.2 }}>
-                  Need help?
-                </Typography>
-                <Typography sx={{ fontSize: '0.66rem', color: '#64748B', mt: 0.25, lineHeight: 1.35 }}>
-                  Talk to our diabetes care specialist.
-                </Typography>
-                <Button
-                  size="small"
-                  variant="outlined"
-                  sx={{
-                    mt: 0.7,
-                    borderRadius: 1.5,
-                    textTransform: 'none',
-                    fontWeight: 700,
-                    fontSize: '0.64rem',
-                    px: 1,
-                    py: 0.15,
-                  }}
-                >
-                  Contact Us
-                </Button>
+        {sidebarOpen ? (
+          <Tooltip title="Talk to your diabetes care specialist" placement="top">
+            <Paper
+              elevation={0}
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate('/personalized-suggestions/chat-assistant')}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  navigate('/personalized-suggestions/chat-assistant');
+                }
+              }}
+              sx={{
+                p: 1.4,
+                mb: 1.2,
+                borderRadius: 2.5,
+                cursor: 'pointer',
+                textAlign: 'center',
+                background: `linear-gradient(135deg, ${alpha('#4F46E5', 0.1)} 0%, ${alpha('#22D3EE', 0.08)} 100%)`,
+                border: `1px solid ${alpha('#4F46E5', 0.18)}`,
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  transform: 'translateY(-1px)',
+                  boxShadow: `0 8px 18px ${alpha('#4F46E5', 0.18)}`,
+                  borderColor: alpha('#4F46E5', 0.35),
+                },
+              }}
+            >
+              <Box
+                sx={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: '50%',
+                  mx: 'auto',
+                  mb: 0.6,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: `linear-gradient(135deg, #4F46E5 0%, #22D3EE 100%)`,
+                  color: '#fff',
+                  boxShadow: `0 6px 14px ${alpha('#4F46E5', 0.35)}`,
+                }}
+              >
+                <SupportAgentRoundedIcon sx={{ fontSize: 26 }} />
               </Box>
-            </Box>
-          </Paper>
+              <Typography sx={{ fontSize: '0.74rem', fontWeight: 800, color: '#0F172A', lineHeight: 1.2 }}>
+                Get care support
+              </Typography>
+              <Typography sx={{ fontSize: '0.64rem', color: '#64748B', mt: 0.2, lineHeight: 1.35 }}>
+                Tap to chat with a specialist
+              </Typography>
+            </Paper>
+          </Tooltip>
+        ) : (
+          <Tooltip title="Get care support" placement="right">
+            <IconButton
+              onClick={() => navigate('/personalized-suggestions/chat-assistant')}
+              sx={{
+                width: 38,
+                height: 38,
+                mx: 'auto',
+                mb: 1,
+                display: 'flex',
+                background: `linear-gradient(135deg, #4F46E5 0%, #22D3EE 100%)`,
+                color: '#fff',
+                '&:hover': {
+                  filter: 'brightness(1.05)',
+                },
+              }}
+            >
+              <SupportAgentRoundedIcon sx={{ fontSize: 20 }} />
+            </IconButton>
+          </Tooltip>
         )}
 
         {typeof onLogout === 'function' && (

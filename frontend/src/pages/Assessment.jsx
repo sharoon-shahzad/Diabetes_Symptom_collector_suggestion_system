@@ -28,16 +28,9 @@ import {
   Refresh,
   PlayArrow
 } from '@mui/icons-material';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import Chart from 'react-apexcharts';
 import { assessDiabetesRisk, getLatestDiabetesAssessment } from '../utils/api';
-
-const getRiskColor = (risk) => {
-  const level = (risk || '').toLowerCase();
-  if (level === 'high') return '#ef4444';
-  if (level === 'medium') return '#f59e0b';
-  return '#22c55e';
-};
 
 const getRiskGradient = (risk) => {
   const level = (risk || '').toLowerCase();
@@ -51,6 +44,10 @@ const Assessment = () => {
   const [assessmentData, setAssessmentData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    sessionStorage.removeItem('postAuthRedirect');
+  }, []);
 
   useEffect(() => {
     const checkAuthAndFetch = async () => {
@@ -167,7 +164,6 @@ const Assessment = () => {
         probability: Number(result.diabetes_probability || 0),
         confidence: Number(result.confidence || 0),
         recommendations: result?.recommendations?.general_recommendations || [],
-        next_steps: result?.recommendations?.next_steps || [],
         feature_importance,
         symptoms_present,
         medical_reasoning: result?.llm_insights?.medical_reasoning || '',
@@ -189,7 +185,10 @@ const Assessment = () => {
       console.log('🧹 Cleared all temporary storage after loading assessment');
     } catch (err) {
       console.error('Assessment fetch error:', err);
-      setError(err.response?.data?.message || 'Failed to fetch assessment data');
+      const backendMessage = err.response?.data?.message;
+      const backendError = err.response?.data?.error;
+      const backendDetails = err.response?.data?.details;
+      setError(backendMessage || backendError || backendDetails || 'Failed to fetch assessment data');
     } finally {
       setLoading(false);
     }
@@ -212,7 +211,7 @@ const Assessment = () => {
         <Card sx={{ p: 4, maxWidth: 500 }}>
           <Typography variant="h6" color="error" gutterBottom>Error Loading Assessment</Typography>
           <Typography>{error || 'No data available'}</Typography>
-          <Button variant="contained" onClick={() => navigate('/questionnaire')} sx={{ mt: 2 }}>
+          <Button variant="contained" onClick={() => navigate('/symptom-assessment')} sx={{ mt: 2 }}>
             Return to Questionnaire
           </Button>
         </Card>
@@ -225,7 +224,6 @@ const Assessment = () => {
     probability,
     confidence,
     recommendations,
-    next_steps,
     feature_importance,
     symptoms_present
   } = assessmentData;
@@ -366,7 +364,7 @@ const Assessment = () => {
         <Container maxWidth="xxl" sx={{ px: { xs: 4, md: 8, lg: 12 } }}>
 
           {/* Full-Width Banner */}
-          <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+          <Motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <Paper
               sx={{
                 background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.18) 0%, rgba(139, 92, 246, 0.12) 100%)',
@@ -446,10 +444,10 @@ const Assessment = () => {
                 </Grid>
               </Grid>
             </Paper>
-          </motion.div>
+          </Motion.div>
 
           {/* Main Risk Card */}
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7 }}>
+          <Motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7 }}>
             <Card
               sx={{
                 mb: 6,
@@ -543,7 +541,7 @@ const Assessment = () => {
                 </Grid>
               </CardContent>
             </Card>
-          </motion.div>
+          </Motion.div>
 
           {/* Three Chart Row */}
           <Grid container spacing={6} sx={{ mb: 6 }}>

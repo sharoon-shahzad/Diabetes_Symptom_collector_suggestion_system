@@ -74,9 +74,11 @@ const PersonalizedSuggestionSystem = () => {
             try {
                 const user = await getCurrentUser();
                 setUserProfile(user);
+
+                const diagnosedFlowOverride = sessionStorage.getItem('diagnosisFlowOverride') === 'true';
                 
                 // If user is not diagnosed, redirect them
-                if (user && user.diabetes_diagnosed !== 'yes') {
+                if (user && user.diabetes_diagnosed !== 'yes' && !diagnosedFlowOverride) {
                     navigate('/dashboard', { 
                         state: { 
                             message: 'Please complete the diagnosis question to access personalized suggestions'
@@ -94,6 +96,10 @@ const PersonalizedSuggestionSystem = () => {
                 
                 // Load existing data
                 loadExistingData();
+
+                if (diagnosedFlowOverride) {
+                    sessionStorage.removeItem('diagnosisFlowOverride');
+                }
             } catch (e) {
                 // If not authenticated, redirect to login
                 navigate('/signin', { 

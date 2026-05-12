@@ -1,5 +1,6 @@
 import React from 'react';
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box, Typography, CssBaseline, Paper, Card, CardContent, CardActions, CircularProgress, Alert, Grid, Divider, Chip, Modal, IconButton, Tooltip, Skeleton, TextField, ToggleButtonGroup, ToggleButton, SpeedDial, SpeedDialAction, SpeedDialIcon, Accordion, AccordionSummary, AccordionDetails, Menu, MenuItem, Fade, Zoom
 } from '@mui/material';
@@ -35,6 +36,7 @@ import GoalDialog from '../components/modals/GoalDialog';
 import DayDetailsModal from '../components/modals/DayDetailsModal';
 import ShortcutsDialog from '../components/modals/ShortcutsDialog';
 import AccountSection from '../components/dashboard/sections/AccountSection';
+import AssessmentSnapshotSection from '../components/Dashboard/sections/AssessmentSnapshotSection';
 import DiseaseDataSection from '../components/dashboard/sections/DiseaseDataSection';
 import CheckRiskSection from '../components/dashboard/sections/CheckRiskSection';
 import FeedbackSection from '../components/dashboard/sections/FeedbackSection';
@@ -48,12 +50,14 @@ import useDashboardState from '../hooks/useDashboardState.jsx';
 import useHealthMetrics from '../hooks/useHealthMetrics';
 import useDashboardDataFetching from '../hooks/useDashboardDataFetching.jsx';
 import useDashboardHandlers from '../hooks/useDashboardHandlers.jsx';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 
 const drawerWidth = 220;
 const miniDrawerWidth = 64;
 
 const undiagnosedSections = [
   { label: 'Dashboard', icon: <DashboardIcon /> },
+  { label: 'My Assessment', icon: <AssessmentIcon /> },
   { label: 'My Account', icon: <AccountCircleIcon /> },
   { label: 'My Disease Data', icon: <HealingIcon /> },
   { label: 'Check My Risk', icon: <AutoAwesomeIcon /> },
@@ -62,6 +66,7 @@ const undiagnosedSections = [
 
 const diagnosedSections = [
   { label: 'Dashboard', icon: <DashboardIcon /> },
+  { label: 'My Assessment', icon: <AssessmentIcon /> },
   { label: 'My Account', icon: <AccountCircleIcon /> },
   { label: 'Personalized Suggestions', icon: <AutoAwesomeIcon /> },
   { label: 'Chat Assistant', icon: <ChatIcon /> },
@@ -69,6 +74,8 @@ const diagnosedSections = [
 ];
 
 function Dashboard() {
+  const navigate = useNavigate();
+
   // Initialize all dashboard state using custom hook
   const state = useDashboardState();
 
@@ -327,6 +334,17 @@ function Dashboard() {
                   />
                 )}
               </Box>
+            )}
+
+            {currentSection === 'My Assessment' && (
+              <AssessmentSnapshotSection
+                assessmentSummary={assessmentSummary}
+                assessmentLoading={assessmentLoading}
+                user={user}
+                personalInfo={personalInfo}
+                medicalInfo={medicalInfo}
+                onRetakeAssessment={() => navigate('/onboarding')}
+              />
             )}
 
             {currentSection === 'My Account' && (

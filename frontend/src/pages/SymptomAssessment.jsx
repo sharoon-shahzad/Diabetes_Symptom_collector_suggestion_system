@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -6,6 +6,8 @@ import {
   Typography,
   Button,
   Paper,
+  Card,
+  CardContent,
   Chip,
   LinearProgress,
   Fade,
@@ -16,6 +18,8 @@ import {
   Alert,
   Stack,
   Divider,
+  Tabs,
+  Tab,
   alpha,
 } from '@mui/material';
 import {
@@ -34,15 +38,16 @@ import { useTheme } from '../contexts/useThemeContext';
 
 const SymptomAssessment = () => {
   const navigate = useNavigate();
-  const { isDarkMode } = useTheme();
+  const { theme, isDarkMode } = useTheme();
   const [activeStep, setActiveStep] = useState(0);
+  const [activeTab, setActiveTab] = useState('general');
   const [symptoms, setSymptoms] = useState([]);
   const [currentSymptomIndex, setCurrentSymptomIndex] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [completedSymptoms, setCompletedSymptoms] = useState(new Set());
-  const [symptomCompletionStatus, setSymptomCompletionStatus] = useState({});
+  const [, setSymptomCompletionStatus] = useState({});
   const [userAge, setUserAge] = useState(null);
   const [userGender, setUserGender] = useState(null);
   const [canProceed, setCanProceed] = useState(false);
@@ -251,7 +256,7 @@ const SymptomAssessment = () => {
     if (!symptoms.length) return;
 
     // Auto-save answers before proceeding (only for logged in users)
-    if (questionListRef.current && activeStep === 0 && isLoggedIn) {
+    if (questionListRef.current && activeStep === 0 && isLoggedIn && activeTab !== 'general') {
       try {
         await questionListRef.current.saveAll();
       } catch (error) {
@@ -260,8 +265,16 @@ const SymptomAssessment = () => {
       }
     }
 
+    if (activeTab === 'general') {
+      setActiveTab(0);
+      setCurrentSymptomIndex(0);
+      setCanProceed(false);
+      return;
+    }
+
     if (activeStep === 0 && currentSymptomIndex < symptoms.length - 1) {
       setCurrentSymptomIndex((prev) => prev + 1);
+      setActiveTab(currentSymptomIndex + 1);
       setCanProceed(false); // Reset for next symptom
     } else if (activeStep === 0 && currentSymptomIndex === symptoms.length - 1) {
       // Completed all questions
@@ -276,7 +289,7 @@ const SymptomAssessment = () => {
     }
   };
 
-  const handleAnswersChange = (answers, questions) => {
+  const handleAnswersChange = useCallback((answers, questions) => {
     // Check if all questions have been answered
     // Questions are considered answered if they have a value in answers object
     const allAnswered = questions.every((q) => {
@@ -325,11 +338,22 @@ const SymptomAssessment = () => {
         console.error('❌ Failed to save answers to sessionStorage:', error);
       }
     }
-  };
+  }, [isLoggedIn]);
 
   const handleBack = () => {
+    if (activeStep === 0 && activeTab === 'general') {
+      return;
+    }
+
+    if (activeStep === 0 && currentSymptomIndex === 0) {
+      setActiveTab('general');
+      setCanProceed(false);
+      return;
+    }
+
     if (activeStep === 0 && currentSymptomIndex > 0) {
       setCurrentSymptomIndex((prev) => prev - 1);
+      setActiveTab(currentSymptomIndex - 1);
     }
   };
 
@@ -347,6 +371,7 @@ const SymptomAssessment = () => {
   };
     
   const handleLoginRedirect = () => {
+    sessionStorage.setItem('postAuthRedirect', '/assessment');
     navigate('/signin?returnTo=symptom-assessment');
   };
 
@@ -354,13 +379,23 @@ const SymptomAssessment = () => {
     return completedSymptoms.has(symptomId);
   };
 
-  const steps = ['Questions', 'Wrap up'];
+  const handleTabChange = (_, nextTab) => {
+    setActiveTab(nextTab);
 
-  const currentSymptom = symptoms[currentSymptomIndex];
+    if (typeof nextTab === 'number') {
+      setCurrentSymptomIndex(nextTab);
+      setCanProceed(false);
+    }
+  };
+
+  const steps = ['Topics', 'Wrap up'];
+
+  const currentSymptom = activeTab === 'general' ? null : symptoms[currentSymptomIndex];
 
   const getProgressPercentage = () => {
     if (!symptoms.length) return 0;
     if (activeStep === 1) return 100;
+    if (activeTab === 'general') return 0;
     return ((currentSymptomIndex + 1) / symptoms.length) * 100;
   };
 
@@ -415,14 +450,14 @@ const SymptomAssessment = () => {
               variant="body1"
               color="text.secondary"
               sx={{
-                maxWidth: 560,
+                maxWidth: 720,
                 mx: 'auto',
                 lineHeight: 1.75,
                 fontSize: { xs: '0.95rem', md: '1.02rem' },
                 fontWeight: 400,
               }}
             >
-              A few clear questions at a time. Pause anytime—your answers stay on this step until you move on. Nothing here replaces care from your clinician.
+              Start with general details, then move through the topic tabs on the left. The progress bar stays tied to the full check-in so the flow always feels continuous.
             </Typography>
           </Box>
         </Fade>
@@ -518,84 +553,224 @@ const SymptomAssessment = () => {
               }}
             >
               <Typography variant="body2" sx={{ lineHeight: 1.65 }}>
-                <strong style={{ color: 'inherit', fontWeight: 700 }}>Take your time.</strong> Answer in your own words where it helps. You can use Back to change a previous topic before finishing.
+                <strong style={{ color: 'inherit', fontWeight: 700 }}>Use the rail.</strong> The selected tab stays open while you answer, so the flow remains predictable and easy to return to.
               </Typography>
             </Alert>
 
             {/* Step Content */}
-            <Box sx={{ minHeight: 400 }}>
-              {/* Step 0: Answer Questions (all symptoms, one by one) */}
-              {activeStep === 0 && currentSymptom && (
-                <Fade in timeout={500} key={currentSymptomIndex}>
-                  <Box>
-                    <Box textAlign="center" mb={3}>
-                      <Chip
-                        label={`Topic ${currentSymptomIndex + 1} of ${symptoms.length}`}
-                        sx={{
-                          mb: 1.5,
-                          fontWeight: 600,
-                          fontSize: '0.8125rem',
-                          px: 1,
-                          borderRadius: 2,
-                          bgcolor: alpha('#22D3EE', isDarkMode ? 0.12 : 0.1),
-                          color: isDarkMode ? '#67E8F9' : '#0e7490',
-                          border: `1px solid ${alpha('#22D3EE', 0.22)}`,
-                        }}
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', lg: '300px minmax(0, 1fr)' },
+                gap: 3,
+                minHeight: 520,
+              }}
+            >
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 1.5,
+                  borderRadius: 3,
+                  background: alpha(theme.palette.background.paper, isDarkMode ? 0.46 : 0.82),
+                  border: `1px solid ${alpha('#22D3EE', 0.14)}`,
+                  backdropFilter: 'blur(18px) saturate(150%)',
+                  position: { lg: 'sticky' },
+                  top: { lg: 24 },
+                  alignSelf: 'start',
+                }}
+              >
+                <Box sx={{ px: 1, pt: 0.5, pb: 1.5 }}>
+                  <Typography variant="overline" sx={{ letterSpacing: '0.14em', fontWeight: 800, color: 'text.secondary' }}>
+                    Check-in map
+                  </Typography>
+                  <Typography variant="h6" fontWeight={800} sx={{ letterSpacing: '-0.02em', mt: 0.25 }}>
+                    Topic rail
+                  </Typography>
+                </Box>
+                <Tabs
+                  orientation="vertical"
+                  variant="scrollable"
+                  value={activeTab}
+                  onChange={handleTabChange}
+                  allowScrollButtonsMobile
+                  sx={{
+                    minHeight: 360,
+                    '& .MuiTabs-indicator': {
+                      left: 0,
+                      width: 4,
+                      borderRadius: 99,
+                      background: 'linear-gradient(180deg, #0EA5E9 0%, #22D3EE 50%, #84CC16 100%)',
+                    },
+                    '& .MuiTab-root': {
+                      alignItems: 'flex-start',
+                      justifyContent: 'flex-start',
+                      textTransform: 'none',
+                      borderRadius: 2,
+                      minHeight: 'auto',
+                      py: 1.5,
+                      px: 1.5,
+                      mx: 0.5,
+                      my: 0.4,
+                      border: `1px solid ${alpha('#22D3EE', 0.08)}`,
+                      background: alpha(theme.palette.background.default, isDarkMode ? 0.2 : 0.45),
+                      color: 'text.primary',
+                      transition: 'all 0.2s ease',
+                      '&.Mui-selected': {
+                        borderColor: alpha('#22D3EE', 0.35),
+                        background: `linear-gradient(135deg, ${alpha('#22D3EE', 0.14)} 0%, ${alpha('#fff', isDarkMode ? 0.04 : 0.75)} 100%)`,
+                        boxShadow: `0 10px 22px ${alpha('#0f172a', isDarkMode ? 0.18 : 0.05)}`,
+                      },
+                    },
+                  }}
+                >
+                  <Tab
+                    key="general"
+                    value="general"
+                    label={
+                      <Box sx={{ width: '100%' }}>
+                        <Box display="flex" alignItems="center" justifyContent="space-between" gap={1}>
+                          <Typography variant="subtitle2" fontWeight={800}>General data</Typography>
+                          <Chip label="Start here" size="small" sx={{ fontWeight: 700 }} />
+                        </Box>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, lineHeight: 1.5 }}>
+                          Age and profile details already loaded for this session.
+                        </Typography>
+                      </Box>
+                    }
+                  />
+
+                  {symptoms.map((symptom, index) => {
+                    const completed = isSymptomCompleted(symptom._id);
+                    const isCurrent = currentSymptomIndex === index;
+
+                    return (
+                      <Tab
+                        key={symptom._id}
+                        value={index}
+                        label={
+                          <Box sx={{ width: '100%' }}>
+                            <Box display="flex" alignItems="center" justifyContent="space-between" gap={1}>
+                              <Typography variant="subtitle2" fontWeight={800} sx={{ lineHeight: 1.2 }}>
+                                {symptom.name}
+                              </Typography>
+                              <Chip
+                                label={completed ? 'Done' : `0${index + 1}`}
+                                size="small"
+                                color={completed ? 'success' : isCurrent ? 'primary' : 'default'}
+                                sx={{ fontWeight: 700, height: 22 }}
+                              />
+                            </Box>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, lineHeight: 1.5 }}>
+                              Tap to open related questions.
+                            </Typography>
+                          </Box>
+                        }
                       />
-                      <Typography
-                        variant="overline"
-                        sx={{
-                          display: 'block',
-                          letterSpacing: '0.12em',
-                          color: 'text.secondary',
-                          fontWeight: 700,
-                          mb: 0.75,
-                        }}
-                      >
-                        {currentSymptom._diseaseName || 'Diabetes care'}
+                    );
+                  })}
+                </Tabs>
+              </Paper>
+
+              <Paper
+                elevation={0}
+                sx={{
+                  p: { xs: 2.5, md: 3.5 },
+                  borderRadius: 3,
+                  background: alpha(theme.palette.background.paper, isDarkMode ? 0.52 : 0.84),
+                  border: `1px solid ${alpha('#22D3EE', 0.14)}`,
+                  backdropFilter: 'blur(18px) saturate(150%)',
+                  minHeight: 520,
+                }}
+              >
+                {activeTab === 'general' ? (
+                  <Fade in timeout={350}>
+                    <Box>
+                      <Box display="flex" alignItems="center" justifyContent="space-between" gap={2} flexWrap="wrap" mb={2}>
+                        <Box>
+                          <Chip label="General data entry" size="small" sx={{ mb: 1, fontWeight: 700 }} />
+                          <Typography variant="h4" fontWeight={800} sx={{ letterSpacing: '-0.03em' }}>
+                            Confirm your profile details
+                          </Typography>
+                        </Box>
+                        <Chip label={isLoggedIn ? 'Synced from profile' : 'Guest session'} size="small" variant="outlined" sx={{ fontWeight: 700 }} />
+                      </Box>
+                      <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.8, maxWidth: 720, mb: 3 }}>
+                        This is the first stop in the flow. We use these details to personalize the assessment and keep later topic tabs short.
                       </Typography>
-                      <Typography
-                        variant="h5"
-                        fontWeight={800}
-                        gutterBottom
-                        sx={{
-                          mb: 0.5,
-                          fontSize: { xs: '1.35rem', md: '1.6rem' },
-                          letterSpacing: '-0.02em',
-                          color: 'text.primary',
-                        }}
-                      >
-                        {currentSymptom.name}
-                      </Typography>
-                      {currentSymptom.description ? (
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{ maxWidth: 520, mx: 'auto', lineHeight: 1.65, whiteSpace: 'pre-line' }}
-                        >
-                          {currentSymptom.description}
-                        </Typography>
-                      ) : (
-                        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 520, mx: 'auto', lineHeight: 1.65 }}>
-                          Use the help button under the questions if you want more context on this topic.
-                        </Typography>
-                      )}
+                      <Divider sx={{ mb: 3, opacity: 0.6 }} />
+                      <Stack spacing={2}>
+                        <Card variant="outlined" sx={{ borderRadius: 3, borderColor: alpha('#22D3EE', 0.14) }}>
+                          <CardContent sx={{ p: 2.5 }}>
+                            <Typography variant="overline" sx={{ letterSpacing: '0.12em', color: 'text.secondary', fontWeight: 800 }}>
+                              Age
+                            </Typography>
+                            <Typography variant="h6" fontWeight={800} sx={{ mt: 0.5 }}>
+                              {userAge || 'Not available yet'}
+                            </Typography>
+                          </CardContent>
+                        </Card>
+                        <Card variant="outlined" sx={{ borderRadius: 3, borderColor: alpha('#22D3EE', 0.14) }}>
+                          <CardContent sx={{ p: 2.5 }}>
+                            <Typography variant="overline" sx={{ letterSpacing: '0.12em', color: 'text.secondary', fontWeight: 800 }}>
+                              Gender
+                            </Typography>
+                            <Typography variant="h6" fontWeight={800} sx={{ mt: 0.5 }}>
+                              {userGender || 'Not available yet'}
+                            </Typography>
+                          </CardContent>
+                        </Card>
+                        <Alert severity="info" sx={{ borderRadius: 2 }}>
+                          Select a topic in the sidebar to continue. Your progress remains visible at the top as you move between tabs.
+                        </Alert>
+                      </Stack>
                     </Box>
-                    <Divider sx={{ mb: 3, opacity: 0.6 }} />
-                    <QuestionList 
-                      ref={questionListRef}
-                      symptomId={currentSymptom._id} 
-                      symptomName={currentSymptom.name}
-                      symptomDescription={currentSymptom.description}
-                      isLoggedIn={isLoggedIn}
-                      onDataUpdated={fetchUserAnsweredQuestions}
-                      onAnswersChange={handleAnswersChange}
-                      userAge={userAge}
-                      userGender={userGender}
-                    />
-                  </Box>
-                </Fade>
-              )}
+                  </Fade>
+                ) : currentSymptom ? (
+                  <Fade in timeout={350} key={currentSymptom._id}>
+                    <Box>
+                      <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={2} flexWrap="wrap" mb={1.5}>
+                        <Box>
+                          <Chip
+                            label={`Topic ${currentSymptomIndex + 1}`}
+                            size="small"
+                            sx={{
+                              mb: 1,
+                              fontWeight: 700,
+                              bgcolor: alpha('#22D3EE', isDarkMode ? 0.12 : 0.1),
+                              color: isDarkMode ? '#67E8F9' : '#0e7490',
+                            }}
+                          />
+                          <Typography variant="h4" fontWeight={800} sx={{ letterSpacing: '-0.03em' }}>
+                            {currentSymptom.name}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75, lineHeight: 1.7, maxWidth: 760 }}>
+                            {currentSymptom._diseaseName || 'Diabetes care'}
+                          </Typography>
+                        </Box>
+                        <Chip
+                          label={isSymptomCompleted(currentSymptom._id) ? 'Completed' : 'In progress'}
+                          size="small"
+                          variant="outlined"
+                          sx={{ fontWeight: 700 }}
+                        />
+                      </Box>
+                      <Divider sx={{ my: 3, opacity: 0.6 }} />
+                      <QuestionList
+                        ref={questionListRef}
+                        symptomId={currentSymptom._id}
+                        symptomName={currentSymptom.name}
+                        symptomDescription=""
+                        isLoggedIn={isLoggedIn}
+                        onDataUpdated={fetchUserAnsweredQuestions}
+                        onAnswersChange={handleAnswersChange}
+                        userAge={userAge}
+                        userGender={userGender}
+                      />
+                    </Box>
+                  </Fade>
+                ) : null}
+              </Paper>
+              </Box>
 
               {/* Step 1: Complete */}
               {activeStep === 1 && (
@@ -648,7 +823,6 @@ const SymptomAssessment = () => {
                   </Box>
                 </Fade>
               )}
-            </Box>
 
             {/* Navigation Buttons */}
             {activeStep === 0 && (
@@ -777,6 +951,7 @@ const SymptomAssessment = () => {
                 variant="outlined"
                 size="large"
                 onClick={() => {
+                  sessionStorage.setItem('postAuthRedirect', '/assessment');
                   sessionStorage.setItem('returnToSymptomAssessment', 'true');
                   navigate('/signup', { state: { fromOnboarding: true } });
                 }}

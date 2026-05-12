@@ -14,7 +14,7 @@ if PROJECT_ROOT:
 else:
     # Fallback: try to find the model directory relative to current script
     script_dir = Path(__file__).parent
-    project_root = script_dir.parent.parent.parent
+    project_root = script_dir.parent.parent
     model_path = str(project_root / 'DiabetesModel')
     sys.path.append(model_path)
     PROJECT_ROOT = str(project_root)

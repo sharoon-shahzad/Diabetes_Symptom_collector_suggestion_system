@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../utils/auth';
-import { fetchMyDiseaseData, assessDiabetesRisk } from '../utils/api';
+import { fetchMyDiseaseData, assessDiabetesRisk, getLatestDiabetesAssessment } from '../utils/api';
 import axiosInstance from '../utils/axiosInstance';
 
 /**
@@ -94,7 +94,7 @@ const useDashboardDataFetching = ({
 
   // Fetch disease data for Dashboard, Insights and My Disease Data sections
   useEffect(() => {
-    if (currentSection === 'Dashboard' || currentSection === 'Insights' || currentSection === 'My Disease Data') {
+    if (currentSection === 'Dashboard' || currentSection === 'Insights' || currentSection === 'My Disease Data' || currentSection === 'My Assessment') {
       setLoading(true);
       setError(null);
       console.log('Fetching disease data for section:', currentSection);
@@ -113,7 +113,7 @@ const useDashboardDataFetching = ({
 
   // Fetch assessment summary for Insights
   useEffect(() => {
-    if (!user || currentSection !== 'Insights') return;
+    if (!user || (currentSection !== 'Insights' && currentSection !== 'My Assessment')) return;
 
     const fetchSummary = async () => {
       try {
@@ -174,7 +174,7 @@ const useDashboardDataFetching = ({
   // Fetch profile and plan data for diagnosed users
   useEffect(() => {
     if (!user || user.diabetes_diagnosed !== 'yes') return;
-    if (currentSection !== 'Personalized Suggestions' && currentSection !== 'Dashboard' && currentSection !== 'Insights') return;
+    if (currentSection !== 'Personalized Suggestions' && currentSection !== 'Dashboard' && currentSection !== 'Insights' && currentSection !== 'My Assessment') return;
 
     const fetchCompletion = async () => {
       try {

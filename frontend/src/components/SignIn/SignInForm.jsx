@@ -16,7 +16,7 @@ import {
     alpha,
     Divider,
 } from '@mui/material';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import EmailIcon from '@mui/icons-material/Email';
 import LockIcon from '@mui/icons-material/Lock';
 import Visibility from '@mui/icons-material/Visibility';
@@ -37,6 +37,10 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
     const googleButtonContainerRef = useRef(null);
     const theme = useTheme();
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    const searchParams = new URLSearchParams(location.search);
+    const returnTo = searchParams.get('returnTo');
+    const postAuthRedirect = sessionStorage.getItem('postAuthRedirect');
+    const shouldPreserveAssessmentRedirect = returnTo === 'symptom-assessment' || postAuthRedirect === '/assessment';
 
     const handleAuthSuccess = async (payload) => {
         if (payload?.data?.user && payload?.data?.accessToken) {
@@ -44,8 +48,21 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
             const roles = payload.data.user.roles || [];
             localStorage.setItem('roles', JSON.stringify(roles));
 
+            const signedInAsDiagnosed = Boolean(location.state?.isDiagnosed);
+
             sessionStorage.removeItem('returnToSymptomAssessment');
             sessionStorage.removeItem('answersSavedAfterLogin');
+
+            if (signedInAsDiagnosed) {
+                sessionStorage.setItem('diagnosisFlowOverride', 'true');
+                try {
+                    await axiosInstance.post('/personalized-system/diabetes-diagnosis', {
+                        diabetes_diagnosed: 'yes',
+                    });
+                } catch (err) {
+                    console.error('Failed to persist diagnosed status during sign-in:', err);
+                }
+            }
 
             if (roles.includes('admin') || roles.includes('super_admin')) {
                 sessionStorage.removeItem('pendingOnboardingAnswers');
@@ -53,8 +70,6 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                 return;
             }
 
-            const searchParams = new URLSearchParams(location.search);
-            const returnTo = searchParams.get('returnTo');
             if (returnTo === 'symptom-assessment') {
                 const pendingAnswersRaw = sessionStorage.getItem('pendingOnboardingAnswers');
                 if (pendingAnswersRaw) {
@@ -72,8 +87,18 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                         sessionStorage.removeItem('pendingOnboardingAnswers');
                     }
                 }
+                // Mark that user should return to assessment flow and go directly to report
                 sessionStorage.setItem('returnToSymptomAssessment', 'true');
-                navigate('/symptom-assessment', { replace: true });
+                sessionStorage.setItem('postAuthRedirect', '/assessment');
+                // Navigate directly to the protected assessment report so user sees results immediately
+                navigate('/assessment', { replace: true });
+                return;
+            }
+
+            if (signedInAsDiagnosed) {
+                sessionStorage.removeItem('pendingOnboardingAnswers');
+                sessionStorage.setItem('diagnosisFlowOverride', 'true');
+                navigate('/personalized-suggestions', { replace: true });
                 return;
             }
 
@@ -81,6 +106,10 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
             sessionStorage.setItem('assessmentPopupPostLogin', 'true');
             const from = location.state?.from;
             const targetPath = typeof from === 'string' ? from : from?.pathname;
+            if (postAuthRedirect) {
+                navigate(postAuthRedirect, { replace: true });
+                return;
+            }
             const isProtectedPath = targetPath && !['/signin', '/signup', '/'].includes(targetPath);
             if (isProtectedPath) {
                 navigate(targetPath, { replace: true });
@@ -227,7 +256,7 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
     };
 
     return (
-        <motion.div
+        <Motion.div
             variants={containerVariants}
             initial="hidden"
             animate="visible"
@@ -243,7 +272,7 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                 }}
             >
                 {/* Header */}
-                <motion.div variants={itemVariants}>
+                <Motion.div variants={itemVariants}>
                     <Box sx={{ mb: 3, textAlign: 'center' }}>
                         <Typography 
                             variant="h4" 
@@ -261,13 +290,13 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                             Sign in to manage your diabetes health journey
                         </Typography>
                     </Box>
-                </motion.div>
+                </Motion.div>
 
 
                 {/* Error Alert */}
                 <AnimatePresence>
                     {errorMessage && (
-                        <motion.div
+                        <Motion.div
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: 'auto' }}
                             exit={{ opacity: 0, height: 0 }}
@@ -275,13 +304,13 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                             <Alert severity="error" sx={{ mb: 2 }}>
                                 {errorMessage}
                             </Alert>
-                        </motion.div>
+                        </Motion.div>
                     )}
                 </AnimatePresence>
 
                 <form onSubmit={handleSubmit}>
                     {/* Email Field */}
-                    <motion.div variants={itemVariants}>
+                    <Motion.div variants={itemVariants}>
                         <Box sx={{ position: 'relative', mb: 2 }}>
                             <TextField
                                 fullWidth
@@ -323,10 +352,10 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                                 }}
                             />
                         </Box>
-                    </motion.div>
+                    </Motion.div>
 
                     {/* Password Field */}
-                    <motion.div variants={itemVariants}>
+                    <Motion.div variants={itemVariants}>
                         <Box sx={{ position: 'relative', mb: 2 }}>
                             <TextField
                                 fullWidth
@@ -377,10 +406,10 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                                 }}
                             />
                         </Box>
-                    </motion.div>
+                    </Motion.div>
 
                     {/* Remember Me & Forgot Password */}
-                    <motion.div variants={itemVariants}>
+                    <Motion.div variants={itemVariants}>
                         <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
                             <FormControlLabel
                                 control={
@@ -416,10 +445,10 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                                 Forgot password?
                             </Link>
                         </Box>
-                    </motion.div>
+                    </Motion.div>
 
                     {/* Submit Button */}
-                    <motion.div variants={itemVariants}>
+                    <Motion.div variants={itemVariants}>
                         <Button
                             variant="contained"
                             fullWidth
@@ -442,7 +471,7 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                         >
                             {loading ? 'Signing In...' : 'Sign In'}
                         </Button>
-                    </motion.div>
+                    </Motion.div>
                 </form>
 
                 {!!googleClientId && (
@@ -460,12 +489,12 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                 )}
 
                 {/* Sign Up Link */}
-                <motion.div variants={itemVariants}>
+                <Motion.div variants={itemVariants}>
                     <Typography textAlign="center" variant="body2" sx={{ mt: 3, color: 'text.secondary' }}>
                         Don't have an account?{' '}
                         <Link
                             component={RouterLink}
-                            to="/signup"
+                            to={shouldPreserveAssessmentRedirect ? '/signup?returnTo=symptom-assessment' : '/signup'}
                             sx={{
                                 color: theme.palette.primary.main,
                                 fontWeight: 600,
@@ -478,8 +507,8 @@ export default function SignInForm({ setSuccess, setError, navigate }) {
                             Sign up
                         </Link>
                     </Typography>
-                </motion.div>
+                </Motion.div>
             </Paper>
-        </motion.div>
+        </Motion.div>
     );
 }

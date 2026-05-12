@@ -58,11 +58,15 @@ const QuestionList = forwardRef(({ symptomId, symptomName, symptomDescription, i
       if (!symptomId) return;
       try {
         setLoading(true);
-        const response = await axiosInstance.get(`/questions/public/symptom/${symptomId}`);
+        setError(null);
+
+        const questionsRequest = axiosInstance.get(`/questions/public/symptom/${symptomId}`);
+        const answeredRequest = isLoggedIn ? axiosInstance.get('/users/my-disease-data') : Promise.resolve(null);
+        const [response, ansRes] = await Promise.all([questionsRequest, answeredRequest]);
+
         const data = response.data;
         const questionsList = Array.isArray(data) ? data : (Array.isArray(data.data) ? data.data : []);
         setQuestions(questionsList);
-        setError(null);
         
         console.log('QuestionList - userAge:', userAge);
         console.log('QuestionList - userGender:', userGender);
@@ -115,15 +119,14 @@ const QuestionList = forwardRef(({ symptomId, symptomName, symptomDescription, i
           });
         }
         
-        // Only fetch user's answered questions if logged in
+        // Use the already-fetched disease payload to avoid a second round trip.
         if (isLoggedIn && questionsList.length > 0) {
           try {
-            const ansRes = await axiosInstance.get('/users/my-disease-data');
-            const ansData = ansRes.data;
+            const ansData = ansRes?.data;
             const answered = [...preFilledQuestionIds]; // Include pre-filled questions
             const loadedAnswers = {}; // Store the actual answer values
             
-            if (ansData.data && ansData.data.symptoms && symptomName) {
+            if (ansData?.data && ansData.data.symptoms && symptomName) {
               // Case-insensitive, trimmed match for symptom name
               const symptomBlock = ansData.data.symptoms.find((s) => s.name.trim().toLowerCase() === symptomName.trim().toLowerCase());
               if (symptomBlock && Array.isArray(symptomBlock.questions)) {
@@ -309,20 +312,17 @@ const QuestionList = forwardRef(({ symptomId, symptomName, symptomDescription, i
       const config = question.render_config.config;
       
       // Height unit conversion (feet/inches → cm)
-      if (!heightValues[question._id] && value) {
+      const currentHeight = heightValues[question._id] || (() => {
         const cmValue = parseFloat(value);
-        if (!isNaN(cmValue)) {
-          const totalInches = cmValue / 2.54;
-          const feet = Math.floor(totalInches / 12);
-          const inches = Math.round(totalInches % 12);
-          setHeightValues(prev => ({
-            ...prev,
-            [question._id]: { feet, inches }
-          }));
+        if (Number.isNaN(cmValue)) {
+          return { feet: '', inches: '' };
         }
-      }
-      
-      const currentHeight = heightValues[question._id] || { feet: '', inches: '' };
+        const totalInches = cmValue / 2.54;
+        return {
+          feet: Math.floor(totalInches / 12),
+          inches: Math.round(totalInches % 12),
+        };
+      })();
       
       // Dynamically get units from config
       const feetUnit = config.from_units.find(u => u.name === 'feet');

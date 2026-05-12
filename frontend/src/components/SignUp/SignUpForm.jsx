@@ -25,7 +25,7 @@ import {
 } from '@mui/material';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import PersonIcon from '@mui/icons-material/Person';
@@ -60,6 +60,8 @@ export default function SignUpForm({ setSuccess, setError }) {
     const navigate = useNavigate();
     const theme = useTheme();
     const { formatDate } = useDateFormat();
+    const postAuthRedirect = sessionStorage.getItem('postAuthRedirect');
+    const returnToAssessment = sessionStorage.getItem('returnToSymptomAssessment') === 'true' || postAuthRedirect === '/assessment';
 
     const validateStep = (step) => {
         if (step === 0) {
@@ -127,16 +129,16 @@ export default function SignUpForm({ setSuccess, setError }) {
             
             // Check if user came from onboarding
             const fromOnboarding = sessionStorage.getItem('pendingOnboardingAnswers');
-            const returnToAssessment = sessionStorage.getItem('returnToSymptomAssessment');
+            const returnToAssessmentFlag = sessionStorage.getItem('returnToSymptomAssessment') === 'true' || sessionStorage.getItem('postAuthRedirect') === '/assessment';
             
-            if (fromOnboarding || returnToAssessment) {
+            if (fromOnboarding || returnToAssessmentFlag) {
                 const successMsg = 'Account created! Please check your email to activate your account. After activation, your onboarding answers will be saved.';
                 setSuccessLocal(successMsg);
                 if (setSuccess) setSuccess(successMsg);
                 // Don't clear pending answers yet - they'll be saved after email verification and login
                 
                 // Redirect to signin with returnTo parameter if needed
-                if (returnToAssessment === 'true') {
+                if (returnToAssessmentFlag) {
                     setTimeout(() => navigate('/signin?returnTo=symptom-assessment'), 3000);
                 } else {
                     setTimeout(() => navigate('/signin'), 3000);
@@ -182,7 +184,7 @@ export default function SignUpForm({ setSuccess, setError }) {
     };
 
     return (
-        <motion.div
+        <Motion.div
             variants={containerVariants}
             initial="hidden"
             animate="visible"
@@ -198,7 +200,7 @@ export default function SignUpForm({ setSuccess, setError }) {
                 }}
             >
                 {/* Header */}
-                <motion.div variants={itemVariants}>
+                <Motion.div variants={itemVariants}>
                     <Box sx={{ mb: 3, textAlign: 'center' }}>
                         <Typography 
                             variant="h4" 
@@ -216,10 +218,10 @@ export default function SignUpForm({ setSuccess, setError }) {
                             Start your diabetes health management journey
                         </Typography>
                     </Box>
-                </motion.div>
+                </Motion.div>
 
                 {/* Progress Stepper */}
-                <motion.div variants={itemVariants}>
+                <Motion.div variants={itemVariants}>
                     <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
                         {steps.map((label) => (
                             <Step key={label}>
@@ -227,12 +229,12 @@ export default function SignUpForm({ setSuccess, setError }) {
                             </Step>
                         ))}
                     </Stepper>
-                </motion.div>
+                </Motion.div>
 
                 {/* Alerts */}
                 <AnimatePresence>
                     {successLocal && (
-                        <motion.div
+                        <Motion.div
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: 'auto' }}
                             exit={{ opacity: 0, height: 0 }}
@@ -240,10 +242,10 @@ export default function SignUpForm({ setSuccess, setError }) {
                             <Alert severity="success" sx={{ mb: 2 }}>
                                 {successLocal}
                             </Alert>
-                        </motion.div>
+                        </Motion.div>
                     )}
                     {errorLocal && (
-                        <motion.div
+                        <Motion.div
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: 'auto' }}
                             exit={{ opacity: 0, height: 0 }}
@@ -251,14 +253,14 @@ export default function SignUpForm({ setSuccess, setError }) {
                             <Alert severity="error" sx={{ mb: 2 }}>
                                 {errorLocal}
                             </Alert>
-                        </motion.div>
+                        </Motion.div>
                     )}
                 </AnimatePresence>
 
                 <form onSubmit={activeStep === steps.length - 1 ? handleSubmit : (e) => { e.preventDefault(); handleNext(); }}>
                     <AnimatePresence mode="wait">
                         {activeStep === 0 && (
-                            <motion.div
+                            <Motion.div
                                 key="step1"
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
@@ -345,11 +347,11 @@ export default function SignUpForm({ setSuccess, setError }) {
                                         <MenuItem value="Prefer not to say">Prefer not to say</MenuItem>
                                     </Select>
                                 </FormControl>
-                            </motion.div>
+                            </Motion.div>
                         )}
 
                         {activeStep === 1 && (
-                            <motion.div
+                            <Motion.div
                                 key="step2"
                                 initial={{ opacity: 0, x: 20 }}
                                 animate={{ opacity: 1, x: 0 }}
@@ -464,11 +466,11 @@ export default function SignUpForm({ setSuccess, setError }) {
                                         </Box>
                                     )}
                                 </Box>
-                            </motion.div>
+                            </Motion.div>
                         )}
 
                         {activeStep === 2 && (
-                            <motion.div
+                            <Motion.div
                                 key="step3"
                                 initial={{ opacity: 0, scale: 0.9 }}
                                 animate={{ opacity: 1, scale: 1 }}
@@ -490,7 +492,7 @@ export default function SignUpForm({ setSuccess, setError }) {
                                         <Typography variant="body2"><strong>Gender:</strong> {gender}</Typography>
                                     </Box>
                                 </Box>
-                            </motion.div>
+                            </Motion.div>
                         )}
                     </AnimatePresence>
 
@@ -537,7 +539,7 @@ export default function SignUpForm({ setSuccess, setError }) {
                     Already have an account?{' '}
                     <Link
                         component={RouterLink}
-                        to={sessionStorage.getItem('returnToSymptomAssessment') === 'true' ? '/signin?returnTo=symptom-assessment' : '/signin'}
+                        to={returnToAssessment ? '/signin?returnTo=symptom-assessment' : '/signin'}
                         sx={{
                             color: theme.palette.primary.main,
                             fontWeight: 600,
@@ -551,6 +553,6 @@ export default function SignUpForm({ setSuccess, setError }) {
                     </Link>
                 </Typography>
             </Paper>
-        </motion.div>
+        </Motion.div>
     );
 }
